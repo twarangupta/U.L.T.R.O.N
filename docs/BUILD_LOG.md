@@ -316,6 +316,21 @@ Note: Ultron and JARVIS are Marvel characters. Fine for a personal open-source p
 Context: the owner asked for neatly organized, human-readable code with less unnecessary code, plenty of CI, and a fully functional, tested installer at the end.
 Decision: after phase 1 behavior fixes, restructure into src/ultron with a command registry, delete dead and legacy code (pyttsx3 path, SAPI voice unlock scripts, SpeechRecognition, duplicate examples, git_organic_committer.py), pin dependencies, add CI (lint with ruff, tests with pytest, Windows build of the installer, silent-install smoke test), and ship UltronSetup.exe renamed UltronSetup.exe.
 
+### D23. Hardware profiles pick the models
+Context: one fixed setup either holds strong PCs back or overloads weak ones. The owner's laptop (GTX 1650 4 GB, 5.9 GB RAM) also needs the GPU shared carefully.
+Decision: hardware.py detects RAM, cores and the NVIDIA GPU (nvidia-smi) once at startup and picks a profile: Lite, CPU-Plus (no GPU but 16 GB+ and 8+ cores, added so strong CPU-only PCs are not held back), GPU-4GB, GPU-8GB+, GPU-16GB+. The LLM gets VRAM first (Ollama file size plus 0.8 GB); Whisper goes on the GPU only if the rest, minus a 0.5 GB reserve, still fits. Whisper uses the GPU only when the CUDA libraries load, and stt.py falls back to the CPU on any GPU error at load or mid-session. The LLM is the best installed model from the profile's list, with an "ollama pull" hint when the best one is missing. Every choice is overridable (ULTRON_PROFILE, WHISPER_MODEL_SIZE, WHISPER_DEVICE, WHISPER_COMPUTE_TYPE, WHISPER_CPU_THREADS, OLLAMA_MODEL). ultron.py --benchmark prints the profile and timings.
+Consequences: Ollama still decides its own GPU layers and threads; we only choose the model.
+
+### D24. GPU pack is cuBLAS only
+Context: faster-whisper on CUDA needs NVIDIA runtime DLLs that a plain venv does not have.
+Decision: ship only nvidia-cublas-cu12 (cublas64_12.dll and cublasLt64_12.dll, 772 MB on disk, about 550 MB download). Measured on the GTX 1650: ctranslate2 4.9 loads exactly these two plus its own DLLs and never touches cuDNN; Whisper transcribes correctly with cuDNN removed from the DLL path. The full cuBLAS + cuDNN + nvrtc set was 2.0 GB.
+Shared runtime (plan, verify in the installer phase): llama.cpp's CUDA 12 Windows build needs cudart64_12, cublas64_12 and cublasLt64_12. ctranslate2 links cudart statically, so one folder with the two cuBLAS DLLs plus cudart (under 1 MB) can serve both, as long as both are CUDA 12 builds (cuBLAS is backward compatible within 12.x).
+Not measured yet: whisper.cpp and llama.cpp Vulkan builds (would cover AMD and Intel GPUs without the CUDA pack). Needs downloading their binaries; do it in the installer phase and record size and speed here.
+
+### D25. Every download says what it is and shows progress
+Context: download size does not worry the owner, silence does. The installer gets a custom UI later.
+Decision: prefer the fastest option over the smallest. Every download (LLM, Whisper models, GPU pack, voice, wake word) states what it is, why it is needed and its size, and reports live progress: percent, MB done of total, and speed or time left. Download and setup logic lives in a UI-free module that reports progress through callbacks, so the console, the first-run wizard and the future installer UI can all drive it. The base installer has no NVIDIA libraries; the wizard downloads the GPU pack only on NVIDIA machines.
+
 ---
 
 ## 7. Tech stack: now and target
@@ -779,6 +794,22 @@ Open questions:
 - ultron.py logs what it heard and the raw AI reply to ultron.log, so mishearings and invented commands can be traced.
 - Built in a separate git worktree because another session was working in the main folder.
 
+### 2026-11-15: Hardware profiles (feat/hardware-profiles)
+- New hardware.py (detect and choose, D23), stt.py (load Whisper on the chosen device, warm-up transcription, CPU fallback), benchmark.py (ultron.py --benchmark). Fixed model settings removed from config.py; brain.py takes the LLM from the profile. tests/test_hardware.py covers weak, strong and tight-VRAM machines.
+- CUDA check: faster-whisper failed with "cublas64_12.dll not found". Installed the NVIDIA wheels with the owner's OK, then found only cuBLAS is used (D24). requirements-gpu.txt now lists only cuBLAS.
+- Measured on the laptop (GTX 1650, llama3.2:3b loaded in Ollama, 2.7 GB VRAM in use), 2.5 s spoken test clip, beam 5:
+  - before: Whisper base on CPU int8, 1.34 s per command (machine had 0.65 GB RAM free)
+  - after: profile GPU-4GB picks Whisper small on CUDA int8_float16, 0.53 s; base on CUDA 0.24 s; small float16 1.59 s (slower, so int8_float16 stays)
+  - VRAM: 2.74 GB with the LLM, 3.10 GB with Whisper small added, of 4.0 GB. Ollama stays 100 percent on the GPU.
+  - LLM: 6.7 s first reply when cold, 0.2 to 0.3 s when warm. Warming at startup (feat/streaming-llm-tts) matters.
+- Next: accent benchmark.
+
+### 2026-11-15: Accent accuracy tools (feat/accent-accuracy)
+- tools/stt_benchmark.py: "record" saves 16 spoken commands to recordings/stt (git-ignored); "run" compares Whisper models on CPU and GPU with ULTRON's settings and reports word error rate, exact matches, time per command, load time and VRAM. It recommends the fastest model within 3 WER points of the best and suggests corrections.json entries with one word of context ("open pro" -> "open chrome", never "pro" -> "chrome").
+- corrections.py and corrections.json: user-editable fixes for repeat mishearings, applied to every transcription in stt.py and logged. Seeded with git and VS Code mishearings.
+- Tested with ULTRON's own voice as fake recordings (base 9 percent WER, base.en 36 percent on 5 phrases). The owner's real recordings are pending; their winner becomes the GPU-4GB default.
+- Next: owner records, then conversation memory.
+
 <!-- New entries go above this line, newest last. Format:
 ### YYYY-MM-DD: Short title
 - What changed (branch)
@@ -795,13 +826,16 @@ Open questions:
 
 | Key | Default | Meaning |
 |---|---|---|
-| OLLAMA_MODEL | llama3.2:3b | LLM model name |
+| ULTRON_PROFILE | auto | force Lite, CPU-Plus, GPU-4GB, GPU-8GB+ or GPU-16GB+ |
+| OLLAMA_MODEL | from profile | LLM model name |
 | WAKE_WORD_MODEL | hey_jarvis | built-in name or path to a model file |
 | WAKE_WORD_THRESHOLD | 0.2 (to become 0.5) | wake sensitivity, higher is stricter |
 | SLEEP_WORD | go to sleep | phrase that returns to sleep mode |
-| WHISPER_MODEL_SIZE | base | tiny, base, small, medium, large-v3 or a folder |
-| WHISPER_DEVICE | cpu | cpu or cuda |
-| WHISPER_COMPUTE_TYPE | int8 | int8 for CPU |
+| WHISPER_MODEL_SIZE | from profile | tiny, base, small, medium, large-v3-turbo, .en variants or a folder |
+| WHISPER_DEVICE | from profile | cpu or cuda |
+| WHISPER_COMPUTE_TYPE | from profile | int8 on CPU, int8_float16 on GPU |
+| WHISPER_CPU_THREADS | physical cores, max 8 | Whisper CPU threads |
+| CORRECTIONS_FILE | corrections.json | mishearing fixes |
 | WHISPER_LANGUAGE | en | fixed language to avoid noise hallucinations |
 | WHISPER_VAD_FILTER | True | Whisper's own VAD (off once Silero is in) |
 | SAMPLE_RATE | 16000 | required by wake word and Whisper |
