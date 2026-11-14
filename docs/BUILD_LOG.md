@@ -307,6 +307,7 @@ Decision: apply to SignPath Foundation (free for qualifying open-source projects
 Context: the owner chose a new name and character.
 Decision: the assistant is ULTRON everywhere (code, prompts, docs, file names). Personality: blunt, calm, dry, a little condescending about humans, occasional short jokes about human habits, never cruel, always does the task, no "sir". All lines live in persona.py and are original writing, not quotes. A small random chance (ULTRON_QUIP_RATE, default 0.15) adds a remark after successful commands; never after errors or confirmations. Wake replies are one or two words to keep latency low.
 Wake word: openWakeWord ships only "hey_jarvis", so it stays the wake phrase until a custom "hey ultron" model is trained (or sherpa-onnx open-vocabulary keywords are adopted). Decision pending with the owner.
+Update 2026-11-15 (decided): train a custom "Hey Ultron" openWakeWord model with the project's Colab notebook (sherpa-onnx keywords not adopted). The owner trains it (docs/WAKE_WORD_TRAINING.md) and saves it as models/hey_ultron.onnx; ULTRON uses it when present and falls back to hey_jarvis with a log warning otherwise. WAKE_WORD_MODEL still overrides. The installer phase must bundle the trained model (check training-data licences first).
 Voice: the Piper voice is unchanged (it is a JARVIS-style voice); saved locally as ultron-voice.onnx, with a fallback to the old file name.
 Note: Ultron and JARVIS are Marvel characters. Fine for a personal open-source project; if the product is distributed widely or monetized, an original name and voice avoid trademark and voice-likeness problems.
 
@@ -740,6 +741,14 @@ Open questions:
 - New persona.py with ULTRON lines; greetings, wake, sleep and goodbye replies use it; removed "sir" from about 90 command replies; new LLM system prompt.
 - Docs, README, commands.txt, templates renamed. Wake phrase still "Hey Jarvis" (D21).
 - Owner approved a full cleanup, CI and a tested installer (D22).
+
+### 2026-11-15: Hey Ultron wake word (feat/hey-ultron-wakeword)
+- Wake phrase decided: custom openWakeWord model (D21 updated).
+- config.py: default WAKE_WORD_MODEL is models/hey_ultron.onnx when the file exists, else hey_jarvis; WAKE_PHRASE drives log lines. wakeword.py warns when it falls back.
+- docs/WAKE_WORD_TRAINING.md: Colab steps, file placement, test and threshold tuning, phonetic spellings and negatives if accuracy is poor.
+- README and commands.txt say "Hey Ultron" with the fallback noted.
+- Measured: nothing yet; waiting for the owner's trained model. Record hit rate (out of 10) and false wakes per 30 min here once tested.
+- Next: tune/wake-threshold should set 0.5 for the custom model.
 
 <!-- New entries go above this line, newest last. Format:
 ### YYYY-MM-DD: Short title

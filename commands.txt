@@ -5,6 +5,10 @@
 This document lists all the built-in system, media, development, and utility commands
 available in ULTRON, along with their matching trigger words and expected behaviors.
 
+Wake phrase: "Hey Ultron" (custom model at models/hey_ultron.onnx, see
+docs/WAKE_WORD_TRAINING.md). Until that file exists, say "Hey Jarvis" instead.
+The log line "Say ... to wake me" shows which one is active.
+
 --------------------------------------------------------------------------------
 1. SYSTEM & GENERAL UTILITIES
 --------------------------------------------------------------------------------

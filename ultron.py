@@ -4,7 +4,8 @@ from config import (
     WHISPER_COMPUTE_TYPE,
     WHISPER_LANGUAGE,
     WHISPER_VAD_FILTER,
-    SLEEP_WORD
+    SLEEP_WORD,
+    WAKE_PHRASE
 )
 import sys
 import numpy as np
@@ -142,7 +143,7 @@ def main():
     # Main infinite loop
     while True:
         reset_brain() # Clear LLM context memory when entering sleep mode
-        logger.info("Status: Sleeping. Standing by. Speak the wake word...")
+        logger.info(f"Status: Sleeping. Standing by. Say \"{WAKE_PHRASE}\" to wake me...")
         
         # Start continuous audio stream for wake word monitoring
         import time

@@ -41,9 +41,24 @@ OLLAMA_SYSTEM_PROMPT = (
 )
 
 # Wake Word Settings
-# openWakeWord only ships 'hey_jarvis'. Until a custom 'hey ultron' model is trained,
-# that one stays the default. Set this to a .onnx/.tflite path to use a custom model.
-WAKE_WORD_MODEL = os.getenv("WAKE_WORD_MODEL", "hey_jarvis")
+# The wake phrase is "Hey Ultron", from a custom openWakeWord model you train once
+# (see docs/WAKE_WORD_TRAINING.md) and save as models/hey_ultron.onnx.
+# Until that file exists, the built-in "hey_jarvis" model is used instead.
+# WAKE_WORD_MODEL in the environment or .env overrides both (a built-in name or a file path).
+PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
+HEY_ULTRON_MODEL_PATH = os.path.join(PROJECT_DIR, "models", "hey_ultron.onnx")
+FALLBACK_WAKE_WORD_MODEL = "hey_jarvis"
+
+
+def _default_wake_word_model() -> str:
+    if os.path.exists(HEY_ULTRON_MODEL_PATH):
+        return HEY_ULTRON_MODEL_PATH
+    return FALLBACK_WAKE_WORD_MODEL
+
+
+WAKE_WORD_MODEL = os.getenv("WAKE_WORD_MODEL") or _default_wake_word_model()
+# What to tell the user to say, for log lines.
+WAKE_PHRASE = "Hey Jarvis" if WAKE_WORD_MODEL == FALLBACK_WAKE_WORD_MODEL else "Hey Ultron"
 WAKE_WORD_THRESHOLD = float(os.getenv("WAKE_WORD_THRESHOLD", "0.2"))
 
 # Sleep trigger phrase
