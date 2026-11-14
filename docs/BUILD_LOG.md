@@ -331,6 +331,11 @@ Not measured yet: whisper.cpp and llama.cpp Vulkan builds (would cover AMD and I
 Context: download size does not worry the owner, silence does. The installer gets a custom UI later.
 Decision: prefer the fastest option over the smallest. Every download (LLM, Whisper models, GPU pack, voice, wake word) states what it is, why it is needed and its size, and reports live progress: percent, MB done of total, and speed or time left. Download and setup logic lives in a UI-free module that reports progress through callbacks, so the console, the first-run wizard and the future installer UI can all drive it. The base installer has no NVIDIA libraries; the wizard downloads the GPU pack only on NVIDIA machines.
 
+### D26. Conversation memory and long-term facts
+Context: the history was wiped every time ULTRON went to sleep, so "close it" after a nap meant nothing.
+Decision: memory.py keeps the conversation across naps and forgets it after 10 minutes of silence (CONVERSATION_FORGET_MINUTES) or on "forget this conversation". Each command ULTRON runs is added as an exchange ("open chrome" -> "(ran a command) Opening Chrome."). Only the last 10 exchanges (CONVERSATION_MAX_EXCHANGES) go to the LLM. Short follow-ups ("close it", "louder", "again") are resolved by rules from the last command, not by the LLM (commands/followups.py); risky commands are never repeated. Long-term facts ("remember that ...") live in memory.json (readable, git-ignored) and are added to every system prompt (last 30).
+Consequences: prompts grow with the window; measured 0.9 s warm reply with a short history and 3.75 s with a full 10-exchange window on llama3.2:3b. If that hurts, lower the window or summarise older exchanges.
+
 ---
 
 ## 7. Tech stack: now and target
@@ -810,6 +815,12 @@ Open questions:
 - Tested with ULTRON's own voice as fake recordings (base 9 percent WER, base.en 36 percent on 5 phrases). The owner's real recordings are pending; their winner becomes the GPU-4GB default.
 - Next: owner records, then conversation memory.
 
+### 2026-11-15: Conversation memory (feat/conversation-memory)
+- memory.py (Conversation with idle timeout and window, Facts in memory.json), commands/memory_cmds.py (remember, list, forget, forget conversation), commands/followups.py (close it, louder, quieter, again). brain.py builds each prompt from system prompt, time, facts and the recent window. ultron.py no longer resets the brain on sleep. D26.
+- Measured (llama3.2:3b on GPU): "When is my standup?" answered from a saved fact; "What did I just ask you to open?" answered from the noted command, 0.88 s warm. Full 10-exchange window: 3.75 s.
+- Tests: tests/test_memory.py (timeout, window, facts on disk, vague forgets ignored, follow-ups).
+- Next: personal activity log.
+
 <!-- New entries go above this line, newest last. Format:
 ### YYYY-MM-DD: Short title
 - What changed (branch)
@@ -836,6 +847,9 @@ Open questions:
 | WHISPER_COMPUTE_TYPE | from profile | int8 on CPU, int8_float16 on GPU |
 | WHISPER_CPU_THREADS | physical cores, max 8 | Whisper CPU threads |
 | CORRECTIONS_FILE | corrections.json | mishearing fixes |
+| CONVERSATION_FORGET_MINUTES | 10 | silence before the conversation is forgotten |
+| CONVERSATION_MAX_EXCHANGES | 10 | exchanges sent to the LLM |
+| MEMORY_FILE | memory.json | long-term facts |
 | WHISPER_LANGUAGE | en | fixed language to avoid noise hallucinations |
 | WHISPER_VAD_FILTER | True | Whisper's own VAD (off once Silero is in) |
 | SAMPLE_RATE | 16000 | required by wake word and Whisper |
