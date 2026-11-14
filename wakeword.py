@@ -4,6 +4,20 @@ from openwakeword.model import Model
 from config import WAKE_WORD_MODEL, WAKE_WORD_THRESHOLD, WAKE_PHRASE, HEY_ULTRON_MODEL_PATH, FALLBACK_WAKE_WORD_MODEL
 from logger import logger
 
+def _ensure_model_files():
+    """Download openWakeWord's feature models and the built-in wake word if missing.
+
+    A fresh Python environment has the library but not these files, which
+    used to stop ULTRON at startup with "File doesn't exist".
+    """
+    try:
+        from openwakeword.utils import download_models
+        builtin = [] if os.path.exists(WAKE_WORD_MODEL) else [WAKE_WORD_MODEL]
+        download_models(model_names=builtin)  # skips files that already exist
+    except Exception as e:
+        logger.warning(f"Could not download wake word model files: {e}")
+
+
 class WakeWordDetector:
     """
     Wraps the OpenWakeWord library to monitor streaming audio chunks
@@ -18,6 +32,8 @@ class WakeWordDetector:
                 "See docs/WAKE_WORD_TRAINING.md to train \"Hey Ultron\"."
             )
         logger.info(f"Wake phrase: \"{WAKE_PHRASE}\"")
+
+        _ensure_model_files()
 
         # OpenWakeWord accepts file paths to custom models (the prediction
         # key is the file name without extension, e.g. 'hey_ultron'),

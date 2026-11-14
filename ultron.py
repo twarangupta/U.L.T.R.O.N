@@ -166,6 +166,11 @@ def speak_and_interruptible(text: str, detector: WakeWordDetector) -> bool:
     return interrupted
 
 def main():
+    if sys.prefix == sys.base_prefix:
+        logger.warning(
+            "Not running inside the project's venv, so libraries or model files may be missing. "
+            "Start ULTRON with: venv\Scripts\python.exe ultron.py"
+        )
     print("=" * 50)
     print("                ULTRON INITIALIZATION                ")
     print("=" * 50)
