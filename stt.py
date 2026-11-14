@@ -1,5 +1,7 @@
 """Speech to text with faster-whisper, using the hardware profile.
 
+Known mishearings are fixed with corrections.json before the text is used.
+
 If the GPU fails, either while loading or later during a transcription (out of
 memory, a driver hiccup), ULTRON reloads Whisper on the CPU once and carries on.
 """
@@ -9,6 +11,7 @@ import time
 
 import numpy as np
 
+import corrections
 from config import WHISPER_HOTWORDS, WHISPER_LANGUAGE, WHISPER_VAD_FILTER
 from hardware import PROFILES, Profile, add_cuda_dll_paths
 from logger import logger
@@ -93,4 +96,8 @@ class SpeechToText:
             vad_filter=WHISPER_VAD_FILTER,
             hotwords=WHISPER_HOTWORDS or None,
         )
-        return "".join(seg.text for seg in segments).strip()
+        heard = "".join(seg.text for seg in segments).strip()
+        fixed = corrections.apply(heard)
+        if fixed != heard:
+            logger.info(f"Corrected {heard!r} -> {fixed!r}")
+        return fixed

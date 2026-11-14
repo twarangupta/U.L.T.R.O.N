@@ -1,0 +1,14 @@
+{
+  "_help": "Words Whisper keeps mishearing: add \"what it heard\": \"what you said\". Whole words, any case. tools/stt_benchmark.py suggests entries. Restart ULTRON after editing.",
+  "get push": "git push",
+  "get pull": "git pull",
+  "get status": "git status",
+  "get stash": "git stash",
+  "get commit": "git commit",
+  "get log": "git log",
+  "gate push": "git push",
+  "gate pull": "git pull",
+  "v s code": "vs code",
+  "vias code": "vs code",
+  "assets stop": "stop"
+}
