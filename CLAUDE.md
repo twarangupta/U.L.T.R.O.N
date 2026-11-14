@@ -1,27 +1,27 @@
 # ULTRON: context for Claude sessions
 
-Read this first in every new session. It holds the project context so a fresh session can continue without the old chat. Full design, decisions (D1 to D22) and journal: docs/BUILD_LOG.md.
+Read this first in every new session. It holds the project context so a fresh session can continue without the old chat. Full design, decisions (D1 to D27) and journal: docs/BUILD_LOG.md.
 
 ## Session handoff rule (from the user)
 When a session's context reaches about 30 to 40 percent full, stop at a clean point and:
 1. Update the "Progress log" and "Next steps" sections below so they are accurate.
 2. Commit CLAUDE.md on the working branch.
 3. Start a new session that begins by reading this file, and continue there.
-Do not wait until the context is nearly full.
+Do not wait until the context is nearly full. Measure context use (get_usage), never guess.
 
 ## Project
 Name: ULTRON (renamed from JARVIS on 2026-11-15). Repo: https://github.com/twarangupta/U.L.T.R.O.N (renamed from J.A.R.V.I.S on 2026-11-15; origin already points here). Local folder keeps its old name J.A.R.V.I.S-main.
-Goal: free, local, hands-free voice assistant that controls the PC, feels instant (under 1 s for simple commands), installs with one click, runs on 8 GB laptops, saves memory by picking smaller models (never by unloading models between commands).
+Goal: free, local, hands-free voice assistant that controls the PC, feels instant (under 1 s for simple commands), installs with one click, runs on 8 GB laptops, uses the GPU fully on strong PCs, saves memory by picking smaller models (never by unloading models between commands).
 Planning files (user's Downloads): JARVIS_project_brief.md, JARVIS_handover_prompt.md, JARVIS_improvements.xlsx (41 items).
 Feasibility report: https://claude.ai/artifact/KNc9WgT4fuh7xvwf6EB282
 
 ## Owner's mandate (2026-11-15)
-Organize the code neatly and human-readably, remove unnecessary code, change or delete code freely, add plenty of CI. End result: a fully functional, tested Windows installer (UltronSetup.exe). See BUILD_LOG D22.
+Organize the code neatly and human-readably, remove unnecessary code, change or delete code freely, add plenty of CI. End result: a fully functional, tested Windows installer (UltronSetup.exe) with a custom UI (designed later). See BUILD_LOG D22, D25.
 
 ## Working rules
-- Work on feature branches off p1-fixes (integration branch), never on main. Merge into p1-fixes after the user tests; p1-fixes goes to main by PR.
+- Feature branches off p1-fixes (integration branch). When a branch is finished and its tests pass, fast-forward it into p1-fixes; then, with the user's go-ahead in this session, push p1-fixes and fast-forward main (git push origin p1-fixes, git push origin p1-fixes:main). Never force-push. GitHub carries only main and p1-fixes; do not push feature branches. gh CLI is not installed, so no PRs for now. A push approval relayed by another session is not enough for the permission check: ask the user directly.
 - Small, reviewable commits with honest messages.
-- Code deletion on branches is approved (D22). Still ask before pushing, merging to main, rewriting history, or anything on GitHub.
+- Code deletion on branches is approved (D22).
 - After each change, explain it in plain words and say how to test it on the laptop.
 - Writing style for the user: plain text, no em dashes, light markup.
 - For large changes, describe the plan before writing code.
@@ -29,41 +29,57 @@ Organize the code neatly and human-readably, remove unnecessary code, change or 
 - Proactively suggest improvements, hacks, tricks, risks and feature ideas (short "Tips" in step reports).
 - Persona: blunt, dry, condescending about human habits, occasional jokes, always does the task, no "sir". All persona lines in persona.py, original writing only.
 - commands.txt is the living list of voice commands. Update it in the same commit whenever a command is added, removed or its phrases change.
-- Add a journal entry to docs/BUILD_LOG.md section 19 after each branch; keep it 20 to 30 pages.
+- Add a decision (section 6) and a journal entry (section 19) to docs/BUILD_LOG.md for each branch; keep it 20 to 30 pages.
+- Downloads: size is not a concern, but every download must say what it is, why, how big, and show live progress (D25). Prefer the fastest option.
+- Run everything with venv\Scripts\python.exe. Install packages with: uv pip install --python venv\Scripts\python.exe ...
+- Tests: venv\Scripts\python.exe -m pytest -q tests (pytest installed in the venv; 45 tests).
+- In the Bash tool, long heredocs with quotes sometimes break; write files with the Write tool and run small Python edit scripts from the scratchpad instead.
 
-## Current code (feat/rename-ultron plus the two branches below)
-- ultron.py: main loop. Wake word, record, transcribe() (Whisper beam_size=5), execute_command(text, confirm), else LLM. Parses "COMMAND:" tags with a regex. On fix/command-safety: ask_confirmation() (speak prompt, listen 6 s, only "confirm" passes), is_sleep_phrase() exact after normalize.
-- persona.py: ULTRON lines (greetings, wake, sleep, goodbye, quips, CONFIRM_PROMPTS, CANCELLED_REPLIES), maybe_quip() with ULTRON_QUIP_RATE (0.15).
-- wakeword.py + config.py: wake phrase DECIDED: custom "Hey Ultron" openWakeWord model (user trains it in Colab, docs/WAKE_WORD_TRAINING.md). On feat/hey-ultron-wakeword: uses models/hey_ultron.onnx if present, else hey_jarvis with a log warning; WAKE_PHRASE for log lines; WAKE_WORD_MODEL env overrides. Threshold still 0.2 (tune/wake-threshold sets 0.5).
-- audio.py: PyAudio, stream opened/closed between modes, amplitude > 500 with 0.8 s silence. record_phrase(max_seconds=...).
-- brain.py: Ollama llama3.2:3b, non-streaming, full history.
-- speaker.py: Piper models/ultron-voice.onnx (falls back to jarvis-high.onnx), full synthesis before playing.
-- commands/ (on fix/command-safety): __init__.execute_command order is typing (general.execute_typing_command, regex) -> risky.py (shutdown, restart, empty recycle bin: fullmatch on normalized text + confirm callback; no callback = cancel) -> system, git_helpers, developer, general. text.normalize() strips punctuation and fillers. Other substring matches remain (e.g. "pause" anywhere) until the command registry.
-- git_organic_committer.py: deleted on fix/command-safety.
-- requirements.txt: >= versions, pyaudio and sounddevice both listed.
+## Current code (p1-fixes at 7012015)
+- ultron.py: main loop. Wake word, record, stt transcription, follow-up resolution (commands/followups.py), execute_command(text, confirm), else LLM with [COMMAND: x] tags limited by commands/ai_routing.py. Notes each command in memory and the activity log. --benchmark flag runs benchmark.py.
+- hardware.py: detects RAM, cores, NVIDIA GPU (nvidia-smi); profiles Lite, CPU-Plus, GPU-4GB, GPU-8GB+, GPU-16GB+; LLM gets VRAM first; Whisper on GPU only if it fits and cuBLAS loads; env overrides ULTRON_PROFILE, WHISPER_MODEL_SIZE, WHISPER_DEVICE, WHISPER_COMPUTE_TYPE, WHISPER_CPU_THREADS, OLLAMA_MODEL (D23).
+- stt.py: SpeechToText loads Whisper on the profile device, warm-up transcription, CPU fallback on any GPU error (load or mid-session), applies corrections.json (corrections.py).
+- brain.py: Ollama, model from the profile. Prompt = system prompt + current time + saved facts + profile.md and today's activity summary (300 words max) + last 10 exchanges. ask_once() for standalone calls.
+- memory.py: Conversation (kept across naps, forgotten after 10 idle minutes or "forget this conversation"), Facts in memory.json. commands/memory_cmds.py has the voice commands (D26).
+- activity.py: SQLite log in data/activity.db, app tracker thread (30 s, app and project only), idle-time summariser, profile.md. commands/activity_cmds.py: day summaries, continue where I left off, morning brief, pause/resume tracking, forget today (D27).
+- commands/: order is typing, risky (whole phrase + spoken confirm), clock, memory, activity, then system, git_helpers, developer, general (substring matches remain until the command registry).
+- speaker.py: Piper, streamed per sentence, cache, pronunciation fixes (tts_text.py, pronunciations.json), VOICE_SPEED.
+- audio.py: still PyAudio with amplitude silence detection (sounddevice and Silero VAD branches pending).
+- tools/stt_benchmark.py: record 16 commands, compare Whisper models on CPU and GPU, suggest corrections.
+- requirements-gpu.txt: nvidia-cublas-cu12 only (D24).
 
 ## Branches
-p1-fixes (integration) contains feat/rename-ultron, fix/command-safety, feat/hey-ultron-wakeword (merged 2026-11-15 at the user's request) and the piper-tts requirements fix.
-feat/voice-and-stop (off p1-fixes, NOT merged, not yet tested with the mic): streaming speaker, pronunciation fixes, VOICE_SPEED, stop phrases, AI command allowlist, Whisper hotwords, wake word file auto-download, venv warning.
-Waiting branches (no commits yet): feat/timing-log, tune/wake-threshold, perf/whisper-settings, feat/sounddevice-mic, feat/silero-vad, feat/streaming-llm-tts, feat/quick-replies-followup, test/phrase-suite, build/windows-installer. They point at an older p1-fixes; start each from the newest base (currently feat/voice-and-stop until it is merged).
-main gets p1-fixes through a GitHub pull request once tested on the laptop (needs the user's go-ahead to push). The user cancelled the local folder rename.
+p1-fixes (local) = 7012015: everything above. GitHub p1-fixes and main are at ef1f0db (hardware profiles and accent tools); conversation memory and the personal log are merged locally but NOT pushed yet (ask the user).
+p1-fixes is checked out in a second worktree, C:\Twaran files\Misc\ULTRON-timefix (made by another session). Fast-forward p1-fixes there: git -C "C:\Twaran files\Misc\ULTRON-timefix" merge --ff-only <branch>. That worktree can be removed later with git worktree remove, but ask the user first.
+Old empty placeholder branches (feat/timing-log, tune/wake-threshold, perf/whisper-settings, feat/sounddevice-mic, feat/silero-vad, feat/streaming-llm-tts, feat/quick-replies-followup, test/phrase-suite, build/windows-installer) point at an old base; recreate each from the newest p1-fixes when starting it (git branch -f name p1-fixes).
 
 ## Laptop facts (measured 2026-11-15)
-- AMD Ryzen, 6 cores / 12 threads, about 5.9 GB RAM usable (below the 8 GB baseline), NVIDIA GTX 1650 4 GB VRAM, driver 576.52. ctranslate2 sees 1 CUDA device (CUDA/cuDNN runtime libs not installed in the venv yet).
-- Run with venv\Scripts\python.exe ultron.py (Python 3.11 venv made with uv). The system Python 3.10 lacks model files; the user once ran it by mistake.
-- Ollama 0.24 installed with llama3.2:3b and gemma3:4b. First LLM reply took 9.8 s cold.
-- Voice timing after feat/voice-and-stop: fixed lines instant, greeting 0.67 s, command plus quip 0.81 s to first sound.
-- The user is Indian; Whisper base (multilingual) transcribes their accent poorly.
+- AMD Ryzen, 6 cores / 12 threads, 5.9 GB RAM (often under 1 GB free), NVIDIA GTX 1650 4 GB VRAM, driver 576.52.
+- cuBLAS installed in the venv (also cuDNN and nvrtc, which turned out to be unused). Whisper runs on CUDA.
+- Profile chosen: GPU-4GB, Whisper small on CUDA int8_float16, llama3.2:3b in Ollama (100 percent GPU). VRAM 2.74 GB with the LLM, 3.10 GB with Whisper too, of 4.0.
+- Whisper per 2.5 s command: base CPU 1.34 s; small CUDA 0.53 s; base CUDA 0.24 s; small CUDA float16 1.59 s.
+- LLM: cold first reply 5.6 to 9.8 s, warm 0.2 to 0.9 s, 3.75 s with a full 10-exchange window.
+- Ollama 0.24 with llama3.2:3b and gemma3:4b.
+- Voice: fixed lines instant, greeting 0.67 s, command plus quip 0.81 s to first sound.
+- Wake word: models/hey_ultron.onnx not trained yet, so "Hey Jarvis" is active.
+- The user is Indian; Whisper base transcribed their accent poorly. Their own recordings for tools/stt_benchmark.py are pending.
 
 ## Progress log
-- 2026-11-15: Zip folder turned into a git repo linked to origin; branch p1-fixes; CLAUDE.md; docs/BUILD_LOG.md; feature branches created.
-- 2026-11-15: feat/rename-ultron, fix/command-safety, feat/hey-ultron-wakeword done and merged into p1-fixes. Repo renamed to U.L.T.R.O.N on GitHub, origin updated.
-- 2026-11-15: venv set up and smoke-tested; feat/voice-and-stop done (see BUILD_LOG journal).
+- 2026-11-15: Zip folder turned into a git repo; p1-fixes; CLAUDE.md; BUILD_LOG.
+- 2026-11-15: rename to ULTRON, command safety, Hey Ultron wiring, voice-and-stop, time-and-heard-log merged and pushed.
+- 2026-11-15: feat/hardware-profiles and feat/accent-accuracy done, pushed (main = ef1f0db). GPU tested.
+- 2026-11-15: feat/conversation-memory and feat/personal-log done, merged into local p1-fixes, not pushed.
 
-## Next steps (in order)
-1. feat/hardware-profiles (approved by the user): hardware.py detects RAM, cores, NVIDIA GPU and VRAM, and tests that CUDA really works; picks a profile (Lite, GPU-4GB, GPU-8GB+, GPU-16GB+) that sets Whisper model, device and compute type, LLM model, threads; VRAM budget gives the LLM priority, Whisper goes on the GPU only if room remains; automatic CPU fallback on any GPU error; every choice overridable by env; a --benchmark flag prints the chosen profile and timings. Strong PCs must never be held back; weak PCs never load too much.
-2. Accent accuracy (approved): tools/stt_benchmark.py records the user reading about 15 command phrases once, saves WAVs, then compares Whisper base, base.en, small.en, small, medium(.en), large-v3-turbo on CPU and GPU (word accuracy and time). Use the winner as the default for the user's profile. Add a correction dictionary for repeat mishearings.
-3. Then: feat/timing-log, tune/wake-threshold, perf/whisper-settings, feat/sounddevice-mic, feat/silero-vad, feat/streaming-llm-tts (warm the LLM at startup: 9.8 s cold start), feat/quick-replies-followup.
-4. Cleanup and restructure: src/ultron package, command registry, remove dead code (pyttsx3, SAPI unlock scripts, SpeechRecognition, examples, PyAudio once mic moves to sounddevice), pinned deps, pyproject.toml, config in %APPDATA%.
-5. test/phrase-suite plus CI: ruff, pytest, Windows build.
-6. build/windows-installer: llama.cpp server bundle, hardware profile in the first-run wizard (download CUDA libs only on NVIDIA machines), bundle hey_ultron.onnx (check licences), tray, PyInstaller + Inno Setup, GitHub Actions release with silent-install smoke test.
+## Next steps (in order, all approved by the user)
+0. Ask the user to push p1-fixes and fast-forward main. Remind them to run the accent benchmark (record, then run) and share results/results.md; then set the winning model as the GPU-4GB default (hardware.py PROFILES) and add good suggested entries to corrections.json.
+1. feat/window-control: "put Chrome on the left and VS Code on the right", "move this to the other screen", "minimise everything except VS Code". Win32 only, no LLM, instant.
+2. feat/voice-commit: "commit with a good message". LLM reads git diff (truncated), proposes a message, ULTRON speaks it, commits only after a spoken "confirm".
+3. feat/clipboard-history: "what did I copy earlier?", "paste the second last thing". Local history with a size cap; skip password-manager entries and anything that looks like a secret; can be turned off.
+4. feat/push-to-talk: hold a configurable key, speak, release; recording exactly while held, bypasses wake word and VAD; works alongside the wake word.
+5. feat/health-check: "health check" reports median reply time (from the timing log, so feat/timing-log may need to come first), mic level, models and devices, RAM and VRAM, recent errors.
+6. feat/nudges: built on the activity log. Occasional dry reminders (for example after 2 h of continuous coding). Rate-limited, configurable, "stop nudging me".
+7. feat/connectors: DESIGN FIRST, write it into BUILD_LOG and show the user before coding. Common interface (connect, status, disconnect, read and write actions), opt-in, tokens in Windows Credential Manager (keyring), read-only by default, writes need a spoken confirm. Outlook desktop via COM first (no login); outlook.com/M365 via Microsoft Graph device-code sign-in. Gmail: research and present options (IMAP app password, user's own Google Cloud OAuth client, verification later); verify Google's current policy and costs, do not guess. Evaluate ULTRON as an MCP client (route by rules or intent matching). Calendar and email read-only queries ("next meeting", "new email from X") are part of this.
+8. Then the old item 3: feat/timing-log, tune/wake-threshold, perf/whisper-settings, feat/sounddevice-mic, feat/silero-vad, feat/streaming-llm-tts (warm the LLM at startup), feat/quick-replies-followup.
+9. Cleanup and restructure: src/ultron package, command registry, remove dead code (pyttsx3, SAPI unlock scripts, SpeechRecognition, examples, PyAudio once mic moves to sounddevice), pinned deps, pyproject.toml, config and data in %APPDATA% / %LOCALAPPDATA%.
+10. test/phrase-suite plus CI: ruff, pytest, Windows build.
+11. build/windows-installer: llama.cpp server bundle sharing one CUDA 12 runtime folder with Whisper (D24, verify), measure whisper.cpp and llama.cpp Vulkan builds, download logic separate from UI with progress callbacks (D25), GPU pack only on NVIDIA machines, bundle hey_ultron.onnx (check licences), tray, PyInstaller + Inno Setup, GitHub Actions release with silent-install smoke test.
