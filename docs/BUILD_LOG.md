@@ -336,6 +336,12 @@ Context: the history was wiped every time ULTRON went to sleep, so "close it" af
 Decision: memory.py keeps the conversation across naps and forgets it after 10 minutes of silence (CONVERSATION_FORGET_MINUTES) or on "forget this conversation". Each command ULTRON runs is added as an exchange ("open chrome" -> "(ran a command) Opening Chrome."). Only the last 10 exchanges (CONVERSATION_MAX_EXCHANGES) go to the LLM. Short follow-ups ("close it", "louder", "again") are resolved by rules from the last command, not by the LLM (commands/followups.py); risky commands are never repeated. Long-term facts ("remember that ...") live in memory.json (readable, git-ignored) and are added to every system prompt (last 30).
 Consequences: prompts grow with the window; measured 0.9 s warm reply with a short history and 3.75 s with a full 10-exchange window on llama3.2:3b. If that hurts, lower the window or summarise older exchanges.
 
+### D27. Personal activity log
+Context: the owner wants ULTRON to know what they worked on, to answer "what did I do yesterday" and "continue where I left off", without a cloud service or a heavy tracker.
+Decision: activity.py. (1) Every command ULTRON runs is one row in a local SQLite file, data/activity.db (WAL mode): what was said, the result, the app, and for git commands the repo and branch read from .git/HEAD (no subprocess). (2) An app tracker thread, on by default (ACTIVITY_TRACKING=0 disables it, "pause tracking" pauses it): every 30 s one Win32 call reads the foreground window; time is added to (day, app, project) rows. The project name comes from editor titles (VS Code, Cursor, JetBrains). Titles are read in memory only, stored only if ACTIVITY_STORE_TITLES=1. Time is not counted after 5 min without input. An exclude list in data/activity_settings.json (password managers, InPrivate and Incognito windows, banking words by default) is never recorded. (3) A summariser thread asks the LLM for a 4-sentence day summary only when ULTRON has been unused for 20 min, never while a conversation is open (ACTIVITY_SUMMARIES=0 turns it off). The LLM sees a digest of app minutes and command phrases, never titles. (4) Every LLM prompt gets profile.md (user-written) plus today's summary, capped at 300 words. (5) Voice: day summaries, "continue where I left off" (last VS Code folder from VS Code's own storage.json, plus its branch), morning brief (yesterday, where you stopped, uncommitted changes), pause and resume tracking, forget today, tracking status.
+Defaults chosen: tracker on (the owner asked for it), titles off. Everything stays in readable local files, git-ignored.
+Measured cost (laptop): command write 0.065 ms median (0.74 ms max), tracker tick 0.07 ms (0.0002 percent of one core at one per 30 s), 3.6 MB RAM, about 84 KB of disk for a heavy day (500 commands), about 30 MB per year. Summary: one 4 s LLM call per idle period.
+
 ---
 
 ## 7. Tech stack: now and target
@@ -821,6 +827,12 @@ Open questions:
 - Tests: tests/test_memory.py (timeout, window, facts on disk, vague forgets ignored, follow-ups).
 - Next: personal activity log.
 
+### 2026-11-15: Personal activity log (feat/personal-log)
+- activity.py (log, tracker, summariser, profile note), commands/activity_cmds.py, profile.example.md. ultron.py logs each command and marks the conversation busy so summaries wait. brain.py adds ask_once() for summaries and the profile note to every prompt. D27.
+- Measured: see D27. Live summary of a simulated day took 4.2 s on llama3.2:3b.
+- Tests: tests/test_activity.py (rows, speed, app time, titles not stored, exclusions, forget today, summary never sees titles, summariser waits while busy, prompt cap, voice commands).
+- Next: window control, voice commit, clipboard history, push-to-talk, health check, nudges, then the connectors design.
+
 <!-- New entries go above this line, newest last. Format:
 ### YYYY-MM-DD: Short title
 - What changed (branch)
@@ -850,6 +862,12 @@ Open questions:
 | CONVERSATION_FORGET_MINUTES | 10 | silence before the conversation is forgotten |
 | CONVERSATION_MAX_EXCHANGES | 10 | exchanges sent to the LLM |
 | MEMORY_FILE | memory.json | long-term facts |
+| ACTIVITY_TRACKING | 1 | app tracker on or off |
+| ACTIVITY_INTERVAL_SECONDS | 30 | tracker tick |
+| ACTIVITY_STORE_TITLES | 0 | store window titles too |
+| ACTIVITY_SUMMARIES | 1 | idle-time day summaries |
+| ACTIVITY_SUMMARY_IDLE_MINUTES | 20 | idle time before a summary |
+| ULTRON_DATA_DIR | data | activity database and settings |
 | WHISPER_LANGUAGE | en | fixed language to avoid noise hallucinations |
 | WHISPER_VAD_FILTER | True | Whisper's own VAD (off once Silero is in) |
 | SAMPLE_RATE | 16000 | required by wake word and Whisper |
