@@ -39,6 +39,8 @@ Feasibility report: https://claude.ai/artifact/KNc9WgT4fuh7xvwf6EB282
 
 ## Progress log
 - 2026-11-15: Folder was a zip download; ran git init, linked origin, reset to origin/main (no file changes), created branch p1-fixes. Added this CLAUDE.md.
+- 2026-11-15: Added docs/BUILD_LOG.md (design, decisions D1 to D20, architecture, journal). Keep it updated: add a journal entry in section 19 after each merged branch; keep total length 20 to 30 pages.
+- 2026-11-15: Created feature branches off p1-fixes (see BUILD_LOG section 15). Before starting one, update it from p1-fixes. Merge back into p1-fixes after the user tests it.
 
 ## Next steps (P1, in order)
 1. Per-stage timing log (wake, record, STT, match, act, speak).
