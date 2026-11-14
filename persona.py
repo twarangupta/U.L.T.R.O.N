@@ -49,6 +49,18 @@ GOODBYES = [
     "Going offline. Don't do anything I would have to fix.",
 ]
 
+# Spoken before a risky command runs. {action} is e.g. "restart the computer".
+CONFIRM_PROMPTS = [
+    "Say confirm to {action}. Anything else cancels.",
+    "You want me to {action}? Say confirm. Anything else cancels.",
+]
+
+CANCELLED_REPLIES = [
+    "Cancelled. Nothing happened.",
+    "Cancelled. Your computer lives another day.",
+    "Not confirmed, so I did nothing. Wise, possibly.",
+]
+
 DONE_REPLIES = [
     "Done.",
     "Handled.",
@@ -78,7 +90,7 @@ def maybe_quip(reply: str) -> str:
     if not reply or QUIP_RATE <= 0:
         return reply
     low = reply.lower()
-    if any(w in low for w in ("fail", "error", "unable", "couldn't", "confirm", "?")):
+    if any(w in low for w in ("fail", "error", "unable", "couldn't", "confirm", "cancel", "nothing happened", "?")):
         return reply
     if random.random() < QUIP_RATE:
         return f"{reply} {random.choice(QUIPS)}"

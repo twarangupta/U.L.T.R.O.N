@@ -194,26 +194,6 @@ def execute_system_command(clean_text: str) -> str | None:
             except Exception as e:
                 return f"Failed to open folder. Error: {e}"
 
-    # Shutdown PC
-    if "shutdown" in clean_text or "shut down my computer" in clean_text:
-        if sys.platform == 'win32':
-            os.system("shutdown /s /t 5")
-        elif sys.platform == 'darwin':
-            os.system("osascript -e 'tell app \"System Events\" to shut down'")
-        else:
-            os.system("shutdown -h +0")
-        return "Shutting down the system in 5 seconds. Goodbye."
-
-    # Restart PC
-    if "restart" in clean_text or "restart my computer" in clean_text:
-        if sys.platform == 'win32':
-            os.system("shutdown /r /t 5")
-        elif sys.platform == 'darwin':
-            os.system("osascript -e 'tell app \"System Events\" to restart'")
-        else:
-            os.system("shutdown -r +0")
-        return "Restarting the system in 5 seconds."
-
     # Lock PC
     if "lock pc" in clean_text or "lock computer" in clean_text or "lock the pc" in clean_text:
         try:
@@ -383,34 +363,6 @@ def execute_system_command(clean_text: str) -> str | None:
                     return "Volume decreased."
         except Exception as e:
             return f"Failed to adjust volume. Error: {e}"
-
-    # Empty Recycle Bin
-    if "empty recycle bin" in clean_text or "clean the trash" in clean_text or "empty trash" in clean_text:
-        try:
-            if sys.platform == 'win32' and ctypes:
-                SHERB_NOCONFIRMATION = 0x00000001
-                SHERB_NOSOUND = 0x00000004
-                ctypes.windll.shell32.SHEmptyRecycleBinW(None, None, SHERB_NOCONFIRMATION | SHERB_NOSOUND)
-            elif sys.platform == 'darwin':
-                trash_path = os.path.expanduser("~/.Trash")
-                for root, dirs, files in os.walk(trash_path):
-                    for f in files:
-                        os.unlink(os.path.join(root, f))
-                    for d in dirs:
-                        shutil.rmtree(os.path.join(root, d))
-            else:
-                trash_paths = [os.path.expanduser("~/.local/share/Trash/files"), os.path.expanduser("~/.local/share/Trash/info")]
-                for tp in trash_paths:
-                    if os.path.exists(tp):
-                        for item in os.listdir(tp):
-                            item_path = os.path.join(tp, item)
-                            if os.path.isdir(item_path):
-                                shutil.rmtree(item_path)
-                            else:
-                                os.unlink(item_path)
-            return "Recycle bin emptied."
-        except Exception as e:
-            return f"Failed to empty recycle bin. Error: {e}"
 
     # Active Window Controls
     if "close this window" in clean_text or "close window" in clean_text:

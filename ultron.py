@@ -13,6 +13,8 @@ from audio import audio_handler, check_keyboard_hit, clear_keyboard_hit
 from wakeword import WakeWordDetector
 from brain import ask_ai, reset_brain
 from commands import execute_command
+from commands.text import normalize
+from commands.risky import match_risky
 from speaker import speak, stop_speaking, wait_speaking, is_speaking
 from logger import logger
 import persona
@@ -51,6 +53,46 @@ def get_startup_greeting() -> str:
         pass
 
     return random.choice(candidates)
+
+# Replies that approve a risky command. Anything else cancels it.
+CONFIRM_WORDS = {"confirm", "confirmed", "yes confirm", "i confirm"}
+CONFIRM_LISTEN_SECONDS = 6.0
+
+
+def transcribe(whisper_model, audio_data) -> str:
+    """Speech to text. Returns "" on silence or error."""
+    if len(audio_data) == 0:
+        return ""
+    try:
+        segments, _info = whisper_model.transcribe(
+            audio_data,
+            beam_size=5,
+            language=WHISPER_LANGUAGE,
+            vad_filter=WHISPER_VAD_FILTER
+        )
+        return "".join(seg.text for seg in segments).strip()
+    except Exception as e:
+        logger.error(f"Transcription error: {e}")
+        return ""
+
+
+def ask_confirmation(prompt: str, whisper_model) -> bool:
+    """Speak the prompt, listen once, and return True only for "confirm"."""
+    speak(prompt)
+    wait_speaking()
+    reply = transcribe(whisper_model, audio_handler.record_phrase(max_seconds=CONFIRM_LISTEN_SECONDS))
+    approved = normalize(reply) in CONFIRM_WORDS
+    logger.info(f"Confirmation reply: {reply!r} -> {'approved' if approved else 'cancelled'}")
+    return approved
+
+
+def is_sleep_phrase(transcription: str) -> bool:
+    """True only when the whole utterance is the sleep phrase.
+
+    "Go to sleep." sleeps; "remind me to go to sleep at 11" does not.
+    """
+    return normalize(transcription) == normalize(SLEEP_WORD)
+
 
 def speak_and_interruptible(text: str, detector: WakeWordDetector) -> bool:
     """
@@ -134,6 +176,9 @@ def main():
         wait_speaking()
         sys.exit(1)
 
+    def confirm(prompt: str) -> bool:
+        return ask_confirmation(prompt, whisper_model)
+
     greeting_text = get_startup_greeting()
     logger.info(f"ULTRON startup greeting: {greeting_text}")
     speak(greeting_text)
@@ -173,31 +218,16 @@ def main():
             # Record user phrase with silence detection
             audio_data = audio_handler.record_phrase()
             
-            # Skip if no audio recorded
-            if len(audio_data) == 0:
-                continue
-                
             logger.info("Transcribing...")
-            try:
-                segments, info = whisper_model.transcribe(
-                    audio_data,
-                    beam_size=5,
-                    language=WHISPER_LANGUAGE,
-                    vad_filter=WHISPER_VAD_FILTER
-                )
-                transcription = "".join(seg.text for seg in segments).strip()
-            except Exception as e:
-                logger.error(f"Transcription error: {e}")
-                transcription = ""
-                
+            transcription = transcribe(whisper_model, audio_data)
             if not transcription:
                 logger.info("No speech recognized")
                 continue
                 
             print(f"You: {transcription}")
             
-            # Check for sleep trigger
-            if SLEEP_WORD in transcription.lower():
+            # Sleep only when the whole utterance is the sleep phrase
+            if is_sleep_phrase(transcription):
                 speak(persona.pick(persona.SLEEP_REPLIES))
                 wait_speaking()
                 try:
@@ -208,7 +238,7 @@ def main():
                 break
                 
             # Check if this is a direct system command
-            command_response = execute_command(transcription)
+            command_response = execute_command(transcription, confirm)
             
             if command_response is not None:
                 if command_response == "":
@@ -228,10 +258,12 @@ def main():
                     natural_reply = re.sub(r"[`\[]*[^`\[]*COMMAND:\s*[^\]`]+[\]`]*", "", ai_response, flags=re.IGNORECASE).strip()
                     
                     logger.info(f"AI Command Routed: Executing extracted command: '{extracted_cmd}'")
-                    cmd_res = execute_command(extracted_cmd)
+                    cmd_res = execute_command(extracted_cmd, confirm)
                     
-                    # If the command returned an error or failure, speak the failure message
-                    if cmd_res and ("failed" in cmd_res.lower() or "error" in cmd_res.lower() or "unable" in cmd_res.lower()):
+                    # Speak the command's own reply for failures and for risky
+                    # commands (the model's reply may claim it ran after a cancel)
+                    risky = match_risky(normalize(extracted_cmd)) is not None
+                    if cmd_res and (risky or "failed" in cmd_res.lower() or "error" in cmd_res.lower() or "unable" in cmd_res.lower()):
                         interrupted = speak_and_interruptible(cmd_res, detector)
                     elif cmd_res == "":
                         interrupted = False

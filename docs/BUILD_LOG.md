@@ -291,6 +291,7 @@ Decision: after the installer is stable, build a Tauri 2 app (React and TypeScri
 
 ### D17. Remove git_organic_committer.py
 Decision: delete it in a dedicated commit with an honest message. Pending owner approval because it changes the public repo.
+Update 2026-11-15: approved under D22; deleted on fix/command-safety.
 
 ### D18. Feature branches with an integration branch
 Decision: p1-fixes is the integration branch for phase 1. Each feature gets its own branch from p1-fixes, is tested on the laptop, then merged back. main only receives tested phase merges through pull requests. See section 15.
@@ -741,6 +742,17 @@ Open questions:
 - Docs, README, commands.txt, templates renamed. Wake phrase still "Hey Jarvis" (D21).
 - Owner approved a full cleanup, CI and a tested installer (D22).
 
+### 2026-11-15: Command safety (fix/command-safety)
+- Branch reset onto feat/rename-ultron (it had no commits of its own) so it carries the rename.
+- New commands/text.py: normalize() lowercases, strips punctuation and filler words ("Ultron", "please", "now").
+- New commands/risky.py: shutdown, restart and empty recycle bin moved out of system.py. Each matches only when the whole normalized sentence is one of its phrases (fullmatch regex). Fixes audit bugs 1 and 2.
+- Spoken confirmation (D11): the router takes a confirm callback; ultron.py speaks "Say confirm to ...", listens up to 6 s, and runs only on "confirm" / "yes confirm" / "confirmed" / "i confirm". No callback means cancel. LLM-routed commands use the same path, and for risky ones ULTRON speaks the real result, not the model's claim (bug 5, partly).
+- Typing is checked first, with a regex that tolerates "Type, hello" (bug 3).
+- Sleep phrase must be the whole sentence after normalize (bug 4).
+- Deleted git_organic_committer.py (D17). commands.txt updated.
+- Not done here: other substring matches in system.py (for example "pause" anywhere pauses media) wait for the command registry (D10).
+- Next: feat/timing-log.
+
 <!-- New entries go above this line, newest last. Format:
 ### YYYY-MM-DD: Short title
 - What changed (branch)
@@ -796,6 +808,7 @@ General before each test:
 | fix/command-safety | say "restart the dev server" | does not reboot; goes to LLM or says it does not know |
 | fix/command-safety | say "restart my computer" | asks to confirm; saying "cancel" cancels |
 | fix/command-safety | say "type restart later" | types the text, nothing else |
+| fix/command-safety | say "remind me to go to sleep at 11" | does not go to sleep |
 | tune/wake-threshold | 30 min of normal room noise | at most 1 false wake |
 | perf/whisper-settings | same 10 commands before and after | STT median lower, accuracy same |
 | feat/sounddevice-mic | wake, speak immediately | first word not clipped, no PortAudio errors |

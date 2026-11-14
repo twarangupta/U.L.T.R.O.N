@@ -14,33 +14,38 @@ def ask_local_ai(prompt: str) -> str:
     except Exception as e:
         return f"Error querying local AI: {e}"
 
-def execute_general_command(clean_text: str, raw_text: str = "") -> str | None:
-    # 0. New: Dictation / Typing Helper
-    if clean_text.startswith("type ") or clean_text.startswith("write ") or clean_text.startswith("insert "):
-        if not clean_text.startswith("write a note") and not clean_text.startswith("write note"):
-            try:
-                import pyperclip
-                import pyautogui
-                pyautogui.FAILSAFE = False
-                text_to_type = ""
-                if clean_text.startswith("type "):
-                    text_to_type = raw_text.strip()[5:]
-                elif clean_text.startswith("write "):
-                    text_to_type = raw_text.strip()[6:]
-                elif clean_text.startswith("insert "):
-                    text_to_type = raw_text.strip()[7:]
-                
-                if text_to_type:
-                    # Remove trailing Whisper punctuation if it's a single period
-                    if text_to_type.endswith(".") and not text_to_type.endswith("..."):
-                        text_to_type = text_to_type[:-1]
-                    pyperclip.copy(text_to_type)
-                    time.sleep(0.1)
-                    pyautogui.hotkey('ctrl', 'v')
-                    return ""  # Silent success
-            except Exception as e:
-                return f"Failed to type text. Error: {e}"
+# "Type hello", "Type, hello", "write: hello" -> group 2 is the text to type.
+_TYPING_RE = re.compile(r"^\s*(type|write|insert)\b[\s,:.-]+(.+)$", re.IGNORECASE | re.DOTALL)
 
+
+def execute_typing_command(raw_text: str) -> str | None:
+    """Dictation: "type <text>" pastes <text> at the cursor.
+
+    Checked before every other command, so dictated words like "restart"
+    or "shutdown" are typed, never executed.
+    """
+    match = _TYPING_RE.match(raw_text)
+    if not match:
+        return None
+    text_to_type = match.group(2).strip()
+    if match.group(1).lower() == "write" and re.match(r"(a )?note\b", text_to_type, re.IGNORECASE):
+        return None  # "write a note ..." is the notes command
+    # Drop the single full stop Whisper adds at the end of a sentence.
+    if text_to_type.endswith(".") and not text_to_type.endswith("..."):
+        text_to_type = text_to_type[:-1]
+    try:
+        import pyperclip
+        import pyautogui
+        pyautogui.FAILSAFE = False
+        pyperclip.copy(text_to_type)
+        time.sleep(0.1)
+        pyautogui.hotkey('ctrl', 'v')
+        return ""  # Silent success
+    except Exception as e:
+        return f"Failed to type text. Error: {e}"
+
+
+def execute_general_command(clean_text: str, raw_text: str = "") -> str | None:
     # 1. New: Screen OCR / Visual Reader
     if "read my screen" in clean_text or "scan screen text" in clean_text or "read screen" in clean_text or "ocr screen" in clean_text:
         try:

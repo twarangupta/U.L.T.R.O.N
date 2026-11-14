@@ -5,6 +5,10 @@
 This document lists all the built-in system, media, development, and utility commands
 available in ULTRON, along with their matching trigger words and expected behaviors.
 
+Safety: commands marked [CONFIRM] match only when your whole sentence is the command
+(polite extras like "Ultron", "please" and "now" are ignored), and they run only after
+you say "confirm" within about 6 seconds. Any other reply, or silence, cancels.
+
 --------------------------------------------------------------------------------
 1. SYSTEM & GENERAL UTILITIES
 --------------------------------------------------------------------------------
@@ -17,21 +21,24 @@ available in ULTRON, along with their matching trigger words and expected behavi
 - Lock Computer
   * Voice Triggers: "lock pc", "lock computer", "lock the pc"
   * Behavior: Immediately locks the Windows workstation screen.
-- Shutdown Computer
-  * Voice Triggers: "shutdown", "shut down my computer"
-  * Behavior: Schedules and triggers a full computer shutdown in 5 seconds.
-- Restart Computer
-  * Voice Triggers: "restart", "restart my computer"
-  * Behavior: Schedules and triggers a full system reboot in 5 seconds.
+- Shutdown Computer [CONFIRM]
+  * Voice Triggers (whole sentence only): "shutdown", "shut down", "power off",
+    optionally followed by "my / the / this computer / pc / laptop / system"
+  * Behavior: Asks you to say "confirm", then shuts down in 5 seconds. Anything else cancels.
+- Restart Computer [CONFIRM]
+  * Voice Triggers (whole sentence only): "restart", "reboot",
+    optionally followed by "my / the / this computer / pc / laptop / system"
+  * Behavior: Asks you to say "confirm", then reboots in 5 seconds. Anything else cancels.
+    "Restart the dev server" does NOT match.
 - Screenshot Capture
   * Voice Triggers: "take a screenshot", "capture screen", "screenshot"
   * Behavior: Grabs the full screen, saves the PNG file to the Desktop, and opens it.
 - Disk Space Analyzer
   * Voice Triggers: "check storage", "disk space", "hard drive space"
   * Behavior: Checks the C: drive and reports free and total gigabytes available.
-- Empty Recycle Bin
-  * Voice Triggers: "empty recycle bin", "clean the trash", "empty trash"
-  * Behavior: Silently purges all items inside the Windows Recycle Bin.
+- Empty Recycle Bin [CONFIRM]
+  * Voice Triggers (whole sentence only): "empty / clear / clean (the / my) recycle bin / trash"
+  * Behavior: Asks you to say "confirm", then purges the Windows Recycle Bin. Anything else cancels.
 - Battery Telemetry
   * Voice Triggers: "battery", "power percentage"
   * Behavior: Reports current battery charge percentage, charging state, and remaining hours.
@@ -197,7 +204,7 @@ available in ULTRON, along with their matching trigger words and expected behavi
   * Voice Triggers: "tell me a joke", "joke"
   * Behavior: Shares a random developer joke.
 - Go to Sleep
-  * Voice Triggers: "go to sleep"
+  * Voice Triggers: "go to sleep" (the whole sentence only; "remind me to go to sleep" does not count)
   * Behavior: Stops active listening, clears LLM brain memory, and waits silently for the wake word.
 - Screen OCR / Visual Reader [NEW]
   * Voice Triggers: "read my screen", "scan screen text", "read screen", "ocr screen"
@@ -218,8 +225,9 @@ available in ULTRON, along with their matching trigger words and expected behavi
   * Voice Triggers: "translate <text> to <language>"
   * Behavior: Translates spoken text to a target language (like Spanish, French, German) using the local AI.
 - Dictation / Typing Helper [NEW]
-  * Voice Triggers: "type <text>", "write <text>", "insert <text>"
+  * Voice Triggers: "type <text>", "write <text>", "insert <text>" ("write a note" is the notes command)
   * Behavior: Extracts your spoken phrase (preserving case capitalization) and types/pastes it directly at the active cursor position. Runs silently without spoken confirmation.
+    Checked before every other command, so "type restart later" only types the words.
 
 --------------------------------------------------------------------------------
 7. SYSTEM AUDIO EFFECTS & STARTUP MODES [NEW]
