@@ -9,8 +9,8 @@ def execute_git_command(clean_text: str) -> str | None:
             lines = res.stdout.strip().split("\n")
             modified = len([l for l in lines if l])
             if modified == 0:
-                return "Your git branch is clean, sir."
-            return f"You have {modified} untracked or modified files in your branch, sir."
+                return "Your git branch is clean."
+            return f"You have {modified} untracked or modified files in your branch."
         except Exception as e:
             return f"Failed to run git status. Error: {e}"
 
@@ -27,7 +27,7 @@ def execute_git_command(clean_text: str) -> str | None:
                         msg = extracted
                         break
             if not msg:
-                msg = f"Automated commit via Jarvis on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                msg = f"Automated commit via ULTRON on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
             
             subprocess.run(["git", "add", "."], check=True)
             subprocess.run(["git", "commit", "-m", msg], check=True)
@@ -41,9 +41,9 @@ def execute_git_command(clean_text: str) -> str | None:
             res = subprocess.run(["git", "branch", "--show-current"], capture_output=True, text=True, check=True)
             branch = res.stdout.strip()
             if not branch:
-                return "I couldn't identify the current active branch, sir."
+                return "I couldn't identify the current active branch."
             subprocess.run(["git", "push", "origin", branch], check=True)
-            return f"Successfully pushed changes on branch {branch} to origin, sir."
+            return f"Successfully pushed changes on branch {branch} to origin."
         except Exception as e:
             return f"Failed to push changes. Error: {e}"
 
@@ -53,9 +53,9 @@ def execute_git_command(clean_text: str) -> str | None:
             res = subprocess.run(["git", "branch", "--show-current"], capture_output=True, text=True, check=True)
             branch = res.stdout.strip()
             if not branch:
-                return "I couldn't identify the current active branch, sir."
+                return "I couldn't identify the current active branch."
             subprocess.run(["git", "pull", "origin", branch], check=True)
-            return f"Successfully pulled latest changes on branch {branch} from remote repository, sir."
+            return f"Successfully pulled latest changes on branch {branch} from remote repository."
         except Exception as e:
             return f"Failed to pull changes. Error: {e}"
 
@@ -63,7 +63,7 @@ def execute_git_command(clean_text: str) -> str | None:
     if "git stash pop" in clean_text or "get stash pop" in clean_text or "pop stash" in clean_text or "apply stash" in clean_text:
         try:
             subprocess.run(["git", "stash", "pop"], check=True)
-            return "Successfully popped the top stash from the stack, sir."
+            return "Successfully popped the top stash from the stack."
         except Exception as e:
             return f"Failed to pop stash. Error: {e}"
 
@@ -71,7 +71,7 @@ def execute_git_command(clean_text: str) -> str | None:
     if "git stash" in clean_text or "get stash" in clean_text or "stash changes" in clean_text or "stash my changes" in clean_text:
         try:
             subprocess.run(["git", "stash"], check=True)
-            return "Successfully stashed local modifications, sir."
+            return "Successfully stashed local modifications."
         except Exception as e:
             return f"Failed to stash changes. Error: {e}"
 
@@ -81,8 +81,8 @@ def execute_git_command(clean_text: str) -> str | None:
             res = subprocess.run(["git", "diff", "--name-only", "--diff-filter=U"], capture_output=True, text=True, check=True)
             files = [f.strip() for f in res.stdout.strip().split("\n") if f.strip()]
             if not files:
-                return "No active merge conflicts detected in your repository, sir."
-            return f"Sir, I detected merge conflicts in the following files: {', '.join(files)}."
+                return "No active merge conflicts detected in your repository."
+            return f"I detected merge conflicts in the following files: {', '.join(files)}."
         except Exception as e:
             return f"Failed to check for merge conflicts. Error: {e}"
 
@@ -92,9 +92,9 @@ def execute_git_command(clean_text: str) -> str | None:
             res = subprocess.run(["git", "log", "-n", "5", "--oneline"], capture_output=True, text=True, check=True)
             lines = [l.strip() for l in res.stdout.strip().split("\n") if l.strip()]
             if not lines:
-                return "No commit history found, sir."
+                return "No commit history found."
             history = " ... ".join(lines)
-            return f"Here are the last 5 commits, sir: {history}"
+            return f"Here are the last 5 commits: {history}"
         except Exception as e:
             return f"Failed to retrieve git log. Error: {e}"
 
@@ -114,9 +114,9 @@ def execute_git_command(clean_text: str) -> str | None:
             if target_branch:
                 target_branch = target_branch.rstrip(".?,!").replace(" ", "-")
                 subprocess.run(["git", "checkout", "-b", target_branch], check=True)
-                return f"Successfully created and switched to new branch {target_branch}, sir."
+                return f"Successfully created and switched to new branch {target_branch}."
             else:
-                return "Please specify the name of the new branch to create, sir."
+                return "Please specify the name of the new branch to create."
         except Exception as e:
             return f"Failed to create branch. Error: {e}"
 
@@ -134,9 +134,9 @@ def execute_git_command(clean_text: str) -> str | None:
             if target_branch:
                 target_branch = target_branch.rstrip(".?,!")
                 subprocess.run(["git", "checkout", target_branch], check=True)
-                return f"Successfully switched to branch {target_branch}, sir."
+                return f"Successfully switched to branch {target_branch}."
             else:
-                return "Please specify which branch you want to switch to, sir."
+                return "Please specify which branch you want to switch to."
         except Exception as e:
             return f"Failed to switch branch. Error: {e}"
 
@@ -146,7 +146,7 @@ def execute_git_command(clean_text: str) -> str | None:
             res = subprocess.run(["git", "branch"], capture_output=True, text=True, check=True)
             branches = [b.strip() for b in res.stdout.strip().split("\n") if b.strip()]
             if not branches:
-                return "No branches found, sir."
+                return "No branches found."
             current = [b.replace("*", "").strip() for b in branches if b.startswith("*")]
             other_branches = [b.strip() for b in branches if not b.startswith("*")]
             current_str = f"You are currently on branch {current[0]}." if current else ""

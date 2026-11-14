@@ -22,7 +22,7 @@ def execute_developer_command(clean_text: str) -> str | None:
             import pyperclip
             trace = pyperclip.paste().strip()
             if not trace:
-                return "Your clipboard is empty, sir. Please copy the error stack trace first."
+                return "Your clipboard is empty. Please copy the error stack trace first."
             
             prompt = (
                 "You are an expert debugger. Analyze this error/stack trace and provide a concise summary of "
@@ -34,7 +34,7 @@ def execute_developer_command(clean_text: str) -> str | None:
             with open("debug_report.md", "w", encoding="utf-8") as f:
                 f.write(f"# Debug Analysis - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n{report}\n")
             pyperclip.copy(report)
-            return "I've analyzed the stack trace. The report has been saved to debug_report.md and copied to your clipboard, sir."
+            return "I've analyzed the stack trace. The report has been saved to debug_report.md and copied to your clipboard."
         except Exception as e:
             return f"Failed to analyze error. Error: {e}"
 
@@ -57,8 +57,8 @@ def execute_developer_command(clean_text: str) -> str | None:
                     reports.append("Outdated Node.js packages detected.")
             
             if not reports:
-                return "All your project dependencies appear to be up to date, sir."
-            return "Sir, " + " and ".join(reports)
+                return "All your project dependencies appear to be up to date."
+            return " and ".join(reports)
         except Exception as e:
             return f"Failed to check dependencies. Error: {e}"
 
@@ -98,7 +98,7 @@ def execute_developer_command(clean_text: str) -> str | None:
             
             result_str = f"Status: {response.status}\nHeaders:\n{json.dumps(headers, indent=2)}\n\nBody:\n{body}"
             pyperclip.copy(result_str)
-            return f"API response received with status code {response.status} and copied to clipboard, sir."
+            return f"API response received with status code {response.status} and copied to clipboard."
         except Exception as e:
             return f"API request failed. Error: {e}"
 
@@ -107,7 +107,7 @@ def execute_developer_command(clean_text: str) -> str | None:
         try:
             match = re.search(r"(?:file|code)\s+([\w\.-]+)", clean_text)
             if not match:
-                return "Please specify the name of the file you want me to explain, sir."
+                return "Please specify the name of the file you want me to explain."
             filename = match.group(1).rstrip(".?,!")
             if not os.path.exists(filename):
                 return f"File {filename} does not exist in the current directory."
@@ -138,12 +138,12 @@ def execute_developer_command(clean_text: str) -> str | None:
                 container_name = parts[1].replace("for", "").strip().rstrip(".?,!")
             
             if not container_name:
-                return "Which docker container name should I fetch the logs for, sir?"
+                return "Which docker container name should I fetch the logs for?"
             
             res = subprocess.run(["docker", "logs", "--tail", "20", container_name], capture_output=True, text=True)
             output = res.stdout + res.stderr
             if not output.strip():
-                return f"No logs found or container {container_name} is offline, sir."
+                return f"No logs found or container {container_name} is offline."
             
             pyperclip.copy(output)
             return f"I've fetched the last 20 log entries for container {container_name} and copied them to your clipboard."
@@ -159,14 +159,14 @@ def execute_developer_command(clean_text: str) -> str | None:
                 res = subprocess.run(f"netstat -ano | findstr :{port}", shell=True, capture_output=True, text=True)
                 lines = [l.strip() for l in res.stdout.strip().split("\n") if l.strip()]
                 if not lines:
-                    return f"No process is running on port {port}, sir."
+                    return f"No process is running on port {port}."
                     
                 pid = lines[0].split()[-1]
                 if "kill" in clean_text:
                     subprocess.run(f"taskkill /F /PID {pid}", shell=True, check=True)
                     return f"Successfully terminated process with P.I.D. {pid} on port {port}."
                 else:
-                    return f"Process with P.I.D. {pid} is listening on port {port}, sir."
+                    return f"Process with P.I.D. {pid} is listening on port {port}."
         except Exception as e:
             return f"Failed to operate on port. Error: {e}"
 
@@ -176,7 +176,7 @@ def execute_developer_command(clean_text: str) -> str | None:
             res = subprocess.run(["docker", "ps", "--format", "{{.Names}}"], capture_output=True, text=True, check=True)
             containers = [c.strip() for c in res.stdout.strip().split("\n") if c.strip()]
             if not containers:
-                return "No active docker containers are running, sir."
+                return "No active docker containers are running."
             return f"The running docker containers are: {', '.join(containers)}."
         except Exception as e:
             return "Failed to query Docker. Ensure Docker Desktop is running."
@@ -189,7 +189,7 @@ def execute_developer_command(clean_text: str) -> str | None:
             parsed = json.loads(raw)
             pretty = json.dumps(parsed, indent=4)
             pyperclip.copy(pretty)
-            return "JSON formatted and copied back to clipboard, sir."
+            return "JSON formatted and copied back to clipboard."
         except Exception as e:
             return f"Failed to parse clipboard as JSON. Error: {e}"
 
@@ -238,7 +238,7 @@ def read_root():
             pyperclip.copy(code)
             time.sleep(0.2)
             pyautogui.hotkey('ctrl', 'v')
-            return "Pasted the FastAPI boilerplate directly at your cursor, sir."
+            return "Pasted the FastAPI boilerplate directly at your cursor."
         except Exception as e:
             return f"Failed to paste FastAPI boilerplate. Error: {e}"
 
@@ -271,7 +271,7 @@ def read_root():
             pyperclip.copy(raw_code)
             time.sleep(0.2)
             pyautogui.hotkey('ctrl', 'v')
-            return f"Pasted the {tech} boilerplate directly at your cursor, sir."
+            return f"Pasted the {tech} boilerplate directly at your cursor."
         except Exception as e:
             return f"Failed to generate boilerplate. Error: {e}"
 
@@ -281,7 +281,7 @@ def read_root():
             res = subprocess.run(["git", "diff"], capture_output=True, text=True, check=True)
             diff = res.stdout.strip()
             if not diff:
-                return "No changes detected in git, sir."
+                return "No changes detected in git."
             if len(diff) > 4000:
                 diff = diff[:4000] + "\n... [Diff truncated due to size]"
             prompt = (
@@ -293,7 +293,7 @@ def read_root():
             review = ask_local_ai(prompt)
             with open("code_review.md", "w", encoding="utf-8") as f:
                 f.write(f"# Code Review - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n{review}\n")
-            return "I've reviewed your git diff and written the report to code_review.md, sir."
+            return "I've reviewed your git diff and written the report to code_review.md."
         except Exception as e:
             return f"Failed to perform code review. Error: {e}"
 
@@ -302,7 +302,7 @@ def read_root():
         try:
             match = re.search(r"for\s+([\w\.-]+)", clean_text)
             if not match:
-                return "Please specify the file name to generate tests for, sir."
+                return "Please specify the file name to generate tests for."
             filename = match.group(1).rstrip(".?,!")
             if not os.path.exists(filename):
                 return f"File {filename} does not exist in the current directory."
@@ -320,20 +320,20 @@ def read_root():
             test_filename = f"test_{filename}"
             with open(test_filename, "w", encoding="utf-8") as f:
                 f.write(test_code)
-            return f"Unit test suite generated and saved as {test_filename}, sir."
+            return f"Unit test suite generated and saved as {test_filename}."
         except Exception as e:
             return f"Failed to generate tests. Error: {e}"
 
     # Project Workspace Launcher
     if "start project" in clean_text or "launch project" in clean_text:
         try:
-            proj_name = "Jarvis"
+            proj_name = "ULTRON"
             if "project" in clean_text:
                 proj_name = clean_text.split("project", 1)[1].strip()
             subprocess.Popen("code .", shell=True)
             import webbrowser
             webbrowser.open("https://github.com")
-            return f"Project workspace launched for {proj_name}, sir."
+            return f"Project workspace launched for {proj_name}."
         except Exception as e:
             return f"Failed to launch workspace. Error: {e}"
 

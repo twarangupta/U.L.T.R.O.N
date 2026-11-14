@@ -1,6 +1,6 @@
-# Contributing to J.A.R.V.I.S.
+# Contributing to ULTRON
 
-Thank you for your interest in contributing to J.A.R.V.I.S.! This project is built for developers who want a local, private, and highly extensible voice assistant on their desktops.
+Thank you for your interest in contributing to ULTRON! This project is built for developers who want a local, private, and highly extensible voice assistant on their desktops.
 
 ---
 
@@ -18,7 +18,7 @@ By participating in this project, you agree to abide by standard open-source com
 ### 1. Reporting Bugs
 - Search existing issues to verify the bug has not been reported.
 - Open a new issue using the **Bug Report** template.
-- Provide a clear description, reproduction steps, and system logs (`jarvis.log`).
+- Provide a clear description, reproduction steps, and system logs (`ultron.log`).
 
 ### 2. Suggesting Features
 - Open an issue using the **Feature Request** template.
@@ -51,9 +51,9 @@ By participating in this project, you agree to abide by standard open-source com
    ```
 5. Run the neural voice download script:
    ```bash
-   python download_jarvis_voice.py
+   python download_voice.py
    ```
-6. Launch J.A.R.V.I.S.:
+6. Launch ULTRON:
    ```bash
-   python jarvis.py
+   python ultron.py
    ```

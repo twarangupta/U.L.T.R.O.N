@@ -4,10 +4,10 @@ import sounddevice as sd
 from piper.voice import PiperVoice
 
 print("Loading voice model...")
-voice = PiperVoice.load("models/jarvis-high.onnx")
+voice = PiperVoice.load("models/ultron-voice.onnx")
 print("Model loaded.")
 
-text = "Hello Sir. I am Jarvis. Systems are fully functional."
+text = "Hello. I am ULTRON. Systems are fully functional."
 
 print("Synthesizing...")
 start = time.time()

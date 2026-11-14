@@ -8,5 +8,5 @@ engine.setProperty("voice", voices[1].id)   # Zira
 engine.setProperty("rate", 150)
 engine.setProperty("volume", 1.0)
 
-engine.say("Welcome home Sir.")
+engine.say("Welcome back.")
 engine.runAndWait()

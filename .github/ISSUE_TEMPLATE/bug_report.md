@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Create a report to help us improve J.A.R.V.I.S.
+about: Create a report to help us improve ULTRON
 title: "[BUG] "
 labels: bug
 assignees: ''
@@ -18,8 +18,8 @@ A clear and concise description of what the bug is.
 **Command Triggered:**
 What spoken keyword or command did you run?
 
-**Error Logs (`jarvis.log`):**
-If applicable, paste the relevant lines from `jarvis.log`:
+**Error Logs (`ultron.log`):**
+If applicable, paste the relevant lines from `ultron.log`:
 ```text
 [paste logs here]
 ```

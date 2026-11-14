@@ -15,6 +15,7 @@ from brain import ask_ai, reset_brain
 from commands import execute_command
 from speaker import speak, stop_speaking, wait_speaking, is_speaking
 from logger import logger
+import persona
 
 def get_startup_greeting() -> str:
     import random
@@ -22,78 +23,33 @@ def get_startup_greeting() -> str:
     import json
     import psutil
 
-    candidates = []
+    candidates = [persona.pick(persona.GREETINGS)]
 
-    # 1. Attempt Weather/Location Lookup (max 1.5s timeout)
-    weather_text = None
+    # Weather by IP location (max 1.5 s per request)
     try:
-        req = urllib.request.Request(
-            "http://ip-api.com/json/",
-            headers={'User-Agent': 'Mozilla/5.0'}
-        )
+        req = urllib.request.Request("http://ip-api.com/json/", headers={'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req, timeout=1.5) as response:
             data = json.loads(response.read().decode())
-            city = data.get("city")
-            lat = data.get("lat")
-            lon = data.get("lon")
-            
+        city, lat, lon = data.get("city"), data.get("lat"), data.get("lon")
         if city and lat is not None and lon is not None:
             weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true"
-            req2 = urllib.request.Request(
-                weather_url,
-                headers={'User-Agent': 'Mozilla/5.0'}
-            )
+            req2 = urllib.request.Request(weather_url, headers={'User-Agent': 'Mozilla/5.0'})
             with urllib.request.urlopen(req2, timeout=1.5) as response:
-                weather_data = json.loads(response.read().decode())
-                temp = weather_data.get("current_weather", {}).get("temperature")
-                if temp is not None:
-                    weather_templates = [
-                        f"According to your IP address, it is currently {temp} degrees Celsius in {city}, sir.",
-                        f"The weather in {city} is {temp} degrees Celsius right now, sir. Hopefully, it's a good day to build.",
-                        f"I've checked the local conditions in {city}. It's currently {temp} degrees Celsius, sir."
-                    ]
-                    weather_text = random.choice(weather_templates)
+                temp = json.loads(response.read().decode()).get("current_weather", {}).get("temperature")
+            if temp is not None:
+                candidates.append(persona.pick(persona.WEATHER_GREETINGS, temp=temp, city=city))
     except Exception:
         pass
 
-    if weather_text:
-        candidates.append(weather_text)
-
-    # 2. Attempt Battery Check
-    battery_text = None
+    # Battery
     try:
         battery = psutil.sensors_battery()
         if battery is not None:
-            percent = battery.percent
-            status = "connected to AC power" if battery.power_plugged else "running on battery power"
-            battery_templates = [
-                f"All protocols initialized, sir. Battery is at {percent} percent, and we are currently {status}.",
-                f"Jarvis is online, sir. Power levels are at {percent} percent and we are {status}.",
-                f"System check complete, sir. Internal power is at {percent} percent, and we are {status}."
-            ]
-            battery_text = random.choice(battery_templates)
+            status = "plugged in" if battery.power_plugged else "on battery"
+            candidates.append(persona.pick(persona.BATTERY_GREETINGS, percent=battery.percent, status=status))
     except Exception:
         pass
 
-    if battery_text:
-        candidates.append(battery_text)
-
-    # 3. Conversational/Iron Man style greetings & questions (always present)
-    conversational_options = [
-        "Welcome back, sir. Repulsor power at 100 percent. Shall we run a diagnostics check?",
-        "All systems are green, sir. Ready for your instructions.",
-        "Jarvis is online, sir. Do you have any plans for upgrading the suit design today?",
-        "System initialization complete. What are we coding today, sir?",
-        "Tony would be proud of this setup. What is our next objective, sir?",
-        "Greetings, sir. I've cleared the caches. Shall we proceed?",
-        "Online and ready, sir. Would you like me to scan for any security alerts?",
-        "Diagnostics complete, sir. Repulsors, flight stabilizer, and cooling systems are all optimal. What's next?",
-        "Welcome back, sir. I hope you're ready to make some magic today. Where should we start?",
-        "All auxiliary systems are operating within normal parameters. What can I do for you today, sir?"
-    ]
-    candidates.append(random.choice(conversational_options))
-
-    # Pick exactly one greeting
     return random.choice(candidates)
 
 def speak_and_interruptible(text: str, detector: WakeWordDetector) -> bool:
@@ -138,10 +94,10 @@ def speak_and_interruptible(text: str, detector: WakeWordDetector) -> bool:
 
 def main():
     print("=" * 50)
-    print("                JARVIS INITIALIZATION                ")
+    print("                ULTRON INITIALIZATION                ")
     print("=" * 50)
     
-    # Play premium repulsor startup tone
+    # Play startup tone
     try:
         from startup_audio import play_startup_sound
         play_startup_sound()
@@ -179,7 +135,7 @@ def main():
         sys.exit(1)
 
     greeting_text = get_startup_greeting()
-    logger.info(f"Jarvis Startup Greeting: {greeting_text}")
+    logger.info(f"ULTRON startup greeting: {greeting_text}")
     speak(greeting_text)
     wait_speaking()
 
@@ -207,7 +163,7 @@ def main():
         audio_handler.stop_stream()
         
         # Greeting (interruptible)
-        interrupted = speak_and_interruptible("Systems online. How can I help you, sir?", detector)
+        interrupted = speak_and_interruptible(persona.pick(persona.WAKE_REPLIES), detector)
         
         # Conversation loop
         while True:
@@ -242,7 +198,7 @@ def main():
             
             # Check for sleep trigger
             if SLEEP_WORD in transcription.lower():
-                speak("Understood. Re-engaging sleep mode.")
+                speak(persona.pick(persona.SLEEP_REPLIES))
                 wait_speaking()
                 try:
                     from startup_audio import play_sleep_sound
@@ -258,7 +214,7 @@ def main():
                 if command_response == "":
                     interrupted = False
                 else:
-                    interrupted = speak_and_interruptible(command_response, detector)
+                    interrupted = speak_and_interruptible(persona.maybe_quip(command_response), detector)
             else:
                 # Query Ollama Brain
                 ai_response = ask_ai(transcription)
@@ -280,7 +236,7 @@ def main():
                     elif cmd_res == "":
                         interrupted = False
                     else:
-                        speech_text = natural_reply if natural_reply else (cmd_res if cmd_res else "Command executed, sir.")
+                        speech_text = natural_reply if natural_reply else (cmd_res if cmd_res else persona.pick(persona.DONE_REPLIES))
                         interrupted = speak_and_interruptible(speech_text, detector)
                 else:
                     interrupted = speak_and_interruptible(ai_response, detector)
@@ -293,9 +249,9 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        logger.info("Shutdown signal received. Jarvis going offline.")
+        logger.info("Shutdown signal received. ULTRON going offline.")
         stop_speaking()
-        speak("Goodbye, sir. Going offline.")
+        speak(persona.pick(persona.GOODBYES))
         wait_speaking()
         audio_handler.terminate()
         sys.exit(0)

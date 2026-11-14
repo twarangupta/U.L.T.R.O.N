@@ -50,7 +50,7 @@ def execute_general_command(clean_text: str, raw_text: str = "") -> str | None:
             try:
                 import pytesseract
             except ImportError:
-                return "Sir, the pytesseract library is missing. Please run pip install pytesseract and ensure Tesseract OCR is installed on your system."
+                return "The pytesseract library is missing. Please run pip install pytesseract and ensure Tesseract OCR is installed on your system."
             
             temp_path = "temp_ocr_capture.png"
             screenshot = pyautogui.screenshot()
@@ -68,10 +68,10 @@ def execute_general_command(clean_text: str, raw_text: str = "") -> str | None:
                 os.remove(temp_path)
                 
             if not text:
-                return "I completed the scan, but could not detect any readable text on the screen, sir."
+                return "I completed the scan, but could not detect any readable text on the screen."
             
             pyperclip.copy(text)
-            return "I have scanned the text on your screen and copied it to your clipboard, sir."
+            return "I have scanned the text on your screen and copied it to your clipboard."
         except Exception as e:
             return f"Failed to perform screen OCR. Error: {e}"
 
@@ -86,7 +86,7 @@ def execute_general_command(clean_text: str, raw_text: str = "") -> str | None:
             )
             draft = ask_local_ai(prompt)
             pyperclip.copy(draft)
-            return "I've drafted the message and copied it to your clipboard, sir."
+            return "I've drafted the message and copied it to your clipboard."
         except Exception as e:
             return f"Failed to draft message. Error: {e}"
 
@@ -117,7 +117,7 @@ def execute_general_command(clean_text: str, raw_text: str = "") -> str | None:
                     amount = int(num_match.group(1))
             
             if amount == 0:
-                return "I couldn't identify the expense amount. Please specify the number, sir."
+                return "I couldn't identify the expense amount. Please specify the number."
                 
             csv_path = "finances.csv"
             exists = os.path.exists(csv_path)
@@ -126,7 +126,7 @@ def execute_general_command(clean_text: str, raw_text: str = "") -> str | None:
                     f.write("Date,Amount,Category\n")
                 date_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 f.write(f"{date_str},{amount},{category}\n")
-            return f"Logged {amount} spent on {category}, sir."
+            return f"Logged {amount} spent on {category}."
         except Exception as e:
             return f"Failed to log expense. Error: {e}"
 
@@ -134,7 +134,7 @@ def execute_general_command(clean_text: str, raw_text: str = "") -> str | None:
         try:
             csv_path = "finances.csv"
             if not os.path.exists(csv_path):
-                return "No expenses have been logged yet, sir."
+                return "No expenses have been logged yet."
             
             total = 0
             count = 0
@@ -148,7 +148,7 @@ def execute_general_command(clean_text: str, raw_text: str = "") -> str | None:
                             count += 1
                         except:
                             pass
-            return f"Sir, you have spent a total of {total} across {count} logged items."
+            return f"You have spent a total of {total} across {count} logged items."
         except Exception as e:
             return f"Failed to check budget. Error: {e}"
 
@@ -157,7 +157,7 @@ def execute_general_command(clean_text: str, raw_text: str = "") -> str | None:
         try:
             ics_path = "calendar.ics"
             if not os.path.exists(ics_path):
-                return "Calendar file calendar.ics was not found in your directory, sir."
+                return "Calendar file calendar.ics was not found in your directory."
             
             with open(ics_path, "r", encoding="utf-8") as f:
                 content = f.read()
@@ -165,7 +165,7 @@ def execute_general_command(clean_text: str, raw_text: str = "") -> str | None:
             # Basic ICS parse for SUMMARY fields
             events = re.findall(r"SUMMARY:(.*)", content)
             if not events:
-                return "Your calendar is empty, sir."
+                return "Your calendar is empty."
             
             today_events = [e.strip() for e in events[:3]] # Read top 3
             return "Here are your next events: " + " ... ".join(today_events)
@@ -181,7 +181,7 @@ def execute_general_command(clean_text: str, raw_text: str = "") -> str | None:
                 urllib.request.urlopen("https://www.google.com", timeout=3)
                 latency = int((time.time() - t0) * 1000)
             except:
-                return "Sir, internet connectivity checks failed. You appear to be offline."
+                return "Internet connectivity checks failed. You appear to be offline."
 
             # Check if speedtest library exists
             try:
@@ -190,7 +190,7 @@ def execute_general_command(clean_text: str, raw_text: str = "") -> str | None:
                 s.get_best_server()
                 download = s.download() / 1e6
                 upload = s.upload() / 1e6
-                return f"Speed test complete. Latency is {latency} milliseconds, download speed is {download:.1f} Megabits per second, and upload is {upload:.1f} Megabits per second, sir."
+                return f"Speed test complete. Latency is {latency} milliseconds, download speed is {download:.1f} Megabits per second, and upload is {upload:.1f} Megabits per second."
             except:
                 # Fallback benchmark: time download of a small resource
                 test_url = "https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png"
@@ -202,7 +202,7 @@ def execute_general_command(clean_text: str, raw_text: str = "") -> str | None:
                     size_kb = len(data) / 1024
                     speed_kbps = size_kb / elapsed
                     speed_mbps = (speed_kbps * 8) / 1000
-                    return f"Internet connection is active, sir. Latency is {latency} milliseconds. Estimated basic download speed is {speed_mbps:.1f} Megabits per second."
+                    return f"Internet connection is active. Latency is {latency} milliseconds. Estimated basic download speed is {speed_mbps:.1f} Megabits per second."
                 except:
                     return f"Connection is active with a latency of {latency} milliseconds, but speed tests are currently blocked."
         except Exception as e:
@@ -223,7 +223,7 @@ def execute_general_command(clean_text: str, raw_text: str = "") -> str | None:
                 translation = ask_local_ai(prompt)
                 return f"The translation to {lang} is: {translation}"
             else:
-                return "Please tell me what text to translate and what target language to use, sir."
+                return "Please tell me what text to translate and what target language to use."
         except Exception as e:
             return f"Failed translation. Error: {e}"
 
@@ -248,13 +248,13 @@ def execute_general_command(clean_text: str, raw_text: str = "") -> str | None:
                 note_text = note_text[5:]
                 
             if not note_text:
-                return "What note would you like me to write, sir?"
+                return "What note would you like me to write?"
                 
             notes_path = "notes.md"
             with open(notes_path, "a", encoding="utf-8") as f:
                 timestamp = datetime.now().strftime("%Y-%m-%d %I:%M %p")
                 f.write(f"- [{timestamp}] {note_text.capitalize()}\n")
-            return f"I've saved that to your notes, sir."
+            return f"I've saved that to your notes."
         except Exception as e:
             return f"Failed to save note. Error: {e}"
 
@@ -265,12 +265,12 @@ def execute_general_command(clean_text: str, raw_text: str = "") -> str | None:
                 with open(notes_path, "r", encoding="utf-8") as f:
                     lines = f.readlines()
                 if not lines:
-                    return "Your notepad is currently empty, sir."
+                    return "Your notepad is currently empty."
                 last_notes = [line.strip().replace("- ", "") for line in lines[-3:]]
                 notes_str = " Here are your last notes: " + " ... ".join(last_notes)
                 return f"You have {len(lines)} notes saved.{notes_str}"
             else:
-                return "You don't have any notes saved yet, sir."
+                return "You don't have any notes saved yet."
         except Exception as e:
             return f"Failed to read notes. Error: {e}"
 
@@ -292,7 +292,7 @@ def execute_general_command(clean_text: str, raw_text: str = "") -> str | None:
                 def run_timer(s, d, u):
                     import time
                     time.sleep(s)
-                    speak(f"Alert! Your timer for {d} {u}s has expired, sir.")
+                    speak(f"Alert! Your timer for {d} {u}s has expired.")
                     
                 threading.Thread(target=run_timer, args=(secs, duration, unit)).start()
                 return f"Starting a timer for {duration} {unit}s."
@@ -319,9 +319,9 @@ def execute_general_command(clean_text: str, raw_text: str = "") -> str | None:
 
     # Dice Roller / Coin Flipper
     if "flip a coin" in clean_text or "toss a coin" in clean_text:
-        return f"It is {random.choice(['Heads', 'Tails'])}, sir."
+        return f"It is {random.choice(['Heads', 'Tails'])}."
     if "roll a dice" in clean_text or "roll a die" in clean_text:
-        return f"It is a {random.randint(1, 6)}, sir."
+        return f"It is a {random.randint(1, 6)}."
 
     # Math Solver
     if "calculate" in clean_text or "what is" in clean_text:
@@ -364,7 +364,7 @@ def execute_general_command(clean_text: str, raw_text: str = "") -> str | None:
             headlines = [t for t in titles[1:4]]
             return "Here are the top world headlines: " + ". ... ".join(headlines)
         except Exception as e:
-            return "I am currently unable to fetch the news telemetry, sir."
+            return "I am currently unable to fetch the news telemetry."
 
     # Wikipedia Summary
     if "wikipedia" in clean_text:
@@ -381,7 +381,7 @@ def execute_general_command(clean_text: str, raw_text: str = "") -> str | None:
                     summary = summary[:250] + "..."
                 return f"According to Wikipedia: {summary}"
         except Exception as e:
-            return "I couldn't fetch details from Wikipedia at this time, sir."
+            return "I couldn't fetch details from Wikipedia at this time."
 
     # Joke Teller
     if "tell me a joke" in clean_text or "joke" in clean_text:
@@ -413,10 +413,10 @@ def execute_general_command(clean_text: str, raw_text: str = "") -> str | None:
                 def run_reminder(s, t):
                     import time
                     time.sleep(s)
-                    speak(f"Sir, this is your reminder to {t}.")
+                    speak(f"This is your reminder to {t}.")
                     
                 threading.Thread(target=run_reminder, args=(secs, task)).start()
-                return f"I will remind you to {task} in {dur} {unit}s, sir."
+                return f"I will remind you to {task} in {dur} {unit}s."
         except Exception as e:
             return f"Failed to set reminder. Error: {e}"
 
@@ -439,6 +439,6 @@ def execute_general_command(clean_text: str, raw_text: str = "") -> str | None:
                 temp = w_data["current_weather"]["temperature"]
                 return f"In {city}, it is currently {temp} degrees Celsius."
         except:
-            return "I am currently unable to fetch the weather telemetry, sir."
+            return "I am currently unable to fetch the weather telemetry."
 
     return None

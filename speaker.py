@@ -7,30 +7,33 @@ from logger import logger
 class Speaker:
     """
     Modular text-to-speech speaker class using local neural Piper TTS.
-    Provides the premium, original-sounding J.A.R.V.I.S. voice.
+    Speaks ULTRON's replies.
     Supports non-blocking background playback and instant interruption.
     """
     def __init__(self):
         try:
-            model_path = "models/jarvis-high.onnx"
+            # New downloads are saved as ultron-voice.onnx; older installs have jarvis-high.onnx.
+            model_path = os.getenv("VOICE_MODEL_PATH", "models/ultron-voice.onnx")
+            if not os.path.exists(model_path) and os.path.exists("models/jarvis-high.onnx"):
+                model_path = "models/jarvis-high.onnx"
             if not os.path.exists(model_path):
                 logger.error(
                     f"Voice model file not found at {model_path}. "
-                    "Please run 'python download_jarvis_voice.py' first to retrieve the neural voice models."
+                    "Please run 'python download_voice.py' first to retrieve the neural voice models."
                 )
                 self.voice = None
                 return
             
-            logger.info("Loading J.A.R.V.I.S. neural voice model...")
+            logger.info("Loading ULTRON voice model...")
             self.voice = PiperVoice.load(model_path)
             self.sample_rate = self.voice.config.sample_rate
             self.pa = pyaudio.PyAudio()
             self.play_thread = None
             self.stop_playback = threading.Event()
             self.is_speaking = False
-            logger.info("J.A.R.V.I.S. neural voice loaded successfully.")
+            logger.info("ULTRON voice loaded.")
         except Exception as e:
-            logger.error(f"Error loading J.A.R.V.I.S. voice model: {e}")
+            logger.error(f"Error loading ULTRON voice model: {e}")
             self.voice = None
 
     def stop(self):
@@ -57,7 +60,7 @@ class Speaker:
         """
         self.stop()
         self.stop_playback.clear()
-        print(f"\n[Jarvis]: {text}\n")
+        print(f"\n[ULTRON]: {text}\n")
         
         if self.voice:
             try:

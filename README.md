@@ -1,19 +1,19 @@
-# J.A.R.V.I.S. - Premium Desktop AI Assistant
+# ULTRON - Local Desktop AI Assistant
 
-J.A.R.V.I.S. (Just A Rather Very Intelligent System) is a highly advanced, local, voice-controlled desktop assistant. Inspired by Iron Man's J.A.R.V.I.S., this project combines real-time **neural text-to-speech**, **speech-to-text voice recognition**, and **accurate wake word detection** with a local LLM brain (`Llama 3.2`) running entirely offline on your machine.
+ULTRON is a local, voice-controlled desktop assistant with a blunt, dry personality: it mocks human habits now and then, but it always does the job. It runs fully offline: wake word, speech recognition, a local LLM and a neural voice, all on your own PC.
 
 ---
 
 ## 🌟 Key Features
 
 * **🧠 Offline Cognitive Brain:** Powered by local Ollama (`llama3.2:3b`) with full conversational context memory.
-* **🎙️ Local Wake Word Engine:** Stands by quietly in the background waiting for you to say *"Hey Jarvis"* (powered by OpenWakeWord).
+* **🎙️ Local Wake Word Engine:** Stands by quietly in the background waiting for you to say *"Hey Jarvis"* (temporary wake phrase until the custom "Hey Ultron" model is trained) (powered by OpenWakeWord).
 * **🗣️ Premium Neural Speech (Piper TTS):** Realistic, low-latency vocal responses using local `.onnx` voice models.
 * **🔇 Smart Interruption System:** 
   * **By Voice:** Say *"Hey Jarvis"* during speech to instantly cut him off and speak.
   * **By Keyboard:** Press **any key** (e.g. `Space` or `Enter`) in the terminal to immediately halt his speech.
 * **🛠️ 40+ Core Commands:** Built-in voice macros for app launching, media control, system diagnostics, and developer helpers.
-* **👋 Safe Exit:** Press `Ctrl + C` to shut down, and Jarvis will verbally say goodbye before going offline.
+* **👋 Safe Exit:** Press `Ctrl + C` to shut down, and ULTRON will verbally say goodbye before going offline.
 
 ---
 
@@ -41,7 +41,7 @@ J.A.R.V.I.S. (Just A Rather Very Intelligent System) is a highly advanced, local
 * *"Check container logs for [name]"* $\rightarrow$ Fetches the last 20 lines of docker logs to your clipboard.
 
 ### 🧠 Developer Utilities
-* *"Jarvis, review my code"* $\rightarrow$ Analyzes `git diff` and writes a detailed review to `code_review.md`.
+* *"ULTRON, review my code"* $\rightarrow$ Analyzes `git diff` and writes a detailed review to `code_review.md`.
 * *"Write a unit test for [filename]"* $\rightarrow$ Generates `pytest` test suites.
 * *"Search codebase for [term]"* $\rightarrow$ Finds files containing your query.
 * *"Create FastAPI boilerplate"* $\rightarrow$ Writes a ready FastAPI server script to `main.py`.
@@ -67,7 +67,7 @@ J.A.R.V.I.S. (Just A Rather Very Intelligent System) is a highly advanced, local
 * *"Increase volume"* / *"Lower volume"* $\rightarrow$ Raises/lowers master volume.
 
 ### 📊 System Diagnostics
-* *"Jarvis, status report"* / *"System status"* $\rightarrow$ Verbally reports CPU load, memory utilization, and battery.
+* *"ULTRON, status report"* / *"System status"* $\rightarrow$ Verbally reports CPU load, memory utilization, and battery.
 * *"Check storage"* / *"Disk space"* $\rightarrow$ Reports free storage on your C: drive.
 * *"What time is it"* / *"Tell me the date"* $\rightarrow$ Current clock time or date.
 * *"What is my IP address"* $\rightarrow$ Reports local and public IP addresses.
@@ -97,7 +97,7 @@ J.A.R.V.I.S. (Just A Rather Very Intelligent System) is a highly advanced, local
 ### 🤫 Focus, Audio Themes & Greetings
 * *"Meeting mode"* / *"Focus mode"* $\rightarrow$ Mutes the PC and minimizes all open windows.
 * *"Start project [name]"* $\rightarrow$ Launches VS Code in the workspace and opens GitHub.
-* **Premium Audio Effects**: Procedural synthesis of Iron Man power-up sound effects upon startup, and sweep power-down tones upon running standby "go to sleep".
+* **Premium Audio Effects**: Procedurally synthesized power-up sound upon startup, and sweep power-down tones upon running standby "go to sleep".
 * **Dynamic Greetings**: Randomly speaks either location weather (IP-derived), laptop battery telemetry, or Avengers-themed diagnostic quotes on boot.
 
 ---
@@ -127,23 +127,23 @@ python -m venv venv
 pip install -r requirements.txt
 ```
 
-### 4. Download J.A.R.V.I.S. Voice Model
+### 4. Download ULTRON Voice Model
 Run the setup download script to fetch the high-quality neural voice model (~114 MB):
 ```powershell
-python download_jarvis_voice.py
+python download_voice.py
 ```
-This saves the model files to `models/jarvis-high.onnx` and `models/jarvis-high.onnx.json`.
+This saves the model files to `models/ultron-voice.onnx` and `models/ultron-voice.onnx.json`.
 
 ---
 
-## 🏃 Running Jarvis
+## 🏃 Running ULTRON
 
 1. Make sure your local **Ollama** service is running (`ollama serve`).
 2. Run the main runner file:
 ```powershell
-.\venv\Scripts\python.exe jarvis.py
+.\venv\Scripts\python.exe ultron.py
 ```
-3. Wait for the startup text: `All systems active. Jarvis is online.`
+3. Wait for the startup text: `All systems active. ULTRON is online.`
 4. Say **"Hey Jarvis"** to wake him up!
 
 ---
@@ -152,7 +152,7 @@ This saves the model files to `models/jarvis-high.onnx` and `models/jarvis-high.
 
 ### 1. PortAudio Conflicts (`OSError: Stream not open`)
 * **Cause:** Happens when multiple libraries (`sounddevice` and `pyaudio`) compete for audio channels.
-* **Fix:** Jarvis has been refactored to use `pyaudio` for both recording AND speech playback, preventing PortAudio resource crashes.
+* **Fix:** ULTRON has been refactored to use `pyaudio` for both recording AND speech playback, preventing PortAudio resource crashes.
 
 ### 2. Windows Terminal Freezing (QuickEdit Mode)
 * **Cause:** In Windows PowerShell/CMD, clicking inside the console window suspends the running Python script to let you highlight text.
@@ -160,8 +160,8 @@ This saves the model files to `models/jarvis-high.onnx` and `models/jarvis-high.
 
 ### 3. Immediate Interruption / Loop Feedback
 * **Cause:** The wake-up trigger registers in the wake word detector's buffer, triggering an immediate "interrupted by user" stop when speech starts.
-* **Fix:** Jarvis now ignores the first **0.5 seconds** of audio stream during speech and runs `.reset()` on the detector buffer to clear the wakeup event history.
+* **Fix:** ULTRON now ignores the first **0.5 seconds** of audio stream during speech and runs `.reset()` on the detector buffer to clear the wakeup event history.
 
 ### 4. Acoustic Feedback (Can't interrupt with voice)
-* **Cause:** Speakers are playing Jarvis's voice too loud, causing the microphone to get flooded with speaker output, which drops wake word detector confidence.
+* **Cause:** Speakers are playing ULTRON's voice too loud, causing the microphone to get flooded with speaker output, which drops wake word detector confidence.
 * **Fix:** Speak loudly or use headphones. Alternatively, press **any keyboard key** (e.g. `Spacebar`) in the active terminal console to halt speech instantly.

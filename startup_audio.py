@@ -4,7 +4,7 @@ import time
 
 def play_startup_sound():
     """
-    Synthesizes a premium, modern Iron Man repulsor boot-up sequence.
+    Synthesizes a premium, boot-up sequence.
     Uses FM (Frequency Modulation) synthesis and detuned oscillators
     to create a thick, metallic plasma charge and stabilizer lock sound.
     """
@@ -26,7 +26,7 @@ def play_startup_sound():
         # Quick decay envelope
         spark *= np.exp(-15 * t_igniter)
         
-        # --- PHASE 2: Repulsor FM Plasma Charge Sweep (0.0 to 1.3s) ---
+        # --- PHASE 2: FM charge sweep (0.0 to 1.3s) ---
         duration_sweep = 1.3
         t_sweep = np.linspace(0, duration_sweep, int(sample_rate * duration_sweep), False)
         
@@ -52,7 +52,7 @@ def play_startup_sound():
         duration_chime = 0.8
         t_chime = np.linspace(0, duration_chime, int(sample_rate * duration_chime), False)
         
-        # Metallic chords (combine resonant frequencies of Iron Man HUD chimes)
+        # Metallic chords 
         freqs = [659.25, 987.77, 1318.51, 1975.53] # E5, B5, E6, B6
         chime_data = np.zeros_like(t_chime)
         for i, f in enumerate(freqs):
@@ -79,7 +79,7 @@ def play_startup_sound():
 
 def play_sleep_sound():
     """
-    Synthesizes a futuristic repulsor power-down and standby tone
+    Synthesizes a power-down and standby tone
     using FM synthesis. Bypasses silently on any driver error.
     """
     try:
@@ -115,7 +115,7 @@ def play_sleep_sound():
         print(f"[Audio Sleep warning] Failed to play sleep tone: {e}")
 
 if __name__ == "__main__":
-    print("Testing upgraded Iron Man startup and sleep tones...")
+    print("Testing startup and sleep tones...")
     play_startup_sound()
     time.sleep(1)
     play_sleep_sound()

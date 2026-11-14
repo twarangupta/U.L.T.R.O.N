@@ -1,6 +1,8 @@
-# JARVIS Build Log
+# ULTRON Build Log
 
-A record of how JARVIS is built, from the first audit of the repo to the shipped installer: what we decided, why, what the stack and architecture are, and what happened at each step.
+(Project renamed from JARVIS to ULTRON on 2026-11-15; see D21.)
+
+A record of how ULTRON is built, from the first audit of the repo to the shipped installer: what we decided, why, what the stack and architecture are, and what happened at each step.
 
 Owner: Twaran Gupta
 Repo: https://github.com/twarangupta/J.A.R.V.I.S
@@ -50,9 +52,9 @@ All memory and speed numbers marked "est." are estimates for a typical mid-range
 
 ## 2. Project summary and goals
 
-### 2.1 What JARVIS is
+### 2.1 What ULTRON is
 
-JARVIS is a free, local, privacy-first voice assistant for Windows. You say "Hey Jarvis", give a command, and it controls the computer: opens apps and folders, types for you, runs git and developer tasks, changes volume and media, reads the screen, answers questions. It runs fully offline by default. Nothing you say leaves the machine unless you turn on an optional online feature.
+ULTRON is a free, local, privacy-first voice assistant for Windows. You say "Hey ULTRON", give a command, and it controls the computer: opens apps and folders, types for you, runs git and developer tasks, changes volume and media, reads the screen, answers questions. It runs fully offline by default. Nothing you say leaves the machine unless you turn on an optional online feature.
 
 ### 2.2 Who it is for
 
@@ -65,7 +67,7 @@ JARVIS is a free, local, privacy-first voice assistant for Windows. You say "Hey
 1. Feels instant. A built-in command (open an app, volume, type) should act within 0.5 to 1 s after you stop talking. An AI answer should start speaking within 1 to 2 s.
 2. Safe. It must never do something destructive by accident (reboot, delete, empty recycle bin). Risky actions need a spoken confirmation.
 3. Hands-free. Wake word, follow-up listening without repeating the wake word, voice confirmations, and interrupting it by voice.
-4. One-click install. A normal user downloads JarvisSetup.exe, clicks through, and it works. No Python, venv, Ollama, Tesseract or command line.
+4. One-click install. A normal user downloads ULTRONSetup.exe, clicks through, and it works. No Python, venv, Ollama, Tesseract or command line.
 5. Low memory without getting slower. Save memory by choosing smaller models, never by unloading models between commands (that adds cold starts).
 6. Free and open source.
 
@@ -83,7 +85,7 @@ JARVIS is a free, local, privacy-first voice assistant for Windows. You say "Hey
 
 ### 2.5 Comparable product
 
-Infina (infina.so) offers a voice layer with three main triggers: type, send it, open app. It feels fast because it uses a fixed command set and on-device transcription; its AI features use cloud providers, and hands-free typing is paid. JARVIS aims to match the instant feel for simple commands, stay fully local and free, and go further with file, developer, browser and multi-step tasks.
+Infina (infina.so) offers a voice layer with three main triggers: type, send it, open app. It feels fast because it uses a fixed command set and on-device transcription; its AI features use cloud providers, and hands-free typing is paid. ULTRON aims to match the instant feel for simple commands, stay fully local and free, and go further with file, developer, browser and multi-step tasks.
 
 ---
 
@@ -95,7 +97,7 @@ Audit date: 2026-11-15. The local folder was a zip download of main (68 commits 
 
 | File | Role |
 |---|---|
-| jarvis.py | Main loop: startup greeting, wake word, record, transcribe, route, speak |
+| ultron.py | Main loop: startup greeting, wake word, record, transcribe, route, speak |
 | wakeword.py | openWakeWord wrapper, built-in "hey_jarvis" model |
 | audio.py | PyAudio mic handling, phrase recording with amplitude silence detection, keyboard interrupt helpers |
 | brain.py | Ollama client, full conversation history |
@@ -153,7 +155,7 @@ loop:
 1. Substring match for shutdown and restart. commands/system.py checks `"shutdown" in clean_text` and `"restart" in clean_text`. "Restart the dev server" or "type restart later" reboots the PC after 5 seconds. No confirmation.
 2. Empty recycle bin runs with no confirmation, using the no-confirm flag.
 3. Typing is checked last. "type ..." lives in general.py, which runs after system.py, so text you dictate that contains a system keyword is executed instead of typed.
-4. Sleep phrase by substring. "go to sleep" anywhere in a sentence sends JARVIS to sleep, for example "remind me to go to sleep at 11".
+4. Sleep phrase by substring. "go to sleep" anywhere in a sentence sends ULTRON to sleep, for example "remind me to go to sleep at 11".
 5. LLM-routed commands. Any "COMMAND: x" text in the model's reply is executed through the same substring router, so a confused small model can trigger a system command.
 
 ### 4.2 Reliability bugs
@@ -205,7 +207,7 @@ LLM 2.6 GB, Whisper base 300 MB, Piper high 200 MB, wake word 80 MB, Tesseract 8
 Each decision lists context, the decision, alternatives considered, and consequences. Status is Accepted unless noted.
 
 ### D1. Fully local by default
-Context: privacy is the main reason to choose JARVIS over cloud assistants.
+Context: privacy is the main reason to choose ULTRON over cloud assistants.
 Decision: all core features run offline. Online features are opt-in. A user-supplied stronger model (local or API key) can be added later as an option.
 Alternatives: cloud LLM for quality (Groq, OpenAI). Rejected as a default: privacy, cost, needs accounts.
 Consequences: quality is bounded by small local models, so the rules-first design (D10) matters more.
@@ -228,7 +230,7 @@ Consequences: about 1 GB saved (est.); routing prompts must stay short and expli
 
 ### D5. Bundle llama.cpp server instead of requiring Ollama
 Context: requiring a separate Ollama install breaks one-click install.
-Decision: ship llama.cpp's llama-server binary inside the installer, started and supervised by JARVIS on a local port, using its OpenAI-compatible API with streaming and tool calling. Ollama stays supported as an optional backend for users who already have it.
+Decision: ship llama.cpp's llama-server binary inside the installer, started and supervised by ULTRON on a local port, using its OpenAI-compatible API with streaming and tool calling. Ollama stays supported as an optional backend for users who already have it.
 Alternatives: llama-cpp-python (in-process, but heavier builds and harder to package per CPU/GPU); Ollama bundled (large, own service model).
 Consequences: we pick the right llama.cpp build (CPU AVX2, CUDA, Vulkan) per machine in the wizard. Brain code talks to one OpenAI-style interface for both backends.
 
@@ -276,7 +278,7 @@ Consequences: no separate install, about 50 MB saved (est.), Windows 10/11 only 
 
 ### D14. Windows installer: PyInstaller plus Inno Setup, built on GitHub Actions
 Context: users should not install Python or anything else.
-Decision: restructure into a proper package (pyproject.toml, pinned versions, src layout, config file in %APPDATA%). Bundle with PyInstaller in onedir mode (Nuitka as a fallback if size or startup time is poor). Wrap with Inno Setup into JarvisSetup.exe. Build on a windows-latest GitHub Actions runner on every tag; publish to GitHub Releases.
+Decision: restructure into a proper package (pyproject.toml, pinned versions, src layout, config file in %APPDATA%). Bundle with PyInstaller in onedir mode (Nuitka as a fallback if size or startup time is poor). Wrap with Inno Setup into ULTRONSetup.exe. Build on a windows-latest GitHub Actions runner on every tag; publish to GitHub Releases.
 Alternatives: MSIX (store-friendly but sandbox limits system control); Briefcase; Tauri now (bigger rewrite).
 Consequences: installer about 150 to 250 MB; models are downloaded by the wizard, not bundled.
 
@@ -301,6 +303,17 @@ Decision: CLAUDE.md at the repo root holds context, rules, progress and next ste
 Context: unsigned installers trigger SmartScreen warnings.
 Decision: apply to SignPath Foundation (free for qualifying open-source projects). Azure Trusted Signing is limited to individuals in the USA and Canada, so it does not apply. Fallback: an OV certificate (about USD 200 to 300 per year). Unsigned beta builds are acceptable early on with clear instructions.
 
+### D21. Rename to ULTRON with an Ultron-style personality
+Context: the owner chose a new name and character.
+Decision: the assistant is ULTRON everywhere (code, prompts, docs, file names). Personality: blunt, calm, dry, a little condescending about humans, occasional short jokes about human habits, never cruel, always does the task, no "sir". All lines live in persona.py and are original writing, not quotes. A small random chance (ULTRON_QUIP_RATE, default 0.15) adds a remark after successful commands; never after errors or confirmations. Wake replies are one or two words to keep latency low.
+Wake word: openWakeWord ships only "hey_jarvis", so it stays the wake phrase until a custom "hey ultron" model is trained (or sherpa-onnx open-vocabulary keywords are adopted). Decision pending with the owner.
+Voice: the Piper voice is unchanged (it is a JARVIS-style voice); saved locally as ultron-voice.onnx, with a fallback to the old file name.
+Note: Ultron and JARVIS are Marvel characters. Fine for a personal open-source project; if the product is distributed widely or monetized, an original name and voice avoid trademark and voice-likeness problems.
+
+### D22. Full cleanup and installer mandate
+Context: the owner asked for neatly organized, human-readable code with less unnecessary code, plenty of CI, and a fully functional, tested installer at the end.
+Decision: after phase 1 behavior fixes, restructure into src/ultron with a command registry, delete dead and legacy code (pyttsx3 path, SAPI voice unlock scripts, SpeechRecognition, duplicate examples, git_organic_committer.py), pin dependencies, add CI (lint with ruff, tests with pytest, Windows build of the installer, silent-install smoke test), and ship UltronSetup.exe renamed UltronSetup.exe.
+
 ---
 
 ## 7. Tech stack: now and target
@@ -323,7 +336,7 @@ Decision: apply to SignPath Foundation (free for qualifying open-source projects
 | File search | none | P2 Everything (voidtools) via SDK, Windows Search fallback | instant | |
 | Browser | webbrowser module | P2 Playwright over CDP to the user's Chrome | read and fill pages | Apache-2.0 |
 | UI | terminal | tray (pystray), caption bar; later Tauri 2 | normal users | |
-| Config | env vars, hardcoded paths | TOML file in %APPDATA%\Jarvis, env overrides | packaging | |
+| Config | env vars, hardcoded paths | TOML file in %APPDATA%\ULTRON, env overrides | packaging | |
 | Packaging | none | PyInstaller onedir plus Inno Setup | one .exe | |
 | CI | none | GitHub Actions windows-latest | builds .exe | |
 | Tests | none | pytest phrase suite, unit tests | regressions | |
@@ -337,7 +350,7 @@ Decision: apply to SignPath Foundation (free for qualifying open-source projects
 Phase 1 and 2: one Python process (the engine) plus one child process (llama-server). Phase 3 with Tauri: the UI process talks to the engine over a local socket.
 
 ```
-+---------------------------- Jarvis engine (Python) ----------------------------+
++---------------------------- ULTRON engine (Python) ----------------------------+
 |                                                                                |
 |  Mic (sounddevice callback) --> RingBuffer (30 s, 16 kHz int16)                |
 |                                     |                                          |
@@ -429,11 +442,11 @@ Restructuring into src/ happens in the packaging phase, after the P1 behavior fi
 
 ### 8.6 Data and config locations
 
-- Program files: C:\Program Files\Jarvis (read-only)
-- Config: %APPDATA%\Jarvis\config.toml
-- Models: %LOCALAPPDATA%\Jarvis\models (large, not roamed)
-- Logs and timing: %LOCALAPPDATA%\Jarvis\logs
-- User data (notes, routines, corrections): %APPDATA%\Jarvis\data
+- Program files: C:\Program Files\ULTRON (read-only)
+- Config: %APPDATA%\ULTRON\config.toml
+- Models: %LOCALAPPDATA%\ULTRON\models (large, not roamed)
+- Logs and timing: %LOCALAPPDATA%\ULTRON\logs
+- User data (notes, routines, corrections): %APPDATA%\ULTRON\data
 
 ---
 
@@ -563,11 +576,11 @@ An agent loop needs about 30 tokens per second to feel responsive. Long context 
 
 ## 14. Packaging and distribution
 
-Yes, JARVIS ships as a Windows installer. This is the main delivery format for phase 1 and 2.
+Yes, ULTRON ships as a Windows installer. This is the main delivery format for phase 1 and 2.
 
 ### 14.1 What the user gets
 
-- JarvisSetup.exe from GitHub Releases, about 150 to 250 MB.
+- ULTRONSetup.exe from GitHub Releases, about 150 to 250 MB.
 - A normal install wizard (license, install folder, desktop shortcut, start with Windows).
 - On first launch, the setup wizard: detects RAM and GPU, recommends a tier, downloads the model (1 to 3 GB) with progress, tests the mic and the wake word, and saves config.
 - A tray icon. No terminal window.
@@ -589,7 +602,7 @@ git tag v0.x.y
      -> run pytest
      -> PyInstaller (packaging/jarvis.spec)
      -> download bundled small models, verify checksums
-     -> Inno Setup (packaging/installer.iss) -> JarvisSetup.exe
+     -> Inno Setup (packaging/installer.iss) -> ULTRONSetup.exe
      -> sign (when certificate is available)
      -> silent install smoke test
      -> upload to GitHub Release
@@ -648,14 +661,14 @@ main  (stable, only tested phase merges via pull request)
 
 | Order | Branch | Depends on | Main files |
 |---|---|---|---|
-| 1 | feat/timing-log | none | jarvis.py, new timing.py |
-| 2 | fix/command-safety | none | commands/*, jarvis.py (sleep phrase, confirm flow) |
+| 1 | feat/timing-log | none | ultron.py, new timing.py |
+| 2 | fix/command-safety | none | commands/*, ultron.py (sleep phrase, confirm flow) |
 | 3 | tune/wake-threshold | none | config.py |
-| 4 | perf/whisper-settings | timing-log (to measure) | jarvis.py, config.py |
+| 4 | perf/whisper-settings | timing-log (to measure) | ultron.py, config.py |
 | 5 | feat/sounddevice-mic | none | audio.py, speaker.py, wakeword.py |
 | 6 | feat/silero-vad | sounddevice-mic | audio.py |
-| 7 | feat/streaming-llm-tts | sounddevice-mic | brain.py, speaker.py, jarvis.py |
-| 8 | feat/quick-replies-followup | streaming-llm-tts | speaker.py, jarvis.py |
+| 7 | feat/streaming-llm-tts | sounddevice-mic | brain.py, speaker.py, ultron.py |
+| 8 | feat/quick-replies-followup | streaming-llm-tts | speaker.py, ultron.py |
 | 9 | test/phrase-suite | command-safety | tests/ |
 | 10 | build/windows-installer | P1 done | packaging/, pyproject.toml, workflows |
 
@@ -722,6 +735,12 @@ Open questions:
 - Created feature branches for phase 1 (section 15).
 - Next: feat/timing-log.
 
+### 2026-11-15: Rename to ULTRON (feat/rename-ultron)
+- Renamed jarvis.py to ultron.py, download_jarvis_voice.py to download_voice.py, log to ultron.log.
+- New persona.py with ULTRON lines; greetings, wake, sleep and goodbye replies use it; removed "sir" from about 90 command replies; new LLM system prompt.
+- Docs, README, commands.txt, templates renamed. Wake phrase still "Hey Jarvis" (D21).
+- Owner approved a full cleanup, CI and a tested installer (D22).
+
 <!-- New entries go above this line, newest last. Format:
 ### YYYY-MM-DD: Short title
 - What changed (branch)
@@ -754,7 +773,7 @@ These move into config.toml in the packaging phase, with environment variables s
 
 ### 20.2 Glossary
 
-- Wake word: the phrase that wakes the assistant ("Hey Jarvis").
+- Wake word: the phrase that wakes the assistant ("Hey ULTRON").
 - VAD: voice activity detection, decides when you start and stop speaking.
 - STT: speech to text. TTS: text to speech.
 - Beam size: how many candidate transcriptions Whisper explores; 1 is greedy and fastest.
@@ -768,7 +787,7 @@ These move into config.toml in the packaging phase, with environment variables s
 
 General before each test:
 1. git switch <branch>
-2. Activate the venv and run: python jarvis.py
+2. Activate the venv and run: python ultron.py
 3. Wait for the greeting, then run the branch's checks below.
 
 | Branch | Check | Pass when |

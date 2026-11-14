@@ -17,4 +17,4 @@ Get-ChildItem -Path $source | ForEach-Object {
         Write-Host "Voice $name is already unlocked." -ForegroundColor Yellow
     }
 }
-Write-Host "Done! Please restart Jarvis." -ForegroundColor Green
+Write-Host "Done! Please restart ULTRON." -ForegroundColor Green

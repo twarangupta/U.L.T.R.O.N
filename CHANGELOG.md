@@ -1,6 +1,11 @@
 # Changelog
 
-All notable changes to the J.A.R.V.I.S. desktop assistant project will be documented in this file.
+All notable changes to the ULTRON desktop assistant project (formerly J.A.R.V.I.S.) will be documented in this file.
+
+## [Unreleased]
+
+### Changed
+- Renamed the assistant from JARVIS to ULTRON: new name, personality, prompts, greetings and file names (ultron.py, download_voice.py, ultron.log). Wake phrase stays "Hey Jarvis" until a custom "Hey Ultron" model exists.
 
 ---
 

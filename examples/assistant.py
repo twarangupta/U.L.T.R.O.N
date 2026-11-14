@@ -12,7 +12,7 @@ engine.setProperty("rate", 170)
 
 
 def speak(text):
-    print("Jarvis:", text)
+    print("ULTRON:", text)
     engine.say(text)
     engine.runAndWait()
 
@@ -37,7 +37,7 @@ try:
         speak(f"The time is {current_time}")
 
     elif "your name" in command:
-        speak("I am Jarvis.")
+        speak("I am ULTRON.")
 
     elif "thank you" in command:
         speak("You're welcome.")

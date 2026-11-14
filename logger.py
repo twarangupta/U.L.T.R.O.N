@@ -4,7 +4,7 @@ import os
 import sys
 
 # central logger instance
-logger = logging.getLogger("jarvis")
+logger = logging.getLogger("ultron")
 logger.setLevel(logging.DEBUG)
 
 def setup_logger():
@@ -27,7 +27,7 @@ def setup_logger():
 
     # Rotating File handler (all debug logs, max 5MB, keeps last 5 backups)
     log_dir = os.path.dirname(os.path.abspath(__file__))
-    log_file = os.path.join(log_dir, "jarvis.log")
+    log_file = os.path.join(log_dir, "ultron.log")
     
     try:
         file_handler = logging.handlers.RotatingFileHandler(

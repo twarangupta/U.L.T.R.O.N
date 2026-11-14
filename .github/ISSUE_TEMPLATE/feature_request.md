@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Suggest a new idea or system command for J.A.R.V.I.S.
+about: Suggest a new idea or system command for ULTRON
 title: "[FEATURE] "
 labels: enhancement
 assignees: ''
@@ -15,7 +15,7 @@ A clear and concise description of what you want to happen. Include the suggeste
 
 **Spoken Examples:**
 - *User:* "Hey Jarvis, [trigger phrase]"
-- *Jarvis:* "[spoken response]"
+- *ULTRON:* "[spoken response]"
 
 **Technical Implementation Details (Optional)**
 Any thoughts on standard packages, CLI utilities, or APIs needed to fulfill this.

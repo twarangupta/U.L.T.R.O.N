@@ -188,9 +188,9 @@ def execute_system_command(clean_text: str) -> str | None:
                         subprocess.Popen(["open", folder_path])
                     else:
                         subprocess.Popen(["xdg-open", folder_path])
-                    return f"Opening your {folder_name} folder, sir."
+                    return f"Opening your {folder_name} folder."
                 else:
-                    return f"I couldn't locate your {folder_name} folder, sir."
+                    return f"I couldn't locate your {folder_name} folder."
             except Exception as e:
                 return f"Failed to open folder. Error: {e}"
 
@@ -233,7 +233,7 @@ def execute_system_command(clean_text: str) -> str | None:
                         locked = True
                         break
                 if not locked:
-                    return "Workstation lock command not supported or failed on this distribution, sir."
+                    return "Workstation lock command not supported or failed on this distribution."
             return "Locking the workstation."
         except Exception as e:
             return f"Failed to lock the workstation. Error: {e}"
@@ -268,7 +268,7 @@ def execute_system_command(clean_text: str) -> str | None:
                 charging = battery.power_plugged
                 plugged_status = "and charging" if charging else "and discharging"
                 battery_str = f", and your battery is at {percent} percent {plugged_status}"
-            return f"Sir, CPU load is at {cpu_usage} percent, memory utilization is at {mem_usage} percent{battery_str}."
+            return f"CPU load is at {cpu_usage} percent, memory utilization is at {mem_usage} percent{battery_str}."
         except Exception as e:
             return f"Failed to retrieve system status. Error: {e}"
 
@@ -287,14 +287,14 @@ def execute_system_command(clean_text: str) -> str | None:
                 subprocess.Popen(["open", filepath])
             else:
                 subprocess.Popen(["xdg-open", filepath])
-            return "Screenshot captured and saved to your Desktop, sir."
+            return "Screenshot captured and saved to your Desktop."
         except Exception as e:
             return f"Failed to take screenshot. Error: {e}"
 
     # Media Playback Controls
     if "play music" in clean_text or "resume music" in clean_text or "pause music" in clean_text or "pause" in clean_text:
         press_media_key(VK_MEDIA_PLAY_PAUSE)
-        return "Media playback toggled, sir."
+        return "Media playback toggled."
     if "next song" in clean_text or "next track" in clean_text or "skip song" in clean_text:
         press_media_key(VK_MEDIA_NEXT_TRACK)
         return "Playing next track."
@@ -303,7 +303,7 @@ def execute_system_command(clean_text: str) -> str | None:
         return "Playing previous track."
     if "stop music" in clean_text or "stop playback" in clean_text:
         press_media_key(VK_MEDIA_STOP)
-        return "Playback stopped, sir."
+        return "Playback stopped."
 
     # Volume Control
     if "volume" in clean_text or "mute" in clean_text or "unmute" in clean_text:
@@ -315,10 +315,10 @@ def execute_system_command(clean_text: str) -> str | None:
                 
                 if "unmute" in clean_text:
                     volume.SetMute(0, None)
-                    return "Audio unmuted, sir."
+                    return "Audio unmuted."
                 elif "mute" in clean_text:
                     volume.SetMute(1, None)
-                    return "Audio muted, sir."
+                    return "Audio muted."
                     
                 match = re.search(r"(\d+)\s*%", clean_text)
                 if not match:
@@ -328,19 +328,19 @@ def execute_system_command(clean_text: str) -> str | None:
                     val = int(match.group(1))
                     val = max(0, min(100, val))
                     volume.SetMasterVolumeLevelScalar(val / 100.0, None)
-                    return f"Volume set to {val} percent, sir."
+                    return f"Volume set to {val} percent."
                     
                 if "increase" in clean_text or "raise" in clean_text or "up" in clean_text:
                     current_val = volume.GetMasterVolumeLevelScalar()
                     new_val = min(1.0, current_val + 0.1)
                     volume.SetMasterVolumeLevelScalar(new_val, None)
-                    return f"Volume increased to {int(new_val * 100)} percent, sir."
+                    return f"Volume increased to {int(new_val * 100)} percent."
                     
                 if "decrease" in clean_text or "lower" in clean_text or "down" in clean_text:
                     current_val = volume.GetMasterVolumeLevelScalar()
                     new_val = max(0.0, current_val - 0.1)
                     volume.SetMasterVolumeLevelScalar(new_val, None)
-                    return f"Volume decreased to {int(new_val * 100)} percent, sir."
+                    return f"Volume decreased to {int(new_val * 100)} percent."
             else:
                 # Non-Windows Volume Controls
                 if "unmute" in clean_text:
@@ -348,13 +348,13 @@ def execute_system_command(clean_text: str) -> str | None:
                         subprocess.run(["osascript", "-e", "set volume without output muted"], check=True)
                     else:
                         subprocess.run(["amixer", "-D", "pulse", "sset", "Master", "unmute"], check=True)
-                    return "Audio unmuted, sir."
+                    return "Audio unmuted."
                 elif "mute" in clean_text:
                     if sys.platform == 'darwin':
                         subprocess.run(["osascript", "-e", "set volume with output muted"], check=True)
                     else:
                         subprocess.run(["amixer", "-D", "pulse", "sset", "Master", "mute"], check=True)
-                    return "Audio muted, sir."
+                    return "Audio muted."
 
                 match = re.search(r"(\d+)\s*%", clean_text)
                 if not match:
@@ -367,20 +367,20 @@ def execute_system_command(clean_text: str) -> str | None:
                         subprocess.run(["osascript", "-e", f"set volume output volume {val}"], check=True)
                     else:
                         subprocess.run(["amixer", "-D", "pulse", "sset", "Master", f"{val}%"], check=True)
-                    return f"Volume set to {val} percent, sir."
+                    return f"Volume set to {val} percent."
                     
                 if "increase" in clean_text or "raise" in clean_text or "up" in clean_text:
                     if sys.platform == 'darwin':
                         subprocess.run(["osascript", "-e", "set volume output volume (output volume of (get volume settings) + 10)"], check=True)
                     else:
                         subprocess.run(["amixer", "-D", "pulse", "sset", "Master", "10%+"], check=True)
-                    return "Volume increased, sir."
+                    return "Volume increased."
                 if "decrease" in clean_text or "lower" in clean_text or "down" in clean_text:
                     if sys.platform == 'darwin':
                         subprocess.run(["osascript", "-e", "set volume output volume (output volume of (get volume settings) - 10)"], check=True)
                     else:
                         subprocess.run(["amixer", "-D", "pulse", "sset", "Master", "10%-"], check=True)
-                    return "Volume decreased, sir."
+                    return "Volume decreased."
         except Exception as e:
             return f"Failed to adjust volume. Error: {e}"
 
@@ -408,7 +408,7 @@ def execute_system_command(clean_text: str) -> str | None:
                                 shutil.rmtree(item_path)
                             else:
                                 os.unlink(item_path)
-            return "Recycle bin emptied, sir."
+            return "Recycle bin emptied."
         except Exception as e:
             return f"Failed to empty recycle bin. Error: {e}"
 
@@ -461,7 +461,7 @@ def execute_system_command(clean_text: str) -> str | None:
             else:
                 pyautogui.hotkey('win', 'd')
                 
-            return "Meeting mode activated. Master audio muted and windows minimized, sir."
+            return "Meeting mode activated. Master audio muted and windows minimized."
         except Exception as e:
             return f"Failed to activate meeting mode. Error: {e}"
 
@@ -475,17 +475,17 @@ def execute_system_command(clean_text: str) -> str | None:
                 plugged = battery.power_plugged
                 
                 if plugged:
-                   return f"Sir, the battery is at {percent} percent and charging."
+                   return f"The battery is at {percent} percent and charging."
                 elif secs == psutil.POWER_TIME_UNLIMITED:
-                   return f"Sir, the battery is at {percent} percent and plugged in."
+                   return f"The battery is at {percent} percent and plugged in."
                 elif secs == psutil.POWER_TIME_UNKNOWN:
-                   return f"Sir, the battery is at {percent} percent, time remaining is calculating."
+                   return f"The battery is at {percent} percent, time remaining is calculating."
                 else:
                    hours = secs // 3600
                    mins = (secs % 3600) // 60
-                   return f"Sir, the battery is at {percent} percent with {hours} hours and {mins} minutes remaining."
+                   return f"The battery is at {percent} percent with {hours} hours and {mins} minutes remaining."
             else:
-                return "No battery detected, sir."
+                return "No battery detected."
         except Exception as e:
             return f"Failed to check battery. Error: {e}"
 
@@ -497,7 +497,7 @@ def execute_system_command(clean_text: str) -> str | None:
             free_gb = obj.free / (1024**3)
             total_gb = obj.total / (1024**3)
             drive_name = "C: drive" if sys.platform == 'win32' else "Root storage"
-            return f"{drive_name} has {free_gb:.1f} gigabytes free out of {total_gb:.1f} gigabytes total, sir."
+            return f"{drive_name} has {free_gb:.1f} gigabytes free out of {total_gb:.1f} gigabytes total."
         except Exception as e:
             return f"Failed to check disk usage. Error: {e}"
 
@@ -506,7 +506,7 @@ def execute_system_command(clean_text: str) -> str | None:
         try:
             downloads = os.path.join(os.path.expanduser("~"), "Downloads")
             if not os.path.exists(downloads):
-                return "Downloads directory not found, sir."
+                return "Downloads directory not found."
             categories = {
                 "Documents": [".pdf", ".docx", ".doc", ".xlsx", ".xls", ".txt", ".csv", ".pptx", ".ppt"],
                 "Images": [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".svg", ".ico"],
@@ -529,7 +529,7 @@ def execute_system_command(clean_text: str) -> str | None:
                     os.makedirs(target_folder, exist_ok=True)
                     os.rename(item_path, os.path.join(target_folder, item))
                     moved_count += 1
-            return f"I've successfully organized {moved_count} files in your downloads folder, sir."
+            return f"I've successfully organized {moved_count} files in your downloads folder."
         except Exception as e:
             return f"Failed to organize downloads. Error: {e}"
 

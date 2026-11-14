@@ -11,7 +11,7 @@ We actively support and patch the latest release.
 
 ## Reporting a Vulnerability
 
-We take the security of J.A.R.V.I.S. very seriously. Because this assistant executes local commands, security patches are handled with high priority.
+We take the security of ULTRON very seriously. Because this assistant executes local commands, security patches are handled with high priority.
 
 If you find a security vulnerability, please do NOT open a public Github issue. Instead, report it privately:
 1. Document the vulnerability details and steps to reproduce.
