@@ -7,10 +7,10 @@ ULTRON is a local, voice-controlled desktop assistant with a blunt, dry personal
 ## 🌟 Key Features
 
 * **🧠 Offline Cognitive Brain:** Powered by local Ollama (`llama3.2:3b`) with full conversational context memory.
-* **🎙️ Local Wake Word Engine:** Stands by quietly in the background waiting for you to say *"Hey Jarvis"* (temporary wake phrase until the custom "Hey Ultron" model is trained) (powered by OpenWakeWord).
+* **🎙️ Local Wake Word Engine:** Stands by quietly in the background waiting for you to say *"Hey Ultron"* (powered by OpenWakeWord with a custom model you train once; see [docs/WAKE_WORD_TRAINING.md](docs/WAKE_WORD_TRAINING.md)). Until `models/hey_ultron.onnx` exists, the built-in *"Hey Jarvis"* model is used instead.
 * **🗣️ Premium Neural Speech (Piper TTS):** Realistic, low-latency vocal responses using local `.onnx` voice models.
 * **🔇 Smart Interruption System:** 
-  * **By Voice:** Say *"Hey Jarvis"* during speech to instantly cut him off and speak.
+  * **By Voice:** Say the wake phrase (*"Hey Ultron"*, or *"Hey Jarvis"* before training) during speech to instantly cut him off and speak.
   * **By Keyboard:** Press **any key** (e.g. `Space` or `Enter`) in the terminal to immediately halt his speech.
 * **🛠️ 40+ Core Commands:** Built-in voice macros for app launching, media control, system diagnostics, and developer helpers.
 * **👋 Safe Exit:** Press `Ctrl + C` to shut down, and ULTRON will verbally say goodbye before going offline.
@@ -144,7 +144,7 @@ This saves the model files to `models/ultron-voice.onnx` and `models/ultron-voic
 .\venv\Scripts\python.exe ultron.py
 ```
 3. Wait for the startup text: `All systems active. ULTRON is online.`
-4. Say **"Hey Jarvis"** to wake him up!
+4. Say **"Hey Ultron"** to wake it up (or **"Hey Jarvis"** if you have not trained the custom model yet; the log tells you which).
 
 ---
 

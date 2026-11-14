@@ -1,7 +1,7 @@
 import os
 import numpy as np
 from openwakeword.model import Model
-from config import WAKE_WORD_MODEL, WAKE_WORD_THRESHOLD
+from config import WAKE_WORD_MODEL, WAKE_WORD_THRESHOLD, WAKE_PHRASE, HEY_ULTRON_MODEL_PATH, FALLBACK_WAKE_WORD_MODEL
 from logger import logger
 
 class WakeWordDetector:
@@ -11,9 +11,17 @@ class WakeWordDetector:
     """
     def __init__(self):
         logger.info(f"Initializing OpenWakeWord with model: {WAKE_WORD_MODEL}")
-        
-        # OpenWakeWord accepts file paths to custom models,
-        # or names of built-in models (only 'hey_jarvis' ships today)
+        if WAKE_WORD_MODEL == FALLBACK_WAKE_WORD_MODEL:
+            logger.warning(
+                f"Custom wake word model not found at {HEY_ULTRON_MODEL_PATH}. "
+                "Falling back to the built-in 'hey_jarvis' model: say \"Hey Jarvis\" for now. "
+                "See docs/WAKE_WORD_TRAINING.md to train \"Hey Ultron\"."
+            )
+        logger.info(f"Wake phrase: \"{WAKE_PHRASE}\"")
+
+        # OpenWakeWord accepts file paths to custom models (the prediction
+        # key is the file name without extension, e.g. 'hey_ultron'),
+        # or names of built-in models
         if os.path.exists(WAKE_WORD_MODEL):
             # If a custom path is specified, let openwakeword determine the framework or force onnx
             if WAKE_WORD_MODEL.endswith(".onnx"):
