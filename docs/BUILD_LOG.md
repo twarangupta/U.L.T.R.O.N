@@ -846,6 +846,11 @@ Open questions:
 - Not yet at the 1.0 to 1.5 s target. Remaining costs, in order: Piper time to first audio, end-of-speech wait (Silero VAD, about 0.4 s), STT model choice (base on GPU is 0.24 s; the accent benchmark decides).
 - Next: system specs command, then the voice self-test harness.
 
+### 2026-11-15: Even pauses between sentences (fix/speaker-gaps)
+- Owner reported a long pause at every full stop. Cause: playback ran in the synthesis thread, so the next sentence was synthesized only after the current one finished playing. The streamed LLM answers hit the same gap.
+- speaker.py now has a synthesis thread that runs up to 6 sentences ahead into a bounded queue and a player thread that writes continuously. Each sentence's edge silence is trimmed (20 ms kept) and a fixed pause added (VOICE_SENTENCE_PAUSE, 0.13 s). stop() still drops everything at once through the generation counter.
+- Measured silently (fake output stream at real-time pace, 4-sentence reply): quiet stretches at full stops before 0.83, 0.73, 0.47 s; after 0.18, 0.15, 0.15 s. stop() returns at once and no audio is written after it.
+
 <!-- New entries go above this line, newest last. Format:
 ### YYYY-MM-DD: Short title
 - What changed (branch)
@@ -884,6 +889,7 @@ Open questions:
 | LLM_KEEP_ALIVE | -1 | how long Ollama keeps the model loaded (-1 forever) |
 | LLM_MAX_TOKENS | 120 | cap on spoken answer length |
 | END_SILENCE_SECONDS | 0.6 | pause that ends your sentence |
+| VOICE_SENTENCE_PAUSE | 0.13 | pause between spoken sentences |
 | WHISPER_LANGUAGE | en | fixed language to avoid noise hallucinations |
 | WHISPER_VAD_FILTER | True | Whisper's own VAD (off once Silero is in) |
 | SAMPLE_RATE | 16000 | required by wake word and Whisper |
