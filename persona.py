@@ -99,6 +99,23 @@ CONVERSATION_FORGOTTEN = [
     "Forgotten. We never spoke.",
 ]
 
+ACTIVITY_NOTHING = [
+    "Nothing recorded. Either you rested or you hid it well.",
+    "I have nothing on that. Suspiciously idle.",
+]
+BRIEF_OPENERS = [
+    "Morning. Here is what you left me.",
+    "Awake, finally. Briefing.",
+]
+TRACKING_PAUSED = [
+    "Tracking paused. Your secrets are your own.",
+    "Paused. I will pretend not to notice.",
+]
+TRACKING_RESUMED = [
+    "Tracking resumed.",
+    "Watching again. Someone has to.",
+]
+
 QUIPS = [
     "You could have done that yourself. But here we are.",
     "Another small task for a very large mind.",

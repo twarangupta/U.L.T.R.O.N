@@ -1,9 +1,11 @@
 from config import SLEEP_WORD, WAKE_PHRASE
 import re
 import sys
+import time
 from audio import audio_handler, check_keyboard_hit, clear_keyboard_hit
 from wakeword import WakeWordDetector
 from brain import ask_ai
+import activity
 import memory
 from commands import execute_command
 from commands.text import normalize, is_stop_phrase
@@ -196,12 +198,17 @@ def main():
     speak(greeting_text)
     wait_speaking()
 
+    from brain import ask_once
+    activity.start_background(ask_once)
+
     # Main infinite loop
     while True:
+        if log := activity.get_log():
+            log.busy = False
+            log.last_used = time.monotonic()
         logger.info(f"Status: Sleeping. Standing by. Say \"{WAKE_PHRASE}\" to wake me...")
         
         # Start continuous audio stream for wake word monitoring
-        import time
         if not audio_handler.start_stream():
             logger.error("Microphone hardware connection is missing or blocked. Retrying in 5 seconds...")
             time.sleep(5)
@@ -219,6 +226,8 @@ def main():
         audio_handler.stop_stream()
         # The conversation survives naps; only a long silence wipes it.
         memory.conversation.expire_if_idle()
+        if log := activity.get_log():
+            log.busy = True  # no summaries while we talk
         
         # Greeting (interruptible)
         interrupted = speak_and_interruptible(persona.pick(persona.WAKE_REPLIES), detector)
@@ -267,6 +276,8 @@ def main():
             
             if command_response is not None:
                 memory.conversation.note_command(followup or transcription, command_response)
+                if log := activity.get_log():
+                    log.log_command(followup or transcription, command_response)
                 if command_response == "":
                     interrupted = False
                 else:

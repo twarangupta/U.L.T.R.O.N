@@ -284,4 +284,32 @@ silence (CONVERSATION_FORGET_MINUTES). Only the last 10 exchanges go to the AI.
   * "turn it down", "quieter", "a bit less" after a volume command: volume down.
   * "again", "do that again", "one more time": repeats the last command
     (never a [CONFIRM] command).
+--------------------------------------------------------------------------------
+9. PERSONAL ACTIVITY LOG (local only, data/activity.db)
+--------------------------------------------------------------------------------
+Every command ULTRON runs is logged. The app tracker notes the app and project in
+front every 30 seconds (app and project names only, no window titles, no screenshots,
+no keystrokes; never apps or windows in the exclude list, such as password managers
+and private browser windows). Summaries are written only while ULTRON is idle.
+- Day Summary
+  * Voice Triggers: "what did I work on yesterday", "what did I do today",
+    "recap my day", "summarise yesterday"
+  * Behavior: Reads that day's summary (or a plain digest if none is written yet).
+- Continue Where I Left Off
+  * Voice Triggers: "continue where I left off", "pick up where I left off",
+    "where was I", "back to work"
+  * Behavior: Reopens the last VS Code folder and says its git branch.
+- Morning Brief
+  * Voice Triggers: "morning brief", "good morning", "brief me", "daily brief"
+  * Behavior: Yesterday's summary, where you stopped, and whether that repo has
+    uncommitted changes.
+- Pause / Resume Tracking
+  * Voice Triggers: "pause tracking", "stop tracking"; "resume tracking", "start tracking"
+  * Behavior: Stops or restarts the app tracker (commands are still logged).
+- Forget Today
+  * Voice Triggers: "forget today", "delete today's activity", "forget what I did today"
+  * Behavior: Deletes today's commands, app time and summary.
+- Tracking Status
+  * Voice Triggers: "are you tracking me", "tracking status", "what are you tracking"
+  * Behavior: Says what is recorded and how to stop it.
 ================================================================================

@@ -2,6 +2,7 @@ from datetime import datetime
 
 import ollama
 
+import activity
 import memory
 from config import OLLAMA_SYSTEM_PROMPT
 from hardware import get_profile
@@ -53,7 +54,8 @@ class Brain:
 
         The model has no clock, so it gets the time on every call (never stored).
         """
-        parts = (self.system_prompt, current_time_note(), memory.facts.prompt_note())
+        parts = (self.system_prompt, current_time_note(), memory.facts.prompt_note(),
+                 activity.prompt_note(activity.get_log()))
         system = "\n\n".join(part for part in parts if part)
         return ([{"role": "system", "content": system}] + memory.conversation.recent()
                 + [{"role": "user", "content": question}])
@@ -71,6 +73,17 @@ class Brain:
             logger.error(f"Brain communication error: {e}")
             # Errors are not remembered, to keep the history clean.
             return "I am having trouble accessing my local cognitive models. Please verify Ollama is active."
+
+
+def ask_once(prompt: str) -> str:
+    """One standalone question (no persona, no conversation), e.g. for summaries."""
+    try:
+        response = ollama.chat(model=brain.model, messages=[{"role": "user", "content": prompt}],
+                               options={"num_predict": 200})
+        return response.get("message", {}).get("content", "").strip()
+    except Exception as e:
+        logger.debug(f"ask_once failed: {e}")
+        return ""
 
 
 def current_time_note() -> str:
