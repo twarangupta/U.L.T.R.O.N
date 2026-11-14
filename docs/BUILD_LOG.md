@@ -348,6 +348,11 @@ Decision: stream the LLM reply and hand each finished sentence to the speaker qu
 
 ---
 
+### D29. Window control, voice barge-in, keyword-gated AI commands
+Context: the owner reported that close and minimise did not work and that talking over ULTRON did not stop it; the log showed "close Google Chrome", "close VS code" and "minimize everything" all fell through to the LLM, and "I meant whey protein" (heard as "wave protein") triggered git log.
+Decision: commands/windows.py handles close, minimise (all, all except X, one app, this), restore, maximise and switch with Win32 calls and an alias table; it never closes ULTRON's own process tree or the desktop (Progman, which opens the shut-down dialog), and only claims a sentence when it names a known or open app. bargein.py stops speech when the mic gets several times louder than the running echo level for about 0.3 s, and hands the captured audio to the next recording. Every AI-routed command now needs one of its key words in the user's sentence.
+Consequences: no LLM for window control; barge-in on laptop speakers depends on the echo level (tunable, logged per reply); real echo cancellation stays a P3 item.
+
 ## 7. Tech stack: now and target
 
 | Layer | Now | Target (P1 to P2) | Why | License |
@@ -850,6 +855,13 @@ Open questions:
 - Owner reported a long pause at every full stop. Cause: playback ran in the synthesis thread, so the next sentence was synthesized only after the current one finished playing. The streamed LLM answers hit the same gap.
 - speaker.py now has a synthesis thread that runs up to 6 sentences ahead into a bounded queue and a player thread that writes continuously. Each sentence's edge silence is trimmed (20 ms kept) and a fixed pause added (VOICE_SENTENCE_PAUSE, 0.13 s). stop() still drops everything at once through the generation counter.
 - Measured silently (fake output stream at real-time pace, 4-sentence reply): quiet stretches at full stops before 0.83, 0.73, 0.47 s; after 0.18, 0.15, 0.15 s. stop() returns at once and no audio is written after it.
+
+### 2026-11-15: Window control, barge-in, keyword-gated AI commands (fix/ai-command-keywords, feat/window-control-bargein)
+- Log review: close and minimise phrases went to the LLM (route=llm); no command existed apart from an Alt+F4 "close window" on whatever was in front. Talking over ULTRON only worked with the wake word or a key.
+- commands/windows.py and tests/test_windows.py (fake window list). A read-only check of the real window list found the desktop (Progman) listed as explorer; shell and tool windows are now excluded.
+- bargein.py, tests/test_bargein.py; audio.record_phrase(preroll=...) keeps the interrupting words; one "barge-in: echo level, trigger above" log line per reply for tuning.
+- ai_routing: every command needs a key word (tests for "Assets stop", "wave protein", unrelated questions). corrections.json: wave/way protein -> whey protein.
+- Tests: 84 pass. Not yet verified live on the laptop speakers.
 
 <!-- New entries go above this line, newest last. Format:
 ### YYYY-MM-DD: Short title

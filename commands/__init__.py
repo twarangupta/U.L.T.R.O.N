@@ -6,6 +6,7 @@ from commands.risky import match_risky
 from commands.clock import match_clock
 from commands.memory_cmds import match_memory
 from commands.activity_cmds import match_activity
+from commands import windows
 from commands.system import execute_system_command
 from commands.git_helpers import execute_git_command
 from commands.developer import execute_developer_command
@@ -49,6 +50,12 @@ def execute_command(text: str, confirm: ConfirmFn | None = None) -> str | None:
 
     # 5. Personal activity log: day summaries, continue, morning brief, tracking.
     response = match_activity(text)
+    if response is not None:
+        return response
+
+    # 6. Windows: close, minimise, maximise, switch to apps (before the old
+    # substring checks, which pressed Alt+F4 on whatever window was in front).
+    response = windows.handle(text)
     if response is not None:
         return response
 

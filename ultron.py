@@ -1,4 +1,5 @@
-from config import END_SILENCE_SECONDS, SLEEP_WORD, WAKE_PHRASE
+from config import BARGE_IN, END_SILENCE_SECONDS, SLEEP_WORD, WAKE_PHRASE
+from bargein import BargeInDetector
 import re
 import sys
 import time
@@ -144,6 +145,10 @@ def log_timing(timing: dict):
     logger.info("timing: " + " ".join(parts))
 
 
+# Audio captured when the user talked over ULTRON; the next recording starts with it.
+pending_preroll: list = []
+
+
 def speak_and_interruptible(text: str | None, detector: WakeWordDetector, stream=None) -> bool:
     """
     Plays the response. While speaking, continuously streams mic audio and checks for the wake word.
@@ -159,9 +164,10 @@ def speak_and_interruptible(text: str | None, detector: WakeWordDetector, stream
     
     # Start microphone stream to monitor for interrupt wake word
     audio_handler.start_stream()
-    
+
     interrupted = False
     chunks_count = 0
+    barge = BargeInDetector() if BARGE_IN else None
     try:
         while is_speaking() or (stream is not None and stream.alive()):
             # Keyboard interruption fallback
@@ -186,7 +192,20 @@ def speak_and_interruptible(text: str | None, detector: WakeWordDetector, stream
                     stop_speaking()
                     interrupted = True
                     break
+
+            # Talking over ULTRON stops it; what you said starts the next recording.
+            if barge is not None and barge.feed(chunk):
+                if stream is not None:
+                    stream.cancel()
+                stop_speaking()
+                interrupted = True
+                pending_preroll[:] = barge.preroll()
+                logger.info("Speech interrupted by voice")
+                break
     finally:
+        if barge is not None and barge.seen > 6:
+            logger.info(f"barge-in: echo level {barge.threshold() / barge.factor:.0f}, "
+                        f"trigger above {barge.threshold():.0f}")
         audio_handler.stop_stream()
         
     return interrupted
@@ -289,7 +308,8 @@ def main():
                 interrupted = False
                 
             # Record user phrase with silence detection
-            audio_data = audio_handler.record_phrase(silence_timeout_seconds=END_SILENCE_SECONDS)
+            preroll, pending_preroll[:] = list(pending_preroll), []
+            audio_data = audio_handler.record_phrase(silence_timeout_seconds=END_SILENCE_SECONDS, preroll=preroll)
             speech_end = time.perf_counter()  # END_SILENCE_SECONDS after you actually stopped
             timing = {"end_wait": END_SILENCE_SECONDS}
 

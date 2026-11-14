@@ -58,6 +58,12 @@ LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "120"))
 # How long a pause ends your sentence (seconds). Lower is snappier, too low cuts you off.
 END_SILENCE_SECONDS = float(os.getenv("END_SILENCE_SECONDS", "0.6"))
 
+# Barge-in: talk over ULTRON to stop it (bargein.py explains the tuning).
+BARGE_IN = os.getenv("BARGE_IN", "1").lower() in ("1", "true", "yes", "on")
+BARGE_IN_FACTOR = float(os.getenv("BARGE_IN_FACTOR", "3.0"))
+BARGE_IN_MIN_RMS = float(os.getenv("BARGE_IN_MIN_RMS", "700"))
+BARGE_IN_CHUNKS = int(os.getenv("BARGE_IN_CHUNKS", "4"))  # 4 x 80 ms of loud speech
+
 # Wake Word Settings
 # The wake phrase is "Hey Ultron", from a custom openWakeWord model you train once
 # (see docs/WAKE_WORD_TRAINING.md) and save as models/hey_ultron.onnx.

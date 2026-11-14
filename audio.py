@@ -95,15 +95,18 @@ class AudioHandler:
             # Underflow/Overflow or hardware issues
             return np.zeros(CHUNK_SIZE, dtype=np.int16)
 
-    def record_phrase(self, silence_threshold=500, silence_timeout_seconds=0.8, max_seconds=10.0) -> np.ndarray:
+    def record_phrase(self, silence_threshold=500, silence_timeout_seconds=0.8, max_seconds=10.0,
+                      preroll=None) -> np.ndarray:
         """
         Records the microphone stream until silence is detected or max duration is reached.
         Returns a normalized float32 numpy array, ready for Whisper.
+        preroll: chunks already captured (the user talked over ULTRON); the
+        recording continues from them, so their first words are kept.
         """
         logger.info("Listening for speech...")
         self.start_stream()
-        
-        recorded_frames = []
+
+        recorded_frames = list(preroll or [])
         silent_chunks = 0
         
         # Calculate how many chunks represent the silence timeout
@@ -112,8 +115,8 @@ class AudioHandler:
         max_silent_chunks = int(silence_timeout_seconds / chunk_duration)
         max_total_chunks = int(max_seconds / chunk_duration)
         
-        started_speaking = False
-        
+        started_speaking = bool(recorded_frames)
+
         for _ in range(max_total_chunks):
             # If the user presses any key, stop recording and process immediately
             if check_keyboard_hit():

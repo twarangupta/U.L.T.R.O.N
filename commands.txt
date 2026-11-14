@@ -22,6 +22,29 @@ Mishearings: if Whisper keeps hearing a command wrong (for example "get push" fo
 "git push"), add it to corrections.json ("what it heard": "what you said") and restart.
 tools/stt_benchmark.py records your voice and suggests entries.
 
+Interrupting: talk over ULTRON and it stops, then listens to what you said (barge-in).
+The wake phrase or any key also stops it. If it stops itself or ignores you, see
+BARGE_IN_FACTOR in bargein.py; BARGE_IN=0 turns voice interruption off.
+
+--------------------------------------------------------------------------------
+0. WINDOWS AND APPS
+--------------------------------------------------------------------------------
+- Close an App
+  * Voice Triggers: "close chrome", "close VS Code", "quit spotify", "exit notepad",
+    "close this window" / "close it" (the window in front)
+  * Behavior: Closes every window of that app, like clicking X (apps can still ask to save).
+    Never closes the terminal or editor ULTRON runs in, nor the desktop.
+- Minimise
+  * Voice Triggers: "minimise everything" / "minimize all windows" / "show desktop",
+    "minimise everything except VS Code", "minimise chrome", "minimise this"
+- Restore
+  * Voice Triggers: "restore my windows", "bring back everything"
+- Maximise
+  * Voice Triggers: "maximise this", "maximize chrome", "full screen VS Code"
+- Switch To an App
+  * Voice Triggers: "switch to chrome", "go to spotify", "bring up VS Code", "focus on word"
+  * Behavior: Brings the open app to the front (only claims the sentence if that app is open).
+
 --------------------------------------------------------------------------------
 1. SYSTEM & GENERAL UTILITIES
 --------------------------------------------------------------------------------
