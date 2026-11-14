@@ -258,4 +258,30 @@ tools/stt_benchmark.py records your voice and suggests entries.
     * **IP-based Weather/Location**: Details current temperature and city based on IP location (e.g., *"It is 25 degrees in Dehradun. You'll complain about it either way."*).
     * **Laptop Battery Status**: Reports current battery percentage and charging state (e.g., *"Power at 96 percent, plugged in. Let's not waste it."*).
     * **Personality line**: a dry ULTRON remark (e.g., *"Online. Try to ask for something interesting today."*).
+--------------------------------------------------------------------------------
+8. MEMORY & FOLLOW-UPS
+--------------------------------------------------------------------------------
+ULTRON keeps the conversation across naps and forgets it only after 10 minutes of
+silence (CONVERSATION_FORGET_MINUTES). Only the last 10 exchanges go to the AI.
+- Remember a Fact
+  * Voice Triggers: "remember that ...", "remember ..." (at the start of the sentence)
+  * Behavior: Saves the fact to memory.json. The AI sees saved facts in every answer.
+    "Do you remember ..." and "remember when ..." are questions, not saves.
+- List Facts
+  * Voice Triggers: "what do you remember", "what do you know about me", "list my facts"
+  * Behavior: Reads the saved facts aloud.
+- Forget a Fact
+  * Voice Triggers: "forget that" (last fact saved), "forget that <words>",
+    "forget about <words>" (facts containing those words)
+  * Behavior: Deletes the facts. "Forget about it" and "forget it" do nothing to facts
+    ("forget it" is a stop phrase).
+- Forget the Conversation
+  * Voice Triggers: "forget this conversation", "clear the conversation", "new conversation"
+  * Behavior: Clears the conversation. Saved facts stay.
+- Follow-ups (only right after a matching command)
+  * "close it" / "close that" after "open ...": closes the active window.
+  * "turn it up more", "louder", "a bit more" after a volume command: volume up.
+  * "turn it down", "quieter", "a bit less" after a volume command: volume down.
+  * "again", "do that again", "one more time": repeats the last command
+    (never a [CONFIRM] command).
 ================================================================================

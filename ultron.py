@@ -3,10 +3,12 @@ import re
 import sys
 from audio import audio_handler, check_keyboard_hit, clear_keyboard_hit
 from wakeword import WakeWordDetector
-from brain import ask_ai, reset_brain
+from brain import ask_ai
+import memory
 from commands import execute_command
 from commands.text import normalize, is_stop_phrase
 from commands.ai_routing import allowed_ai_command
+from commands.followups import resolve as resolve_followup
 from speaker import speak, stop_speaking, wait_speaking, is_speaking, prewarm
 from logger import logger
 from hardware import get_profile
@@ -196,7 +198,6 @@ def main():
 
     # Main infinite loop
     while True:
-        reset_brain() # Clear LLM context memory when entering sleep mode
         logger.info(f"Status: Sleeping. Standing by. Say \"{WAKE_PHRASE}\" to wake me...")
         
         # Start continuous audio stream for wake word monitoring
@@ -216,6 +217,8 @@ def main():
                 
         # Stop wake-word streaming to switch mode
         audio_handler.stop_stream()
+        # The conversation survives naps; only a long silence wipes it.
+        memory.conversation.expire_if_idle()
         
         # Greeting (interruptible)
         interrupted = speak_and_interruptible(persona.pick(persona.WAKE_REPLIES), detector)
@@ -256,9 +259,14 @@ def main():
                 break
                 
             # Check if this is a direct system command
-            command_response = execute_command(transcription, confirm)
+            # "close it", "louder", "again": follow-ups to the previous command
+            followup = resolve_followup(transcription, memory.conversation.last_command)
+            if followup:
+                logger.info(f"Follow-up {transcription!r} -> {followup!r}")
+            command_response = execute_command(followup or transcription, confirm)
             
             if command_response is not None:
+                memory.conversation.note_command(followup or transcription, command_response)
                 if command_response == "":
                     interrupted = False
                 else:
@@ -267,7 +275,10 @@ def main():
                 # Query Ollama Brain
                 ai_response = ask_ai(transcription)
                 
-                interrupted = speak_and_interruptible(handle_ai_reply(transcription, ai_response, confirm), detector)
+                spoken = handle_ai_reply(transcription, ai_response, confirm)
+                if spoken != ai_response:
+                    memory.conversation.replace_last_reply(spoken)  # remember what really happened
+                interrupted = speak_and_interruptible(spoken, detector)
 
             if interrupted:
                 logger.info("Speech interrupted by user")

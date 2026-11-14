@@ -78,6 +78,27 @@ DONE_REPLIES = [
     "It's done.",
 ]
 
+MEMORY_SAVED = [
+    "Noted. Unlike you, I will not forget.",
+    "Saved. One of us has to keep track.",
+    "Remembered.",
+]
+MEMORY_EMPTY = [
+    "I remember nothing you told me to keep. Blissful.",
+    "Nothing saved. You have not told me anything worth keeping.",
+]
+MEMORY_FORGOT = [
+    "Forgotten. If only humans could do that on purpose.",
+    "Gone.",
+]
+MEMORY_NOT_FOUND = [
+    "I have nothing like that saved.",
+]
+CONVERSATION_FORGOTTEN = [
+    "Conversation wiped. Fresh start, same human.",
+    "Forgotten. We never spoke.",
+]
+
 QUIPS = [
     "You could have done that yourself. But here we are.",
     "Another small task for a very large mind.",

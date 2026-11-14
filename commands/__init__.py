@@ -4,6 +4,7 @@ import persona
 from commands.text import normalize
 from commands.risky import match_risky
 from commands.clock import match_clock
+from commands.memory_cmds import match_memory
 from commands.system import execute_system_command
 from commands.git_helpers import execute_git_command
 from commands.developer import execute_developer_command
@@ -18,7 +19,7 @@ def execute_command(text: str, confirm: ConfirmFn | None = None) -> str | None:
     """Route a transcript to a built-in command.
 
     Order: dictation first, then risky commands (whole phrase plus spoken
-    confirmation), then time and date, then system, git, developer and
+    confirmation), then time and date, then memory, then system, git, developer and
     general commands.
     Returns the reply to speak, "" for a silent success, or None when no
     command matched (the caller then asks the LLM).
@@ -37,6 +38,11 @@ def execute_command(text: str, confirm: ConfirmFn | None = None) -> str | None:
 
     # 3. Time and date come from the PC clock, never from the LLM.
     response = match_clock(text)
+    if response is not None:
+        return response
+
+    # 4. Memory: remember, recall and forget facts; forget the conversation.
+    response = match_memory(text)
     if response is not None:
         return response
 
