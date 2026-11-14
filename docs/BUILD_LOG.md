@@ -5,7 +5,7 @@
 A record of how ULTRON is built, from the first audit of the repo to the shipped installer: what we decided, why, what the stack and architecture are, and what happened at each step.
 
 Owner: Twaran Gupta
-Repo: https://github.com/twarangupta/J.A.R.V.I.S
+Repo: https://github.com/twarangupta/U.L.T.R.O.N (renamed from J.A.R.V.I.S on 2026-11-15)
 Started: 2026-11-15
 Status: Phase 1 (fixes and speed) in progress
 
