@@ -36,8 +36,8 @@ def compile_rules(table: dict[str, str]) -> list[tuple[re.Pattern, str]]:
     for heard in sorted(table, key=len, reverse=True):
         words = [re.escape(w) for w in heard.split()]
         if words:
-            # Words may be separated by spaces, commas or dots ("get, push").
-            pattern = re.compile(r"\b" + r"[\s,.]+".join(words) + r"\b", re.IGNORECASE)
+            # Words may be separated by spaces, commas, dots or apostrophes ("get, push", "it's").
+            pattern = re.compile(r"\b" + r"[\s,.'’-]+".join(words) + r"\b", re.IGNORECASE)
             rules.append((pattern, table[heard]))
     return rules
 

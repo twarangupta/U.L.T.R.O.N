@@ -22,3 +22,6 @@ notes.md
 # Environment Files
 .env
 .env.*
+
+# Your voice recordings for tools/stt_benchmark.py
+recordings/
