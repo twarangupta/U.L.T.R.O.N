@@ -43,21 +43,27 @@ Organize the code neatly and human-readably, remove unnecessary code, change or 
 - requirements.txt: >= versions, pyaudio and sounddevice both listed.
 
 ## Branches
-p1-fixes (integration) now contains feat/rename-ultron, fix/command-safety and feat/hey-ultron-wakeword (merged 2026-11-15 at the user's request, before laptop testing). The user should test p1-fixes once; fixes go on new branches.
-Waiting branches were moved onto p1-fixes (they had no commits of their own): feat/timing-log, tune/wake-threshold, perf/whisper-settings, feat/sounddevice-mic, feat/silero-vad, feat/streaming-llm-tts, feat/quick-replies-followup, test/phrase-suite, build/windows-installer. Start each from the latest p1-fixes.
-main gets p1-fixes through a GitHub pull request once phase 1 is tested on the laptop (needs the user's go-ahead to push). The user cancelled the local folder rename.
+p1-fixes (integration) contains feat/rename-ultron, fix/command-safety, feat/hey-ultron-wakeword (merged 2026-11-15 at the user's request) and the piper-tts requirements fix.
+feat/voice-and-stop (off p1-fixes, NOT merged, not yet tested with the mic): streaming speaker, pronunciation fixes, VOICE_SPEED, stop phrases, AI command allowlist, Whisper hotwords, wake word file auto-download, venv warning.
+Waiting branches (no commits yet): feat/timing-log, tune/wake-threshold, perf/whisper-settings, feat/sounddevice-mic, feat/silero-vad, feat/streaming-llm-tts, feat/quick-replies-followup, test/phrase-suite, build/windows-installer. They point at an older p1-fixes; start each from the newest base (currently feat/voice-and-stop until it is merged).
+main gets p1-fixes through a GitHub pull request once tested on the laptop (needs the user's go-ahead to push). The user cancelled the local folder rename.
+
+## Laptop facts (measured 2026-11-15)
+- AMD Ryzen, 6 cores / 12 threads, about 5.9 GB RAM usable (below the 8 GB baseline), NVIDIA GTX 1650 4 GB VRAM, driver 576.52. ctranslate2 sees 1 CUDA device (CUDA/cuDNN runtime libs not installed in the venv yet).
+- Run with venv\Scripts\python.exe ultron.py (Python 3.11 venv made with uv). The system Python 3.10 lacks model files; the user once ran it by mistake.
+- Ollama 0.24 installed with llama3.2:3b and gemma3:4b. First LLM reply took 9.8 s cold.
+- Voice timing after feat/voice-and-stop: fixed lines instant, greeting 0.67 s, command plus quip 0.81 s to first sound.
+- The user is Indian; Whisper base (multilingual) transcribes their accent poorly.
 
 ## Progress log
 - 2026-11-15: Zip folder turned into a git repo linked to origin; branch p1-fixes; CLAUDE.md; docs/BUILD_LOG.md; feature branches created.
-- 2026-11-15: feat/rename-ultron: JARVIS to ULTRON everywhere, persona.py, ~90 "sir" removed from replies, new system prompt, docs and commands.txt renamed.
-- 2026-11-15: fix/command-safety: whole-phrase risky commands with spoken confirm, typing first, exact sleep phrase, fake-history script deleted.
-- 2026-11-15: feat/hey-ultron-wakeword: training guide and model wiring with fallback. User is training the model.
+- 2026-11-15: feat/rename-ultron, fix/command-safety, feat/hey-ultron-wakeword done and merged into p1-fixes. Repo renamed to U.L.T.R.O.N on GitHub, origin updated.
+- 2026-11-15: venv set up and smoke-tested; feat/voice-and-stop done (see BUILD_LOG journal).
 
 ## Next steps (in order)
-1. User tests feat/rename-ultron, fix/command-safety and feat/hey-ultron-wakeword, then merges them into p1-fixes (ask before merging).
-2. feat/timing-log (timing.py, one line per command), then tune/wake-threshold (0.5, custom model), perf/whisper-settings (beam 1, no timestamps, condition_on_previous_text False).
-3. feat/sounddevice-mic (one stream, ring buffer), feat/silero-vad (0.4 s).
-4. feat/streaming-llm-tts (warm model, sentence streaming), feat/quick-replies-followup.
-5. Cleanup and restructure: src/ultron package, command registry, remove dead code (pyttsx3, SAPI unlock scripts, SpeechRecognition, examples), pinned deps, pyproject.toml, config in %APPDATA%.
-6. test/phrase-suite plus CI: ruff, pytest, Windows build.
-7. build/windows-installer: llama.cpp server bundle, bundle hey_ultron.onnx (check licences), tray, first-run wizard, PyInstaller + Inno Setup, GitHub Actions release with silent-install smoke test.
+1. feat/hardware-profiles (approved by the user): hardware.py detects RAM, cores, NVIDIA GPU and VRAM, and tests that CUDA really works; picks a profile (Lite, GPU-4GB, GPU-8GB+, GPU-16GB+) that sets Whisper model, device and compute type, LLM model, threads; VRAM budget gives the LLM priority, Whisper goes on the GPU only if room remains; automatic CPU fallback on any GPU error; every choice overridable by env; a --benchmark flag prints the chosen profile and timings. Strong PCs must never be held back; weak PCs never load too much.
+2. Accent accuracy (approved): tools/stt_benchmark.py records the user reading about 15 command phrases once, saves WAVs, then compares Whisper base, base.en, small.en, small, medium(.en), large-v3-turbo on CPU and GPU (word accuracy and time). Use the winner as the default for the user's profile. Add a correction dictionary for repeat mishearings.
+3. Then: feat/timing-log, tune/wake-threshold, perf/whisper-settings, feat/sounddevice-mic, feat/silero-vad, feat/streaming-llm-tts (warm the LLM at startup: 9.8 s cold start), feat/quick-replies-followup.
+4. Cleanup and restructure: src/ultron package, command registry, remove dead code (pyttsx3, SAPI unlock scripts, SpeechRecognition, examples, PyAudio once mic moves to sounddevice), pinned deps, pyproject.toml, config in %APPDATA%.
+5. test/phrase-suite plus CI: ruff, pytest, Windows build.
+6. build/windows-installer: llama.cpp server bundle, hardware profile in the first-run wizard (download CUDA libs only on NVIDIA machines), bundle hey_ultron.onnx (check licences), tray, PyInstaller + Inno Setup, GitHub Actions release with silent-install smoke test.
