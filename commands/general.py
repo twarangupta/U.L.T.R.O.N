@@ -232,14 +232,6 @@ def execute_general_command(clean_text: str, raw_text: str = "") -> str | None:
         except Exception as e:
             return f"Failed translation. Error: {e}"
 
-    # Tell me the time
-    if "tell me the time" in clean_text or "what time is it" in clean_text or "current time" in clean_text or "what is the time" in clean_text:
-        return datetime.now().strftime("The current time is %I:%M %p.")
-
-    # Tell me the date
-    if "tell me the date" in clean_text or "what's the date" in clean_text or "current date" in clean_text or "what is the date" in clean_text:
-        return datetime.now().strftime("Today is %B %d, %Y.")
-
     # Voice Scratchpad / Notes
     if "write a note" in clean_text or "save a note" in clean_text:
         try:

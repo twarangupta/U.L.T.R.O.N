@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import ollama
 from config import MODEL_NAME, OLLAMA_SYSTEM_PROMPT
 from logger import logger
@@ -54,9 +56,13 @@ class Brain:
         """
         self.history.append({"role": "user", "content": question})
         try:
+            # The model has no clock. Give it the real time on every call (not
+            # stored in history) so it never invents one.
+            system = f"{self.system_prompt}\n\n{current_time_note()}"
+            messages = [{"role": "system", "content": system}] + self.history[1:]
             response = ollama.chat(
                 model=self.model,
-                messages=self.history
+                messages=messages
             )
             reply = response.get("message", {}).get("content", "")
             if not reply:
@@ -70,6 +76,15 @@ class Brain:
             logger.error(error_msg)
             # Do not append error message to history to keep it clean
             return "I am having trouble accessing my local cognitive models. Please verify Ollama is active."
+
+def current_time_note() -> str:
+    from commands.clock import spoken_date, spoken_time
+    now = datetime.now().astimezone()
+    return (
+        f"Current local date and time: {spoken_date(now)}, {spoken_time(now)} ({now.tzname()}). "
+        "Use this for any question about the time, date or day. Never guess a time."
+    )
+
 
 # Singleton instance
 brain = Brain()

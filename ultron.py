@@ -108,6 +108,7 @@ def handle_ai_reply(transcription: str, ai_response: str, confirm) -> str:
     When a command runs, ULTRON speaks the command's real result, not the
     model's text (which may claim something that did not happen).
     """
+    logger.info(f"AI reply: {ai_response!r}")
     match = COMMAND_TAG.search(ai_response)
     if not match:
         return ai_response
@@ -262,6 +263,7 @@ def main():
                 continue
                 
             print(f"You: {transcription}")
+            logger.info(f"Heard: {transcription!r}")
             
             # "Stop", "cancel", "never mind": stand down and go back to sleep
             if is_stop_phrase(transcription):

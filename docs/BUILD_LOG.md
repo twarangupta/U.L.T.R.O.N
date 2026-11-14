@@ -772,6 +772,13 @@ Open questions:
 - Removed dead pyttsx3 settings from config.py.
 - Next: hardware profiles so strong PCs get bigger, faster models and GPU use while 8 GB laptops stay light (owner request).
 
+### 2026-11-15: Real time and date, heard-text log (fix/time-and-heard-log)
+- Owner asked the time and ULTRON said 2:47 pm at about 1:05 am. The phrasing missed the 4 exact time triggers, so the LLM answered, and it has no clock.
+- commands/clock.py: time and date questions matched on normalized text in many phrasings, answered from the PC clock, checked right after risky commands. Questions like "what time does the shop open" are not matched. Old exact-phrase blocks removed from general.py.
+- brain.py: every LLM call gets the current local date, time and timezone in the system message (not stored in history), with an instruction never to guess. Tested: the model answered the correct time.
+- ultron.py logs what it heard and the raw AI reply to ultron.log, so mishearings and invented commands can be traced.
+- Built in a separate git worktree because another session was working in the main folder.
+
 <!-- New entries go above this line, newest last. Format:
 ### YYYY-MM-DD: Short title
 - What changed (branch)
