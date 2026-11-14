@@ -18,6 +18,10 @@ Stop: "stop", "cancel", "never mind", "quiet", "be quiet", "shut up", "enough",
 Short mishearings that end in "stop" or "cancel" (up to 3 words, like "Assets stop") count too.
 While ULTRON is talking, say the wake phrase or press any key to cut it off.
 
+Mishearings: if Whisper keeps hearing a command wrong (for example "get push" for
+"git push"), add it to corrections.json ("what it heard": "what you said") and restart.
+tools/stt_benchmark.py records your voice and suggests entries.
+
 --------------------------------------------------------------------------------
 1. SYSTEM & GENERAL UTILITIES
 --------------------------------------------------------------------------------
