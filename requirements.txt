@@ -16,3 +16,4 @@ pytesseract>=0.3.13
 requests>=2.31.0
 pycaw>=20181110; sys_platform == 'win32'
 comtypes>=1.4.1; sys_platform == 'win32'
+piper-tts>=1.2.0
