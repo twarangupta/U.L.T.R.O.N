@@ -1,17 +1,17 @@
-from config import SLEEP_WORD, WAKE_PHRASE
+from config import END_SILENCE_SECONDS, SLEEP_WORD, WAKE_PHRASE
 import re
 import sys
 import time
 from audio import audio_handler, check_keyboard_hit, clear_keyboard_hit
 from wakeword import WakeWordDetector
-from brain import ask_ai
+from brain import brain
 import activity
 import memory
 from commands import execute_command
 from commands.text import normalize, is_stop_phrase
 from commands.ai_routing import allowed_ai_command
 from commands.followups import resolve as resolve_followup
-from speaker import speak, stop_speaking, wait_speaking, is_speaking, prewarm
+from speaker import speak, stop_speaking, wait_speaking, is_speaking, prewarm, first_sound_at
 from logger import logger
 from hardware import get_profile
 from stt import SpeechToText
@@ -108,15 +108,54 @@ def handle_ai_reply(transcription: str, ai_response: str, confirm) -> str:
     return natural_reply or persona.pick(persona.DONE_REPLIES)
 
 
-def speak_and_interruptible(text: str, detector: WakeWordDetector) -> bool:
+def answer_with_ai(transcription: str, confirm, detector, timing: dict) -> bool:
+    """Stream the LLM answer into the speaker; returns True if interrupted.
+
+    The first sentence starts playing while the rest is still being written.
+    A [COMMAND: x] reply is not streamed: it is run (if allowed) and its real
+    result is spoken.
+    """
+    first = [True]
+
+    def on_sentence(sentence: str):
+        speak(sentence, append=not first[0])
+        first[0] = False
+
+    reply = brain.ask_stream(transcription, on_sentence)
+    reply.wait_until_decided()
+    if reply.is_command:
+        reply.join()
+        spoken = handle_ai_reply(transcription, reply.text, confirm)
+        memory.conversation.replace_last_reply(spoken)  # remember what really happened
+        interrupted = speak_and_interruptible(spoken, detector)
+    elif reply.error and not reply.text:
+        interrupted = speak_and_interruptible(
+            "I am having trouble reaching my local model. Check that Ollama is running.", detector)
+    else:
+        interrupted = speak_and_interruptible(None, detector, stream=reply)
+    timing["llm_first_token"] = reply.first_token_s
+    return interrupted
+
+
+def log_timing(timing: dict):
+    """One line per request: where the time went, measured from the end of speech."""
+    parts = [f"{key}={value:.2f}" for key, value in timing.items() if isinstance(value, float)]
+    parts += [f"{key}={value}" for key, value in timing.items() if isinstance(value, str)]
+    logger.info("timing: " + " ".join(parts))
+
+
+def speak_and_interruptible(text: str | None, detector: WakeWordDetector, stream=None) -> bool:
     """
     Plays the response. While speaking, continuously streams mic audio and checks for the wake word.
     If the wake word is detected, stops speaking immediately and returns True.
+    With a stream (a StreamingReply), text is None: its sentences are already
+    being queued, and listening lasts until the stream ends and speech stops.
     """
     # Reset prediction buffers to clear the wake-up word trigger
     detector.reset()
-    
-    speak(text)
+
+    if text is not None:
+        speak(text)
     
     # Start microphone stream to monitor for interrupt wake word
     audio_handler.start_stream()
@@ -124,10 +163,12 @@ def speak_and_interruptible(text: str, detector: WakeWordDetector) -> bool:
     interrupted = False
     chunks_count = 0
     try:
-        while is_speaking():
+        while is_speaking() or (stream is not None and stream.alive()):
             # Keyboard interruption fallback
             if check_keyboard_hit():
                 clear_keyboard_hit()
+                if stream is not None:
+                    stream.cancel()
                 stop_speaking()
                 interrupted = True
                 logger.info("Speech interrupted by keyboard")
@@ -140,6 +181,8 @@ def speak_and_interruptible(text: str, detector: WakeWordDetector) -> bool:
             # of audio to prevent triggering from the trailing wake-up audio.
             if detector.is_wake_word(chunk):
                 if chunks_count > 6:
+                    if stream is not None:
+                        stream.cancel()
                     stop_speaking()
                     interrupted = True
                     break
@@ -199,7 +242,15 @@ def main():
     wait_speaking()
 
     from brain import ask_once
-    activity.start_background(ask_once)
+
+    def summarise(prompt: str) -> str:
+        text = ask_once(prompt)
+        brain.warm()  # a summary pushes ULTRON's own prompt out of the LLM cache; put it back
+        return text
+
+    activity.start_background(summarise)
+    import threading
+    threading.Thread(target=brain.warm, daemon=True, name="llm-warm").start()  # no cold first answer
 
     # Main infinite loop
     while True:
@@ -238,10 +289,13 @@ def main():
                 interrupted = False
                 
             # Record user phrase with silence detection
-            audio_data = audio_handler.record_phrase()
-            
+            audio_data = audio_handler.record_phrase(silence_timeout_seconds=END_SILENCE_SECONDS)
+            speech_end = time.perf_counter()  # END_SILENCE_SECONDS after you actually stopped
+            timing = {"end_wait": END_SILENCE_SECONDS}
+
             logger.info("Transcribing...")
             transcription = transcribe(whisper_model, audio_data)
+            timing["stt"] = time.perf_counter() - speech_end
             if not transcription:
                 logger.info("No speech recognized")
                 continue
@@ -283,13 +337,15 @@ def main():
                 else:
                     interrupted = speak_and_interruptible(persona.maybe_quip(command_response), detector)
             else:
-                # Query Ollama Brain
-                ai_response = ask_ai(transcription)
-                
-                spoken = handle_ai_reply(transcription, ai_response, confirm)
-                if spoken != ai_response:
-                    memory.conversation.replace_last_reply(spoken)  # remember what really happened
-                interrupted = speak_and_interruptible(spoken, detector)
+                # Ask the LLM, streaming its answer into the voice
+                interrupted = answer_with_ai(transcription, confirm, detector, timing)
+
+            timing["route"] = "command" if command_response is not None else "llm"
+            heard_at = first_sound_at()
+            if heard_at is not None and heard_at >= speech_end:
+                timing["first_sound"] = heard_at - speech_end
+                timing["after_you_stopped"] = heard_at - speech_end + END_SILENCE_SECONDS
+            log_timing(timing)
 
             if interrupted:
                 logger.info("Speech interrupted by user")

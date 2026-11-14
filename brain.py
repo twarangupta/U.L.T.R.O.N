@@ -1,10 +1,13 @@
+import re
+import threading
+import time
 from datetime import datetime
 
 import ollama
 
 import activity
 import memory
-from config import OLLAMA_SYSTEM_PROMPT
+from config import LLM_KEEP_ALIVE, LLM_MAX_TOKENS, OLLAMA_SYSTEM_PROMPT
 from hardware import get_profile
 from logger import logger
 
@@ -63,7 +66,8 @@ class Brain:
     def ask(self, question: str) -> str:
         """Ask the local LLM and return its spoken reply. The exchange is remembered."""
         try:
-            response = ollama.chat(model=self.model, messages=self.build_messages(question))
+            response = ollama.chat(model=self.model, messages=self.build_messages(question),
+                                   keep_alive=_keep_alive(), options={"num_predict": LLM_MAX_TOKENS})
             reply = response.get("message", {}).get("content", "")
             if not reply:
                 reply = "I apologize, but I received empty telemetry from my brain core."
@@ -75,11 +79,144 @@ class Brain:
             return "I am having trouble accessing my local cognitive models. Please verify Ollama is active."
 
 
+    def warm(self):
+        """Load the model now and keep it loaded, so the first question is not a cold start."""
+        try:
+            start = time.perf_counter()
+            # Send the real system prompt, so it is processed and cached before the first question.
+            ollama.chat(model=self.model, messages=self.build_messages("Hi"), keep_alive=_keep_alive(),
+                        options={"num_predict": 1})
+            logger.info(f"LLM warmed in {time.perf_counter() - start:.1f} s (kept loaded: {LLM_KEEP_ALIVE})")
+        except Exception as e:
+            logger.warning(f"Could not warm the LLM: {e}")
+
+    def ask_stream(self, question: str, on_sentence) -> "StreamingReply":
+        """Start answering in the background; on_sentence(text) gets each finished sentence."""
+        return StreamingReply(self, question, on_sentence)
+
+
+def _keep_alive():
+    value = LLM_KEEP_ALIVE.strip()
+    return int(value) if value.lstrip("-").isdigit() else value
+
+
+# A sentence ends at . ! or ? followed by a space, once it has some length
+# (so "e.g." or "3.5" do not split it).
+_SENTENCE_END = re.compile(r"(?<=[.!?])[\"')\]]*\s+")
+MIN_SENTENCE_CHARS = 12
+
+
+_FIRST_CLAUSE_END = re.compile(r"(?<=[,;:])\s+")
+FIRST_CLAUSE_MIN_WORDS = 4
+
+
+def split_sentences(buffer: str, first: bool = False) -> tuple[list[str], str]:
+    """Finished sentences in buffer, and the unfinished rest.
+
+    With first=True a clause ending in a comma counts too ("A popular
+    supplement, I'm told."), so the voice can start on a shorter piece:
+    Piper needs about 0.1 s per word before the first sound.
+    """
+    if first:
+        m = _FIRST_CLAUSE_END.search(buffer)
+        if m and len(buffer[:m.start()].split()) >= FIRST_CLAUSE_MIN_WORDS:
+            end = _SENTENCE_END.search(buffer)
+            if end is None or end.start() > m.start():
+                rest_done, rest = split_sentences(buffer[m.end():])
+                return [buffer[:m.start()].strip()] + rest_done, rest
+    sentences, start = [], 0
+    for m in _SENTENCE_END.finditer(buffer):
+        piece = buffer[start:m.end()].strip()
+        if len(piece) >= MIN_SENTENCE_CHARS:
+            sentences.append(piece)
+            start = m.end()
+    return sentences, buffer[start:]
+
+
+def looks_like_command(text: str) -> bool:
+    """The reply starts with a [COMMAND: x] tag, so it must not be spoken as it streams."""
+    head = text.lstrip()[:20]
+    return head.startswith(("[", "`")) or re.search(r"COMMAND\s*:", head, re.IGNORECASE) is not None
+
+
+class StreamingReply:
+    """One streamed LLM answer.
+
+    Sentences go to on_sentence as soon as they are complete. If the reply
+    turns out to be a [COMMAND: x] tag, nothing is spoken and the caller
+    handles the full text once done. Timings are kept for the log.
+    """
+
+    def __init__(self, brain_: "Brain", question: str, on_sentence):
+        self.question, self.on_sentence = question, on_sentence
+        self.text = ""
+        self.is_command = False
+        self.first_token_s: float | None = None
+        self.error: str | None = None
+        self._started = time.perf_counter()
+        self._decided = threading.Event()   # first sentence spoken, command detected, or finished
+        self._cancel = threading.Event()
+        self._thread = threading.Thread(target=self._run, args=(brain_,), daemon=True, name="llm-stream")
+        self._thread.start()
+
+    def _run(self, brain_):
+        spoken = 0  # how much of self.text has been handed to on_sentence
+        try:
+            stream = ollama.chat(model=brain_.model, messages=brain_.build_messages(self.question), stream=True,
+                                 keep_alive=_keep_alive(), options={"num_predict": LLM_MAX_TOKENS})
+            for part in stream:
+                if self._cancel.is_set():
+                    break
+                token = part.get("message", {}).get("content", "")
+                if not token:
+                    continue
+                if self.first_token_s is None:
+                    self.first_token_s = time.perf_counter() - self._started
+                self.text += token
+                if self.is_command:
+                    continue
+                if not self._decided.is_set():
+                    if looks_like_command(self.text):
+                        self.is_command = True
+                        self._decided.set()
+                        continue
+                    if len(self.text.strip()) < 20:  # too early to tell
+                        continue
+                sentences, rest = split_sentences(self.text[spoken:], first=not self._decided.is_set())
+                for sentence in sentences:
+                    self.on_sentence(sentence)
+                    self._decided.set()
+                spoken = len(self.text) - len(rest)
+        except Exception as e:
+            self.error = str(e)
+            logger.error(f"Brain communication error: {e}")
+        finally:
+            if not self.is_command and not self._cancel.is_set():
+                rest = self.text[spoken:].strip()
+                if rest:
+                    self.on_sentence(rest)
+            if self.text and not self.error:
+                memory.conversation.add_exchange(self.question, self.text)
+            self._decided.set()
+
+    def wait_until_decided(self, timeout: float | None = None):
+        self._decided.wait(timeout)
+
+    def alive(self) -> bool:
+        return self._thread.is_alive()
+
+    def join(self):
+        self._thread.join()
+
+    def cancel(self):
+        self._cancel.set()
+
+
 def ask_once(prompt: str) -> str:
     """One standalone question (no persona, no conversation), e.g. for summaries."""
     try:
         response = ollama.chat(model=brain.model, messages=[{"role": "user", "content": prompt}],
-                               options={"num_predict": 200})
+                               keep_alive=_keep_alive(), options={"num_predict": 200})
         return response.get("message", {}).get("content", "").strip()
     except Exception as e:
         logger.debug(f"ask_once failed: {e}")

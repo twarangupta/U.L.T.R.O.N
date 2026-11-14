@@ -14,6 +14,7 @@ Why it is built this way:
 import os
 import queue
 import threading
+import time
 
 import numpy as np
 import sounddevice as sd
@@ -43,6 +44,7 @@ class Speaker:
         self._state_lock = threading.Lock()   # keeps "idle", queue and generation in step
         self._synth_lock = threading.Lock()   # the phonemizer is not thread-safe
         self._cache: dict[str, np.ndarray] = {}
+        self.first_sound_at: float | None = None  # perf_counter of the first audio since the last speak()
 
         path = next((p for p in MODEL_PATHS if os.path.exists(p)), None)
         if path is None:
@@ -64,9 +66,16 @@ class Speaker:
 
     # Public API -----------------------------------------------------------
 
-    def speak(self, text: str):
-        """Start speaking in the background. Stops anything already playing."""
-        self.stop()
+    def speak(self, text: str, append: bool = False):
+        """Start speaking in the background.
+
+        Normally stops anything already playing. With append=True the text is
+        queued after what is playing (used to stream an LLM reply sentence by
+        sentence).
+        """
+        if not append:
+            self.stop()
+            self.first_sound_at = None
         if not self.voice:
             print(f"\n[ULTRON]: {text}\n")
             return
@@ -119,6 +128,8 @@ class Speaker:
             if self._cancelled(generation):
                 return
             if not printed:
+                if self.first_sound_at is None:
+                    self.first_sound_at = time.perf_counter()
                 print(f"\n[ULTRON]: {text}\n")
                 printed = True
             self._play(generation, pcm)
@@ -163,8 +174,12 @@ class Speaker:
 _speaker = Speaker()
 
 
-def speak(text: str):
-    _speaker.speak(text)
+def speak(text: str, append: bool = False):
+    _speaker.speak(text, append)
+
+
+def first_sound_at() -> float | None:
+    return _speaker.first_sound_at
 
 
 def stop_speaking():
