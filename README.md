@@ -134,6 +134,17 @@ python download_voice.py
 ```
 This saves the model files to `models/ultron-voice.onnx` and `models/ultron-voice.onnx.json`.
 
+### 5. Hardware profile (automatic) and optional GPU speed-up
+At startup ULTRON checks your RAM, CPU cores and NVIDIA GPU and picks models that fit (profiles Lite, CPU-Plus, GPU-4GB, GPU-8GB+, GPU-16GB+). The LLM gets the GPU first; Whisper joins it only if there is room left. To see what it picked and how fast it is:
+```powershell
+.\venv\Scripts\python.exe ultron.py --benchmark
+```
+On a PC with an NVIDIA card, Whisper can run on the GPU after installing the CUDA runtime libraries (about 1.1 GB download):
+```powershell
+uv pip install --python venv\Scripts\python.exe -r requirements-gpu.txt
+```
+If the GPU fails for any reason, ULTRON falls back to the CPU on its own. Any choice can be overridden in `.env`: `ULTRON_PROFILE`, `WHISPER_MODEL_SIZE`, `WHISPER_DEVICE`, `WHISPER_COMPUTE_TYPE`, `WHISPER_CPU_THREADS`, `OLLAMA_MODEL`.
+
 ---
 
 ## 🏃 Running ULTRON

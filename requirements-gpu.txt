@@ -1,0 +1,6 @@
+# Optional: lets Whisper run on an NVIDIA GPU (CUDA 12 and cuDNN 9 runtime libraries).
+# Only for PCs with an NVIDIA card. About 1.1 GB to download, about 2.5 GB on disk.
+# Install:  uv pip install --python venv\Scripts\python.exe -r requirements-gpu.txt
+# Without these, ULTRON still works and runs Whisper on the CPU.
+nvidia-cublas-cu12>=12.4,<13; sys_platform == 'win32' or sys_platform == 'linux'
+nvidia-cudnn-cu12>=9.1,<10; sys_platform == 'win32' or sys_platform == 'linux'
