@@ -342,6 +342,10 @@ Decision: activity.py. (1) Every command ULTRON runs is one row in a local SQLit
 Defaults chosen: tracker on (the owner asked for it), titles off. Everything stays in readable local files, git-ignored.
 Measured cost (laptop): command write 0.065 ms median (0.74 ms max), tracker tick 0.07 ms (0.0002 percent of one core at one per 30 s), 3.6 MB RAM, about 84 KB of disk for a heavy day (500 commands), about 30 MB per year. Summary: one 4 s LLM call per idle period.
 
+### D28. Streamed, warm and honest AI answers
+Context: the owner measured more than 2 s (about 5 s in the log) from the end of a question to the first spoken word, and the model pretended it could read the laptop's specs.
+Decision: stream the LLM reply and hand each finished sentence to the speaker queue (append mode); the first piece may end at a comma once it has 4 words, because Piper needs time per word before the first sound. Replies that start with a [COMMAND: x] tag are held and handled as before. keep_alive -1 keeps the model loaded (D3); it is warmed at startup with the real system prompt so the prompt is already processed, and re-warmed after idle summaries (which use a different prompt). num_predict is capped at 120 and the prompt asks for one or two sentences under 30 words. Honesty rules: general knowledge is answered; anything about this PC, private data, accounts or live information gets one short line saying it has no access, never pretending, inventing, offering to search or saying to check a connection. End-of-speech wait lowered from 0.8 to 0.6 s (END_SILENCE_SECONDS) until Silero VAD replaces it. One "timing:" log line per request (end_wait, stt, llm_first_token, first_sound, after_you_stopped).
+
 ---
 
 ## 7. Tech stack: now and target
@@ -833,6 +837,15 @@ Open questions:
 - Tests: tests/test_activity.py (rows, speed, app time, titles not stored, exclusions, forget today, summary never sees titles, summariser waits while busy, prompt cap, voice commands).
 - Next: window control, voice commit, clipboard history, push-to-talk, health check, nudges, then the connectors design.
 
+### 2026-11-15: Faster, honest AI answers (feat/fast-honest-ai)
+- D28. Tests: tests/test_streaming.py (sentence and first-clause splits, command detection).
+- Measured silently on the laptop (no speakers, llama3.2:3b on GPU, Piper on CPU):
+  - before: "What is the best protein powder?" full reply 3.66 s with the old prompt, then about 0.5 s to the first sound; with the 0.8 s end wait and 1 s STT, about 5 s after the user stopped. A question after idle hit the cold start (5.6 to 9.8 s).
+  - after: first token 0.21 to 0.48 s when warm; first sentence ready 0.4 to 0.8 s; first audio ready 1.3 to 2.5 s (Piper about 0.13 s per word with the CPU busy); with 0.6 s end wait and 0.53 s STT (small on GPU), about 2.4 to 3.6 s after the user stopped. Model now shows "Forever" in ollama ps.
+  - honesty: "specifications of my laptop" and "check my email" now get one line ("I do not have access to that information."); "why is the sky blue" and protein powder are answered.
+- Not yet at the 1.0 to 1.5 s target. Remaining costs, in order: Piper time to first audio, end-of-speech wait (Silero VAD, about 0.4 s), STT model choice (base on GPU is 0.24 s; the accent benchmark decides).
+- Next: system specs command, then the voice self-test harness.
+
 <!-- New entries go above this line, newest last. Format:
 ### YYYY-MM-DD: Short title
 - What changed (branch)
@@ -868,6 +881,9 @@ Open questions:
 | ACTIVITY_SUMMARIES | 1 | idle-time day summaries |
 | ACTIVITY_SUMMARY_IDLE_MINUTES | 20 | idle time before a summary |
 | ULTRON_DATA_DIR | data | activity database and settings |
+| LLM_KEEP_ALIVE | -1 | how long Ollama keeps the model loaded (-1 forever) |
+| LLM_MAX_TOKENS | 120 | cap on spoken answer length |
+| END_SILENCE_SECONDS | 0.6 | pause that ends your sentence |
 | WHISPER_LANGUAGE | en | fixed language to avoid noise hallucinations |
 | WHISPER_VAD_FILTER | True | Whisper's own VAD (off once Silero is in) |
 | SAMPLE_RATE | 16000 | required by wake word and Whisper |
