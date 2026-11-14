@@ -23,6 +23,9 @@ Feasibility report: https://claude.ai/artifact/KNc9WgT4fuh7xvwf6EB282
 - Writing style for the user: plain text, no em dashes, light markup.
 - For large changes, describe the plan before writing code.
 - When something is ambiguous, ask; otherwise pick a sensible default and say which.
+- Proactively suggest improvements, hacks, tricks, risks and feature ideas noticed while building (short "Tips" in step reports).
+- The assistant is being renamed JARVIS to ULTRON everywhere (branch feat/rename-ultron). New code and docs say ULTRON.
+- commands.txt is the living list of voice commands. Update it in the same commit whenever a command is added, removed or its phrases change.
 
 ## Current code (verified 2026-11-15)
 - jarvis.py: main loop. Wake word, then record phrase, then Whisper (beam_size=5), then execute_command, else LLM. Parses "COMMAND:" tags from the LLM reply with a regex. Sleep phrase checked by substring.
