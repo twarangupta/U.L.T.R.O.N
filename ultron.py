@@ -4,9 +4,11 @@ from config import (
     WHISPER_COMPUTE_TYPE,
     WHISPER_LANGUAGE,
     WHISPER_VAD_FILTER,
+    WHISPER_HOTWORDS,
     SLEEP_WORD,
     WAKE_PHRASE
 )
+import re
 import sys
 import numpy as np
 from faster_whisper import WhisperModel
@@ -14,9 +16,9 @@ from audio import audio_handler, check_keyboard_hit, clear_keyboard_hit
 from wakeword import WakeWordDetector
 from brain import ask_ai, reset_brain
 from commands import execute_command
-from commands.text import normalize
-from commands.risky import match_risky
-from speaker import speak, stop_speaking, wait_speaking, is_speaking
+from commands.text import normalize, is_stop_phrase
+from commands.ai_routing import allowed_ai_command
+from speaker import speak, stop_speaking, wait_speaking, is_speaking, prewarm
 from logger import logger
 import persona
 
@@ -69,7 +71,8 @@ def transcribe(whisper_model, audio_data) -> str:
             audio_data,
             beam_size=5,
             language=WHISPER_LANGUAGE,
-            vad_filter=WHISPER_VAD_FILTER
+            vad_filter=WHISPER_VAD_FILTER,
+            hotwords=WHISPER_HOTWORDS or None,
         )
         return "".join(seg.text for seg in segments).strip()
     except Exception as e:
@@ -93,6 +96,33 @@ def is_sleep_phrase(transcription: str) -> bool:
     "Go to sleep." sleeps; "remind me to go to sleep at 11" does not.
     """
     return normalize(transcription) == normalize(SLEEP_WORD)
+
+
+COMMAND_TAG = re.compile(r"COMMAND:\s*([a-zA-Z0-9_\-\s]+)", re.IGNORECASE)
+COMMAND_BLOCK = re.compile(r"[`\[]*[^`\[]*COMMAND:\s*[^\]`]+[\]`]*", re.IGNORECASE)
+
+
+def handle_ai_reply(transcription: str, ai_response: str, confirm) -> str:
+    """Run a command the LLM asked for, if it is allowed, and return what to say.
+
+    When a command runs, ULTRON speaks the command's real result, not the
+    model's text (which may claim something that did not happen).
+    """
+    match = COMMAND_TAG.search(ai_response)
+    if not match:
+        return ai_response
+    command = match.group(1).strip()
+    natural_reply = COMMAND_BLOCK.sub("", ai_response).strip()
+
+    if not allowed_ai_command(transcription, command):
+        logger.info(f"Ignored AI command {command!r} for {transcription!r} (not allowed)")
+        return persona.pick(persona.UNSURE_REPLIES)
+
+    logger.info(f"AI command routed: {command!r}")
+    result = execute_command(command, confirm)
+    if result:
+        return result
+    return natural_reply or persona.pick(persona.DONE_REPLIES)
 
 
 def speak_and_interruptible(text: str, detector: WakeWordDetector) -> bool:
@@ -149,6 +179,7 @@ def main():
     
     # 1. Initialize text-to-speech speaker
     speak("Initializing system protocols.")
+    prewarm(persona.fixed_lines())  # instant playback for fixed lines
     wait_speaking()
 
     # 2. Initialize Wake Word Detector
@@ -227,6 +258,13 @@ def main():
                 
             print(f"You: {transcription}")
             
+            # "Stop", "cancel", "never mind": stand down and go back to sleep
+            if is_stop_phrase(transcription):
+                logger.info("Stop phrase heard. Going back to sleep.")
+                speak(persona.pick(persona.STOP_REPLIES))
+                wait_speaking()
+                break
+
             # Sleep only when the whole utterance is the sleep phrase
             if is_sleep_phrase(transcription):
                 speak(persona.pick(persona.SLEEP_REPLIES))
@@ -250,30 +288,8 @@ def main():
                 # Query Ollama Brain
                 ai_response = ask_ai(transcription)
                 
-                # Check for AI-routed command tag
-                import re
-                match = re.search(r"COMMAND:\s*([a-zA-Z0-9_\-\s]+)", ai_response, re.IGNORECASE)
-                if match:
-                    extracted_cmd = match.group(1).strip()
-                    # Clean the speech reply by removing the command block
-                    natural_reply = re.sub(r"[`\[]*[^`\[]*COMMAND:\s*[^\]`]+[\]`]*", "", ai_response, flags=re.IGNORECASE).strip()
-                    
-                    logger.info(f"AI Command Routed: Executing extracted command: '{extracted_cmd}'")
-                    cmd_res = execute_command(extracted_cmd, confirm)
-                    
-                    # Speak the command's own reply for failures and for risky
-                    # commands (the model's reply may claim it ran after a cancel)
-                    risky = match_risky(normalize(extracted_cmd)) is not None
-                    if cmd_res and (risky or "failed" in cmd_res.lower() or "error" in cmd_res.lower() or "unable" in cmd_res.lower()):
-                        interrupted = speak_and_interruptible(cmd_res, detector)
-                    elif cmd_res == "":
-                        interrupted = False
-                    else:
-                        speech_text = natural_reply if natural_reply else (cmd_res if cmd_res else persona.pick(persona.DONE_REPLIES))
-                        interrupted = speak_and_interruptible(speech_text, detector)
-                else:
-                    interrupted = speak_and_interruptible(ai_response, detector)
-                
+                interrupted = speak_and_interruptible(handle_ai_reply(transcription, ai_response, confirm), detector)
+
             if interrupted:
                 logger.info("Speech interrupted by user")
                 continue

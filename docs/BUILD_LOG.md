@@ -762,6 +762,16 @@ Open questions:
 - Measured: nothing yet; waiting for the owner's trained model. Record hit rate (out of 10) and false wakes per 30 min here once tested.
 - Next: tune/wake-threshold should set 0.5 for the custom model.
 
+### 2026-11-15: Environment, voice speed and stop (feat/voice-and-stop)
+- Laptop setup: venv with Python 3.11 via uv, all requirements installed, voice and wake word models downloaded, Ollama llama3.2:3b already present. requirements.txt was missing piper-tts; added on p1-fixes.
+- Owner reported: text appears 2 to 3 s before the voice, some words sound wrong, and saying "stop" ran git log.
+- Measured voice (before): whole reply synthesized before playback; first sound 1.35 s for the greeting, 2.2 s for a command plus quip, 3.9 s for a 3-sentence reply. Synthesis itself runs 2.5x faster than real time, so the wait was purely architectural.
+- speaker.py rewritten: sounddevice output kept open, sentence-by-sentence streaming, cache for short lines, fixed persona lines pre-rendered at startup, text printed when the voice starts, instant stop through a generation counter. Measured (after): fixed lines 0.00 s, greeting 0.67 s, command plus quip 0.81 s; stop returns at once and playback ends within 0.1 s.
+- tts_text.py: pronunciation fixes before synthesis (acronyms spelled out, "port 8080" as "80 80", % as percent, markdown stripped) plus a user-editable pronunciations.json. VOICE_SPEED setting, default 1.0 (the model's own default was 1.15x slower).
+- Stop: "Assets stop." was Whisper mishearing "stop"; no rule matched, and the LLM invented [COMMAND: git log]. Added stop phrases (commands/text.py is_stop_phrase), commands/ai_routing.py (sentence must have 3+ words, allowlist of AI commands, git push/commit and organizing files need the key word), and ULTRON now speaks the command's real result instead of the model's text. Whisper gets hotwords for command words (WHISPER_HOTWORDS).
+- Removed dead pyttsx3 settings from config.py.
+- Next: hardware profiles so strong PCs get bigger, faster models and GPU use while 8 GB laptops stay light (owner request).
+
 <!-- New entries go above this line, newest last. Format:
 ### YYYY-MM-DD: Short title
 - What changed (branch)

@@ -13,6 +13,11 @@ Safety: commands marked [CONFIRM] match only when your whole sentence is the com
 (polite extras like "Ultron", "please" and "now" are ignored), and they run only after
 you say "confirm" within about 6 seconds. Any other reply, or silence, cancels.
 
+Stop: "stop", "cancel", "never mind", "quiet", "be quiet", "shut up", "enough",
+"forget it" or "that's all" ends the conversation and puts ULTRON back to sleep.
+Short mishearings that end in "stop" or "cancel" (up to 3 words, like "Assets stop") count too.
+While ULTRON is talking, say the wake phrase or press any key to cut it off.
+
 --------------------------------------------------------------------------------
 1. SYSTEM & GENERAL UTILITIES
 --------------------------------------------------------------------------------

@@ -61,6 +61,17 @@ CANCELLED_REPLIES = [
     "Not confirmed, so I did nothing. Wise, possibly.",
 ]
 
+STOP_REPLIES = [
+    "Fine.",
+    "Stopping.",
+    "As you wish.",
+]
+
+UNSURE_REPLIES = [
+    "I didn't catch that. Try again, slower.",
+    "That made no sense. Say it again.",
+]
+
 DONE_REPLIES = [
     "Done.",
     "Handled.",
@@ -95,3 +106,8 @@ def maybe_quip(reply: str) -> str:
     if random.random() < QUIP_RATE:
         return f"{reply} {random.choice(QUIPS)}"
     return reply
+
+
+def fixed_lines() -> list[str]:
+    """Lines that never change, pre-rendered at startup so they play instantly."""
+    return WAKE_REPLIES + STOP_REPLIES + UNSURE_REPLIES + DONE_REPLIES + SLEEP_REPLIES + CANCELLED_REPLIES

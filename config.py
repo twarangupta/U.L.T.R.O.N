@@ -70,11 +70,16 @@ WHISPER_DEVICE = os.getenv("WHISPER_DEVICE", "cpu")        # GTX 1650 doesn't ha
 WHISPER_COMPUTE_TYPE = os.getenv("WHISPER_COMPUTE_TYPE", "int8") # int8 is recommended for CPU speed when using small/medium models
 WHISPER_LANGUAGE = os.getenv("WHISPER_LANGUAGE", "en")       # Lock speech detection to English to prevent hallucinations from noise
 WHISPER_VAD_FILTER = os.getenv("WHISPER_VAD_FILTER", "True").lower() in ("true", "1", "yes")
+# Words Whisper should expect, so short commands like "stop" are heard correctly.
+# Set to an empty string to turn the hints off.
+WHISPER_HOTWORDS = os.getenv(
+    "WHISPER_HOTWORDS",
+    "Ultron, stop, cancel, confirm, open, close, type, send, git, volume, mute, screenshot",
+)
 
-# Text-to-Speech Settings (pyttsx3)
-VOICE_RATE = int(os.getenv("VOICE_RATE", "170"))
-VOICE_VOLUME = float(os.getenv("VOICE_VOLUME", "1.0"))
-VOICE_INDEX = int(os.getenv("VOICE_INDEX", "0")) # 0 for male, 1 for female (depends on system voices installed)
+# Voice (Piper). 1.0 is normal pace, 1.2 is 20 percent faster, 0.9 slower.
+# The voice model's own default was 1.15 times slower than normal, which dragged words out.
+VOICE_SPEED = float(os.getenv("VOICE_SPEED", "1.0"))
 
 # Audio Settings
 SAMPLE_RATE = int(os.getenv("SAMPLE_RATE", "16000")) # Required by OpenWakeWord and Whisper
