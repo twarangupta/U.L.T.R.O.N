@@ -31,32 +31,36 @@ Organize the code neatly and human-readably, remove unnecessary code, change or 
 - commands.txt is the living list of voice commands. Update it in the same commit whenever a command is added, removed or its phrases change.
 - Add a journal entry to docs/BUILD_LOG.md section 19 after each branch; keep it 20 to 30 pages.
 
-## Current code (after feat/rename-ultron)
-- ultron.py: main loop. Wake word, record, Whisper (beam_size=5), execute_command, else LLM. Parses "COMMAND:" tags with a regex. Sleep phrase by substring.
-- persona.py: ULTRON lines (greetings, wake, sleep, goodbye, quips), maybe_quip() with ULTRON_QUIP_RATE (0.15).
-- wakeword.py: openWakeWord "hey_jarvis" (only built-in model), threshold 0.2. Wake phrase decision pending: train "hey ultron" or switch to sherpa-onnx keywords.
-- audio.py: PyAudio, stream opened/closed between modes, amplitude > 500 with 0.8 s silence.
+## Current code (feat/rename-ultron plus the two branches below)
+- ultron.py: main loop. Wake word, record, transcribe() (Whisper beam_size=5), execute_command(text, confirm), else LLM. Parses "COMMAND:" tags with a regex. On fix/command-safety: ask_confirmation() (speak prompt, listen 6 s, only "confirm" passes), is_sleep_phrase() exact after normalize.
+- persona.py: ULTRON lines (greetings, wake, sleep, goodbye, quips, CONFIRM_PROMPTS, CANCELLED_REPLIES), maybe_quip() with ULTRON_QUIP_RATE (0.15).
+- wakeword.py + config.py: wake phrase DECIDED: custom "Hey Ultron" openWakeWord model (user trains it in Colab, docs/WAKE_WORD_TRAINING.md). On feat/hey-ultron-wakeword: uses models/hey_ultron.onnx if present, else hey_jarvis with a log warning; WAKE_PHRASE for log lines; WAKE_WORD_MODEL env overrides. Threshold still 0.2 (tune/wake-threshold sets 0.5).
+- audio.py: PyAudio, stream opened/closed between modes, amplitude > 500 with 0.8 s silence. record_phrase(max_seconds=...).
 - brain.py: Ollama llama3.2:3b, non-streaming, full history.
-- config.py: env settings, ULTRON system prompt with [COMMAND: x] routing.
 - speaker.py: Piper models/ultron-voice.onnx (falls back to jarvis-high.onnx), full synthesis before playing.
-- commands/: system, git_helpers, developer, general, checked in that order. Bugs: substring shutdown/restart (system.py ~198, ~208), recycle bin no confirm (~388), typing checked last (general.py).
-- git_organic_committer.py: fabricated history script. Delete (approved under D22).
+- commands/ (on fix/command-safety): __init__.execute_command order is typing (general.execute_typing_command, regex) -> risky.py (shutdown, restart, empty recycle bin: fullmatch on normalized text + confirm callback; no callback = cancel) -> system, git_helpers, developer, general. text.normalize() strips punctuation and fillers. Other substring matches remain (e.g. "pause" anywhere) until the command registry.
+- git_organic_committer.py: deleted on fix/command-safety.
 - requirements.txt: >= versions, pyaudio and sounddevice both listed.
 
 ## Branches
-p1-fixes (integration). Done: feat/rename-ultron (not merged yet, awaiting user test).
-Waiting: feat/timing-log, fix/command-safety, tune/wake-threshold, perf/whisper-settings, feat/sounddevice-mic, feat/silero-vad, feat/streaming-llm-tts, feat/quick-replies-followup, test/phrase-suite, build/windows-installer. All were created before the rename; update each from p1-fixes before starting it.
+p1-fixes (integration). Not merged yet, all awaiting the user's laptop test:
+- feat/rename-ultron (32ef4d1)
+- fix/command-safety (6bbaa5d, based on feat/rename-ultron)
+- feat/hey-ultron-wakeword (based on feat/rename-ultron; sibling of fix/command-safety, no shared files except docs/BUILD_LOG.md, commands.txt, ultron.py imports and CLAUDE.md, so expect small merge conflicts there)
+Waiting: feat/timing-log, tune/wake-threshold, perf/whisper-settings, feat/sounddevice-mic, feat/silero-vad, feat/streaming-llm-tts, feat/quick-replies-followup, test/phrase-suite, build/windows-installer. All were created before the rename. Until the user merges into p1-fixes, reset each (it has no commits of its own) onto fix/command-safety when starting it, since later work touches ultron.py.
+GitHub repo is still named J.A.R.V.I.S (seen 2026-11-15); the user cancelled the local folder rename. Remote unchanged.
 
 ## Progress log
 - 2026-11-15: Zip folder turned into a git repo linked to origin; branch p1-fixes; CLAUDE.md; docs/BUILD_LOG.md; feature branches created.
 - 2026-11-15: feat/rename-ultron: JARVIS to ULTRON everywhere, persona.py, ~90 "sir" removed from replies, new system prompt, docs and commands.txt renamed.
+- 2026-11-15: fix/command-safety: whole-phrase risky commands with spoken confirm, typing first, exact sleep phrase, fake-history script deleted.
+- 2026-11-15: feat/hey-ultron-wakeword: training guide and model wiring with fallback. User is training the model.
 
 ## Next steps (in order)
-1. User tests feat/rename-ultron, then merge it into p1-fixes.
-2. fix/command-safety (whole-phrase match, voice confirm, typing first, sleep phrase exact) and delete git_organic_committer.py.
-3. feat/timing-log, tune/wake-threshold (0.5), perf/whisper-settings (beam 1, no timestamps).
-4. feat/sounddevice-mic (one stream, ring buffer), feat/silero-vad (0.4 s).
-5. feat/streaming-llm-tts (warm model, sentence streaming), feat/quick-replies-followup.
-6. Cleanup and restructure: src/ultron package, command registry, remove dead code (pyttsx3, SAPI unlock scripts, SpeechRecognition, examples), pinned deps, pyproject.toml, config in %APPDATA%.
-7. test/phrase-suite plus CI: ruff, pytest, Windows build.
-8. build/windows-installer: llama.cpp server bundle, tray, first-run wizard, PyInstaller + Inno Setup, GitHub Actions release with silent-install smoke test.
+1. User tests feat/rename-ultron, fix/command-safety and feat/hey-ultron-wakeword, then merges them into p1-fixes (ask before merging).
+2. feat/timing-log (timing.py, one line per command), then tune/wake-threshold (0.5, custom model), perf/whisper-settings (beam 1, no timestamps, condition_on_previous_text False).
+3. feat/sounddevice-mic (one stream, ring buffer), feat/silero-vad (0.4 s).
+4. feat/streaming-llm-tts (warm model, sentence streaming), feat/quick-replies-followup.
+5. Cleanup and restructure: src/ultron package, command registry, remove dead code (pyttsx3, SAPI unlock scripts, SpeechRecognition, examples), pinned deps, pyproject.toml, config in %APPDATA%.
+6. test/phrase-suite plus CI: ruff, pytest, Windows build.
+7. build/windows-installer: llama.cpp server bundle, bundle hey_ultron.onnx (check licences), tray, first-run wizard, PyInstaller + Inno Setup, GitHub Actions release with silent-install smoke test.
