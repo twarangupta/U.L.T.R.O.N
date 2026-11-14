@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from hardware import Hardware, choose_profile  # noqa: E402
 
 CUDA_OK = lambda: (True, "ok")  # noqa: E731
-CUDA_MISSING = lambda: (False, "cublas64_12.dll not found")  # noqa: E731
+CUDA_MISSING = lambda: (False, "cublas64_12.dll not found (install requirements-gpu.txt)")  # noqa: E731
 INSTALLED = {"llama3.2:3b": 1.88, "gemma3:4b": 3.11}
 
 

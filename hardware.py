@@ -189,11 +189,12 @@ def cuda_libraries_present() -> tuple[bool, str]:
     except Exception as e:
         return False, f"ctranslate2 failed: {e}"
     if sys.platform == "win32":
-        for dll in ("cublas64_12.dll", "cudnn_ops64_9.dll"):
+        # Whisper in ctranslate2 needs only cuBLAS (measured: cuDNN is never loaded).
+        for dll in ("cublas64_12.dll", "cublasLt64_12.dll"):
             try:
                 ctypes.WinDLL(dll)
             except OSError:
-                return False, f"{dll} not found (install nvidia-cublas-cu12 and nvidia-cudnn-cu12)"
+                return False, f"{dll} not found (install requirements-gpu.txt)"
     return True, "CUDA libraries load"
 
 

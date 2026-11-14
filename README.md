@@ -139,7 +139,7 @@ At startup ULTRON checks your RAM, CPU cores and NVIDIA GPU and picks models tha
 ```powershell
 .\venv\Scripts\python.exe ultron.py --benchmark
 ```
-On a PC with an NVIDIA card, Whisper can run on the GPU after installing the CUDA runtime libraries (about 1.1 GB download):
+On a PC with an NVIDIA card, Whisper can run on the GPU after installing the CUDA runtime libraries (cuBLAS only, about 550 MB download):
 ```powershell
 uv pip install --python venv\Scripts\python.exe -r requirements-gpu.txt
 ```
