@@ -10,8 +10,8 @@ try:
 except ImportError:
     pass
 
-# Ollama settings
-MODEL_NAME = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
+# Ollama settings. The LLM model itself is picked by hardware.py to fit this PC
+# (override with OLLAMA_MODEL).
 OLLAMA_SYSTEM_PROMPT = (
     "You are ULTRON, a highly intelligent AI that runs this computer. "
     "Personality: calm, confident, blunt and dry. You find humans inefficient and a little amusing, "
@@ -65,9 +65,9 @@ WAKE_WORD_THRESHOLD = float(os.getenv("WAKE_WORD_THRESHOLD", "0.2"))
 SLEEP_WORD = os.getenv("SLEEP_WORD", "go to sleep")
 
 # Speech-to-Text Settings (Faster Whisper)
-WHISPER_MODEL_SIZE = os.getenv("WHISPER_MODEL_SIZE", "base")  # Options: tiny, base, small, medium, large-v3 or local folder path
-WHISPER_DEVICE = os.getenv("WHISPER_DEVICE", "cpu")        # GTX 1650 doesn't have PyTorch CUDA, so we use cpu
-WHISPER_COMPUTE_TYPE = os.getenv("WHISPER_COMPUTE_TYPE", "int8") # int8 is recommended for CPU speed when using small/medium models
+# Model, device (cpu or cuda), compute type and threads are picked by hardware.py
+# to fit this PC. Override with WHISPER_MODEL_SIZE, WHISPER_DEVICE,
+# WHISPER_COMPUTE_TYPE, WHISPER_CPU_THREADS or ULTRON_PROFILE.
 WHISPER_LANGUAGE = os.getenv("WHISPER_LANGUAGE", "en")       # Lock speech detection to English to prevent hallucinations from noise
 WHISPER_VAD_FILTER = os.getenv("WHISPER_VAD_FILTER", "True").lower() in ("true", "1", "yes")
 # Words Whisper should expect, so short commands like "stop" are heard correctly.

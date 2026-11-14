@@ -1,17 +1,6 @@
-from config import (
-    WHISPER_MODEL_SIZE,
-    WHISPER_DEVICE,
-    WHISPER_COMPUTE_TYPE,
-    WHISPER_LANGUAGE,
-    WHISPER_VAD_FILTER,
-    WHISPER_HOTWORDS,
-    SLEEP_WORD,
-    WAKE_PHRASE
-)
+from config import SLEEP_WORD, WAKE_PHRASE
 import re
 import sys
-import numpy as np
-from faster_whisper import WhisperModel
 from audio import audio_handler, check_keyboard_hit, clear_keyboard_hit
 from wakeword import WakeWordDetector
 from brain import ask_ai, reset_brain
@@ -20,6 +9,8 @@ from commands.text import normalize, is_stop_phrase
 from commands.ai_routing import allowed_ai_command
 from speaker import speak, stop_speaking, wait_speaking, is_speaking, prewarm
 from logger import logger
+from hardware import get_profile
+from stt import SpeechToText
 import persona
 
 def get_startup_greeting() -> str:
@@ -64,20 +55,7 @@ CONFIRM_LISTEN_SECONDS = 6.0
 
 def transcribe(whisper_model, audio_data) -> str:
     """Speech to text. Returns "" on silence or error."""
-    if len(audio_data) == 0:
-        return ""
-    try:
-        segments, _info = whisper_model.transcribe(
-            audio_data,
-            beam_size=5,
-            language=WHISPER_LANGUAGE,
-            vad_filter=WHISPER_VAD_FILTER,
-            hotwords=WHISPER_HOTWORDS or None,
-        )
-        return "".join(seg.text for seg in segments).strip()
-    except Exception as e:
-        logger.error(f"Transcription error: {e}")
-        return ""
+    return whisper_model.transcribe(audio_data)
 
 
 def ask_confirmation(prompt: str, whisper_model) -> bool:
@@ -200,14 +178,8 @@ def main():
     # 3. Initialize Faster-Whisper
     speak("Loading speech recognition models.")
     wait_speaking()
-    logger.info(f"Loading Faster-Whisper '{WHISPER_MODEL_SIZE}' model on '{WHISPER_DEVICE}' ({WHISPER_COMPUTE_TYPE})...")
     try:
-        whisper_model = WhisperModel(
-            WHISPER_MODEL_SIZE,
-            device=WHISPER_DEVICE,
-            compute_type=WHISPER_COMPUTE_TYPE
-        )
-        logger.info("Speech recognition loaded successfully.")
+        whisper_model = SpeechToText(get_profile())
     except Exception as e:
         logger.error(f"Failed to initialize Whisper model: {e}")
         speak("Error loading speech recognition model. Exiting.")
@@ -302,6 +274,9 @@ def main():
                 continue
 
 if __name__ == "__main__":
+    if "--benchmark" in sys.argv:
+        from benchmark import run_benchmark
+        sys.exit(run_benchmark())
     try:
         main()
     except KeyboardInterrupt:

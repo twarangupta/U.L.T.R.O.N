@@ -1,7 +1,8 @@
 from datetime import datetime
 
 import ollama
-from config import MODEL_NAME, OLLAMA_SYSTEM_PROMPT
+from config import OLLAMA_SYSTEM_PROMPT
+from hardware import get_profile
 from logger import logger
 
 class Brain:
@@ -10,7 +11,7 @@ class Brain:
     Maintains dialogue history to support continuous conversational context.
     """
     def __init__(self):
-        self.model = MODEL_NAME
+        self.model = get_profile().llm_model
         self.system_prompt = OLLAMA_SYSTEM_PROMPT
         self.history = []
         self.reset_conversation()
