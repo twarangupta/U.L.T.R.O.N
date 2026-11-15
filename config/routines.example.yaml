@@ -1,0 +1,21 @@
+# Example routines for ULTRON (D37). Your own routines live in data/routines.yaml, which ULTRON
+# writes when you say "remember this as work mode". Copy any of these into that file to use it,
+# or edit that file by hand. Names are what you say: "run work mode", "start my study routine".
+#
+# A step is any sentence ULTRON understands, exactly as you would say it. Steps run in order
+# through the normal command router, so risky ones still ask you to confirm, and the first step
+# that fails or is not understood stops the routine with a spoken reason.
+
+work mode:
+  - open vs code
+  - open chrome
+  - set the volume to 30
+
+study mode:
+  - turn on focus mode
+  - open notepad
+  - set the volume to 20
+
+wind down:
+  - mute
+  - lock the screen

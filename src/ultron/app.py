@@ -3,7 +3,7 @@
 Started by `python -m ultron` (run_ultron.bat). Voice interruption (barge-in), the
 sleep and stop phrases, yes/no confirmation by voice and the timing log live here."""
 
-from ultron.config import BARGE_IN, CONVERSATION_IDLE_SECONDS, END_SILENCE_SECONDS, SLEEP_WORD, WAKE_PHRASE
+from ultron.config import BARGE_IN, CONVERSATION_IDLE_SECONDS, SLEEP_WORD, VAD_BARGE_IN, WAKE_PHRASE
 from ultron.audio.bargein import BargeInDetector
 import sys
 import time
@@ -237,7 +237,7 @@ def speak_and_interruptible(text: str | None, detector: WakeWordDetector, stream
 
     interrupted = False
     chunks_count = 0
-    barge = BargeInDetector() if BARGE_IN else None
+    barge = BargeInDetector(vad=audio_handler.new_vad() if VAD_BARGE_IN else None) if BARGE_IN else None
     try:
         while is_speaking() or (stream is not None and stream.alive()):
             # Keyboard interruption fallback
@@ -327,6 +327,7 @@ def main():
         sys.exit(1)
 
     io = VoiceInteraction(whisper_model, detector)
+    audio_handler.vad  # load the voice-activity model now (downloads it once, with progress), not on the first phrase
 
     greeting_text = get_startup_greeting()
     logger.info(f"ULTRON startup greeting: {greeting_text}")
@@ -386,9 +387,10 @@ def main():
                 
             # Record user phrase with silence detection
             preroll, pending_preroll[:] = list(pending_preroll), []
-            audio_data = audio_handler.record_phrase(silence_timeout_seconds=END_SILENCE_SECONDS, preroll=preroll)
-            speech_end = time.perf_counter()  # END_SILENCE_SECONDS after you actually stopped
-            timing = {"end_wait": END_SILENCE_SECONDS}
+            audio_data = audio_handler.record_phrase(preroll=preroll)
+            end_wait = audio_handler.last_end_silence
+            speech_end = time.perf_counter()  # end_wait after you actually stopped
+            timing = {"end_wait": end_wait}
 
             transcription = ""
             if len(audio_data) > 0:  # nobody spoke: silence is never fed to Whisper
@@ -458,7 +460,7 @@ def main():
             heard_at = first_sound_at()
             if heard_at is not None and heard_at >= speech_end:
                 timing["first_sound"] = heard_at - speech_end
-                timing["after_you_stopped"] = heard_at - speech_end + END_SILENCE_SECONDS
+                timing["after_you_stopped"] = heard_at - speech_end + end_wait
             log_timing(timing)
             last_activity = time.monotonic()  # the time ULTRON spent talking does not count as silence
 
