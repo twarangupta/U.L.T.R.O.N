@@ -2,17 +2,13 @@ import pytest
 
 pytestmark = pytest.mark.real_handlers  # handlers run against temp files set up in these tests
 
-import os
-import sys
 import time
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, ROOT)
 
 import pytest  # noqa: E402
 
-import activity  # noqa: E402
-from commands import activity_cmds  # noqa: E402
+from ultron import activity  # noqa: E402
+from ultron.commands import activity_cmds  # noqa: E402
 
 
 @pytest.fixture

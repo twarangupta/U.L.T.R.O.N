@@ -1,10 +1,10 @@
-"""Write commands.txt from the command registry (D30). Do not edit commands.txt by hand.
+"""Write docs/COMMANDS.md from the command registry (D30). Do not edit docs/COMMANDS.md by hand.
 
     venv\\Scripts\\python.exe tools\\gen_commands_txt.py          write it
     venv\\Scripts\\python.exe tools\\gen_commands_txt.py --check  exit 1 if it is out of date
 
 tests/test_commands_txt.py runs the check, so a command change without a
-regenerated commands.txt fails the tests.
+regenerated docs/COMMANDS.md fails the tests.
 """
 from __future__ import annotations
 
@@ -13,8 +13,8 @@ import sys
 import textwrap
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, ROOT)
-OUT = os.path.join(ROOT, "commands.txt")
+sys.path.insert(0, os.path.join(ROOT, "src"))
+OUT = os.path.join(ROOT, "docs", "COMMANDS.md")
 
 HEADER = """\
 ================================================================================
@@ -22,7 +22,7 @@ HEADER = """\
 ================================================================================
 
 Generated from the command registry by tools/gen_commands_txt.py. Do not edit by
-hand: change the command's declaration in commands/ and run the script again.
+hand: change the command's declaration in src/ultron/commands/ and run the script again.
 
 Wake phrase: "Hey Ultron" (custom model at models/hey_ultron.onnx, see
 docs/WAKE_WORD_TRAINING.md). Until that file exists, say "Hey Jarvis" instead.
@@ -65,8 +65,8 @@ GROUP_ORDER = ["Typing", "Windows and apps", "Media and volume", "PC status", "T
 
 
 def render() -> str:
-    import commands  # noqa: F401  (registers every command)
-    from commands.registry import REGISTRY
+    from ultron import commands  # noqa: F401  (registers every command)
+    from ultron.commands.registry import REGISTRY
 
     groups: dict[str, list] = {name: [] for name in GROUP_ORDER}
     for cmd in REGISTRY.values():
@@ -107,9 +107,9 @@ def main() -> int:
         with open(OUT, encoding="utf-8") as f:
             current = f.read()
         if current != text:
-            print("commands.txt is out of date: run venv\\Scripts\\python.exe tools\\gen_commands_txt.py")
+            print("docs/COMMANDS.md is out of date: run venv\\Scripts\\python.exe tools\\gen_commands_txt.py")
             return 1
-        print("commands.txt is up to date.")
+        print("docs/COMMANDS.md is up to date.")
         return 0
     with open(OUT, "w", encoding="utf-8", newline="\n") as f:
         f.write(text)

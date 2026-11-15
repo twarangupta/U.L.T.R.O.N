@@ -7,7 +7,7 @@ A record of how ULTRON is built, from the first audit of the repo to the shipped
 Owner: Twaran Gupta
 Repo: https://github.com/twarangupta/U.L.T.R.O.N (renamed from J.A.R.V.I.S on 2026-11-15)
 Started: 2026-11-15
-Status: Phase 1 (fixes and speed) in progress
+Status: Phase 1 (fixes and speed) in progress; repository cleanup done (D32)
 
 ---
 
@@ -15,8 +15,8 @@ Status: Phase 1 (fixes and speed) in progress
 
 1. About this log
 2. Project summary and goals
-3. Starting point: the repo as found
-4. Problems found in the audit
+3. Starting point and audit
+4. (merged into section 3)
 5. Guiding principles
 6. Decision record
 7. Tech stack: now and target
@@ -89,103 +89,25 @@ Infina (infina.so) offers a voice layer with three main triggers: type, send it,
 
 ---
 
-## 3. Starting point: the repo as found
+## 3. Starting point and audit
 
-Audit date: 2026-11-15. The local folder was a zip download of main (68 commits on GitHub). Working tree matched origin/main exactly. The remote "development" branch had nothing that main lacked.
+Audit date: 2026-11-15, on a zip download of main (68 commits). The first version was a terminal program: openWakeWord "hey_jarvis" (threshold 0.2), faster-whisper base on the CPU (beam 5), Ollama llama3.2:3b (non-streaming, full history, routing through "[COMMAND: x]" tags), Piper synthesising the whole reply before playing it, PyAudio for both mic and speaker, hand-written substring command modules, pytesseract OCR, pip installs with ">=" versions. Estimated delay: 2 to 4 s for a built-in command, 4 to 11 s for an AI answer; about 3.6 GB of memory.
 
-### 3.1 File map
+Problems found, and where they were fixed:
 
-| File | Role |
-|---|---|
-| ultron.py | Main loop: startup greeting, wake word, record, transcribe, route, speak |
-| wakeword.py | openWakeWord wrapper, built-in "hey_jarvis" model |
-| audio.py | PyAudio mic handling, phrase recording with amplitude silence detection, keyboard interrupt helpers |
-| brain.py | Ollama client, full conversation history |
-| config.py | Settings from environment variables, LLM system prompt |
-| speaker.py | Piper TTS with jarvis-high voice, PyAudio playback in a thread |
-| startup_audio.py | Startup and sleep tones |
-| logger.py | Logging setup |
-| commands/__init__.py | Router: system, git, developer, general, in that order |
-| commands/system.py | Apps, folders, web search, volume, media, shutdown, restart, lock, recycle bin, screenshots (536 lines) |
-| commands/git_helpers.py | git status, pull, push, stash, commit, branches, log, conflicts (161 lines) |
-| commands/developer.py | Ports, docker, project tools (340 lines) |
-| commands/general.py | Typing, notes, timers, OCR, weather, news, calculator, jokes, drafting (444 lines) |
-| download_jarvis_voice.py | Downloads the Piper voice model |
-| unlock_voices.py, .ps1 | Unlocks extra Windows SAPI voices (legacy from pyttsx3) |
-| git_organic_committer.py | Script that recreates a staged commit history with pre-written messages |
-| examples/ | Small test scripts for mic, Whisper, Piper, Ollama |
-
-### 3.2 Runtime flow as found
-
-```
-startup tone -> "Initializing" -> load wake word -> load Whisper -> greeting
-loop:
-  reset LLM history
-  open mic stream
-  read 80 ms chunks until wake score >= 0.2
-  close mic stream
-  speak "Systems online" (reopens mic to listen for interrupt, closes it)
-  conversation loop:
-    open mic, record until amplitude < 500 for 0.8 s, close mic
-    Whisper base, beam 5, VAD filter
-    if "go to sleep" in text: back to wake mode
-    execute_command(text) through 4 modules
-    else ask Ollama (non-streaming, full history)
-         regex for "COMMAND: x" in reply, run it
-    synthesize full reply with Piper, then play
-```
-
-### 3.3 Stack as found
-
-- Wake word: openWakeWord "hey_jarvis", threshold 0.2.
-- Speech to text: faster-whisper base, CPU, int8, beam_size 5, built-in VAD filter.
-- Brain: Ollama, llama3.2:3b, non-streaming, full history, routing via "[COMMAND: name]" tags.
-- Voice: Piper, jarvis-high.onnx, whole reply synthesized before playback.
-- Audio I/O: PyAudio for both mic and speaker.
-- OCR: pytesseract, needs Tesseract installed separately.
-- Windows control: pycaw for volume, pyautogui for keys, pyperclip for typing, ctypes for recycle bin.
-- Install: Python 3.10, venv, pip install with ">=" versions, separate Ollama install and model pull, separate Tesseract install, voice download script. Runs in a terminal window.
-
----
-
-## 4. Problems found in the audit
-
-### 4.1 Safety bugs (fix first)
-
-1. Substring match for shutdown and restart. commands/system.py checks `"shutdown" in clean_text` and `"restart" in clean_text`. "Restart the dev server" or "type restart later" reboots the PC after 5 seconds. No confirmation.
-2. Empty recycle bin runs with no confirmation, using the no-confirm flag.
-3. Typing is checked last. "type ..." lives in general.py, which runs after system.py, so text you dictate that contains a system keyword is executed instead of typed.
-4. Sleep phrase by substring. "go to sleep" anywhere in a sentence sends ULTRON to sleep, for example "remind me to go to sleep at 11".
-5. LLM-routed commands. Any "COMMAND: x" text in the model's reply is executed through the same substring router, so a confused small model can trigger a system command.
-
-### 4.2 Reliability bugs
-
-6. Wake threshold 0.2 is low and causes false wake-ups. Start at 0.5 and tune with real data.
-7. The mic stream is opened and closed between wake, record and speak modes. Each reopen costs time, loses audio at the start of speech, and can raise PortAudio errors.
-8. End of speech by raw amplitude (max sample > 500) fails in noisy rooms (never ends) and with quiet speakers (cuts off).
-9. Terminal QuickEdit mode on Windows freezes the process when the window is clicked.
-10. Dependencies use ">=" so a fresh install can pull breaking versions.
-
-### 4.3 Honesty issue
-
-11. git_organic_committer.py rebuilds an incremental commit history with pre-written messages. This misrepresents how the project was built. Decision: remove it (needs the owner's go-ahead because it touches the public repo). See D17.
-
-### 4.4 Where the delay comes from (est., mid-range CPU)
-
-| Stage | Time now (est.) | Cause |
+| # | Problem | Fixed in |
 |---|---|---|
-| End-of-speech wait | 0.8 s | fixed amplitude silence timer |
-| Mic reopen | 0.05 to 0.2 s | stream closed between modes |
-| Whisper base, beam 5 | 1 to 3 s | beam search, timestamps, runs after you stop |
-| Rule match | under 10 ms | fine |
-| LLM (when used) | 2 to 6 s | non-streaming, full history, 3B model |
-| TTS before first sound | 0.3 to 2 s | whole reply synthesized first |
-| Total, built-in command | about 2 to 4 s | |
-| Total, AI answer | about 4 to 11 s | |
+| 1 to 2 | Substring match ran shutdown, restart and empty-recycle-bin without confirmation ("type restart later" rebooted the PC) | fix/command-safety (D11) |
+| 3 | Typing was checked last, so dictated words that held a command word were executed | fix/command-safety |
+| 4 | "go to sleep" anywhere in a sentence slept the assistant | fix/command-safety |
+| 5 | Any "COMMAND: x" in the LLM's reply ran through the substring router | D12, D30 (native tool calls), D31 (gate) |
+| 6 | Wake threshold 0.2 causes false wake-ups | still open (tune/wake-threshold) |
+| 7 to 8 | Mic stream reopened between modes; end of speech by raw amplitude | open (D6, D7) |
+| 9 | Windows QuickEdit freezes the terminal | open |
+| 10 | ">=" dependencies | pyproject.toml pins (D32) |
+| 11 | git_organic_committer.py rebuilt a fake commit history | removed (D17) |
 
-### 4.5 Memory now (est.)
-
-LLM 2.6 GB, Whisper base 300 MB, Piper high 200 MB, wake word 80 MB, Tesseract 80 MB, Python and libraries 350 MB. Total about 3.6 GB.
+Where the time went (est.): end-of-speech wait 0.8 s, Whisper base beam 5 1 to 3 s, LLM 2 to 6 s, whole-reply TTS 0.3 to 2 s, rule match under 10 ms.
 
 ---
 
@@ -346,8 +268,6 @@ Measured cost (laptop): command write 0.065 ms median (0.74 ms max), tracker tic
 Context: the owner measured more than 2 s (about 5 s in the log) from the end of a question to the first spoken word, and the model pretended it could read the laptop's specs.
 Decision: stream the LLM reply and hand each finished sentence to the speaker queue (append mode); the first piece may end at a comma once it has 4 words, because Piper needs time per word before the first sound. Replies that start with a [COMMAND: x] tag are held and handled as before. keep_alive -1 keeps the model loaded (D3); it is warmed at startup with the real system prompt so the prompt is already processed, and re-warmed after idle summaries (which use a different prompt). num_predict is capped at 120 and the prompt asks for one or two sentences under 30 words. Honesty rules: general knowledge is answered; anything about this PC, private data, accounts or live information gets one short line saying it has no access, never pretending, inventing, offering to search or saying to check a connection. End-of-speech wait lowered from 0.8 to 0.6 s (END_SILENCE_SECONDS) until Silero VAD replaces it. One "timing:" log line per request (end_wait, stt, llm_first_token, first_sound, after_you_stopped).
 
----
-
 ### D29. Window control, voice barge-in, keyword-gated AI commands
 Context: the owner reported that close and minimise did not work and that talking over ULTRON did not stop it; the log showed "close Google Chrome", "close VS code" and "minimize everything" all fell through to the LLM, and "I meant whey protein" (heard as "wave protein") triggered git log.
 Decision: commands/windows.py handles close, minimise (all, all except X, one app, this), restore, maximise and switch with Win32 calls and an alias table; it never closes ULTRON's own process tree or the desktop (Progman, which opens the shut-down dialog), and only claims a sentence when it names a known or open app. bargein.py stops speech when the mic gets several times louder than the running echo level for about 0.3 s, and hands the captured audio to the next recording. Every AI-routed command now needs one of its key words in the user's sentence.
@@ -382,6 +302,26 @@ Tradeoffs:
 - Complexity: five small modules replace five substring modules; each command is one declaration.
 - Better ideas considered: an explicit "no tool" pseudo-tool (clearer for the model, but a call to it costs a second LLM round trip; measure in part 2); a cross-encoder or small classifier fine-tuned on the paraphrases (more accurate on negation, about 100 MB and 10 to 30 ms, worth it only if the eval shows the guards are not enough).
 Consequences: a new command is one decorated function with examples; no code change for new phrasings of existing commands. The tool stage costs one LLM call only for sentences the matcher cannot place. Non-Windows branches in the old handlers are dropped (Windows-first, D22).
+
+### D31. Gate on the LLM's tool calls
+Context: a small model calls the nearest tool for anything ("it isn't open" -> continue_work, "turn on Bluetooth" -> volume_up).
+Decision: a tool call runs only if the sentence resembles that command's examples (similarity at least 0.50 runs, 0.47 asks "Did you mean ...?", below that no). Two smells weaken a match under 0.65: a content word the command never uses, and a runner-up within 0.03. One smell asks first, two refuse, and a refused request gets an honest "I can't do that yet". Measured: negatives that could run unasked 44 of 44 before, 14 of 44 after; 28 percent of the right tool calls are stopped (the cost). Thresholds live in commands/router.py.
+
+### D32. Repository layout, pinned dependencies and CI
+Context: about 30 files in the root, dead code, ">=" dependencies, no CI (D22 asked for all of this).
+Decision: code in `src/ultron/` (audio, stt, voice, commands, and top-level modules), editable data in `config/`, every path from `paths.py` (private files keep their old places: memory.json, data/activity.db, ultron.log, profile.md), start with `run_ultron.bat` or `python -m ultron`, dependencies pinned in pyproject.toml (core, gpu and dev extras), commands.txt became docs/COMMANDS.md, `--self-test`, and a Windows CI workflow that needs no models, GPU or audio device. No behaviour changed: 173 tests, the 1952-case intent evaluation and the command list are identical before and after. Tradeoffs: `voice/speaker.py`, `audio/capture.py` and `app.py` still create their device objects at import (the smoke test compiles them instead of importing); a lazy start would make them importable anywhere, a later change.
+
+### D34. Live-run fixes 3: silence, announcements, Whisper retries, slow launches
+Context: the live run at 20:25 on 2026-11-15 showed `record_phrase` returning 10 s of silence that Whisper transcribed every 10 s (once as "Come on, come on." after 7 s of STT), "Closing Chrome." costing 1.9 to 2.2 s before the action and "Closed Chrome." right after it, STT spikes to 2.1 s on unclear speech, and first_sound 3.9 s on web searches although rule_ms was 44 ms.
+Decision: (1) the recorder returns an empty array when speech never started (preroll still counts as speech) and the app never calls Whisper on empty audio; after CONVERSATION_IDLE_SECONDS (45, env override, 0 = off) with no recognised speech ULTRON says an IDLE_REPLIES line and goes back to the wake word; the confirm and did-you-mean listens share the recorder, so they get the empty-audio rule too. (2) "doing" announcements for close_app are spoken only for apps that may hold unsaved work (editors, Office, IDEs, "this window"; list in router.py); an announced action is never followed by its "Closed X." line, an unannounced one says it afterwards; announce_ms is still logged. (3) Whisper runs at temperature 0 only; WHISPER_TEMPERATURE_FALLBACK=1 brings faster-whisper's retry ladder back; transcriptions under WHISPER_LOW_LOGPROB (-1.0) or over WHISPER_LOW_NO_SPEECH (0.6) are logged as low confidence. (4) The log now has `AI said:`, `AI tool:`, `Confirm question:` and `Did-you-mean question:` lines. (5) ULTRON raises its own process priority to ABOVE_NORMAL at startup (Windows only, logged once), so a browser or app that is starting cannot starve Piper; an earlier version that held back launches was dropped because swapping module globals is not thread-safe.
+Tradeoffs: temperature 0 can leave a hard sentence wrong where a retry might have fixed it (but a wrong sentence at 2 s is worse than a "say that again"); the idle sleep needs 45 s of quiet, so a slow thinker loses the conversation window (the conversation memory itself survives naps); skipping the announce for browsers means talking over "Closing Chrome." can no longer cancel it (closing a browser can still restore tabs). Above-normal priority also lets ULTRON win CPU contests against the user's other programs, though it stays below High and does not touch the system's own work; it does not help if the delay is disk or network rather than CPU. Better ideas: a real VAD (feat/silero-vad) would also stop silence earlier and make the idle check exact; if first_sound is still late after this, measure whether the launch itself (not CPU) is the cause and start it from a worker thread after the first sound.
+
+---
+
+### D33. Live-run 2 command fixes: leave focus mode, "it", sites, two requests, Bluetooth
+Context: the owner's live test of dev (5a85230). Principle: every command works both as a direct command and in plain English, so each needs generous rules plus matcher examples.
+Decision: (1) `meeting_mode_off` (quit, exit, stop, end, turn off focus or meeting mode, back to normal, "I'm done with my meeting"; "Asset close, focus mode" works because the rules accept a leading "asset" or "assets"); `meeting_mode` got these as not_examples so the matcher stops offering it for "Quit Focus Mode". It unmutes and restores all windows. (2) The folder ULTRON just created is kept in the command context: "open it" and "open that folder" open it, and the new `folder_location` answers "where is it" with the full path; with nothing created both return None, so the sentence goes on to the AI. (3) SITES grew from 10 to 27 (prime video, hotstar, whatsapp web, flipkart, wikipedia and others). "open X and Y" runs both when each half is a rule-matched, safe command on its own, checked first in dry run; only sentences that start with open, launch, start, close, quit or exit are considered. (4) `bluetooth_on`, `bluetooth_off` and `bluetooth_toggle` use the Windows Runtime radio API (winrt packages, about 1 MB in total, pinned in pyproject.toml); no radio gives an honest reply. (5) `normalize` removes thousands commas between digits, so "50,000" stays 50000. (6) "maximize everything" now says "Everything's back on screen."
+Tradeoffs: the splitter uses rules only, so "open netflix and chrome" splits but a half that only the matcher understands does not (it falls back to today's behaviour). False splits ("search for salt and pepper", "open the salt and pepper folder") are guarded by the verb check and by requiring both halves to resolve to a real app, site or folder. Decimals like "3.5" still become "3 5" (not in scope). Better ideas: let the matcher judge the halves too once its confidence is calibrated for short phrases; a generic "undo the last mode" command.
 
 ## 7. Tech stack: now and target
 
@@ -472,48 +412,14 @@ Any state: wake word or "stop" while SPEAKING -> stop speech -> LISTENING (barge
 - Wake word uses 80 ms frames (1280 samples); Silero uses 512-sample frames (32 ms); the listener feeds each from the same buffer.
 - During SPEAKING the wake word keeps running for barge-in. On laptop speakers this needs echo cancellation (P3); until then barge-in is reliable with headphones and keyboard interrupt remains.
 
-### 8.5 Module layout (target)
+### 8.5 Module layout
 
-```
-src/jarvis/
-  __main__.py          entry point, tray or console mode
-  app.py               orchestrator and state machine
-  config.py            load TOML + env overrides, paths in %APPDATA%
-  timing.py            per-stage timer and log
-  audio/
-    stream.py          sounddevice input, ring buffer, output
-    vad.py             Silero wrapper
-    wakeword.py        openWakeWord wrapper
-  stt/whisper.py       faster-whisper wrapper, hotwords
-  tts/piper.py         streaming Piper, reply cache
-  brain/
-    client.py          OpenAI-style streaming client (llama-server or Ollama)
-    server.py          start and supervise llama-server
-    prompts.py
-  commands/
-    registry.py        @command decorator, matching, risk levels
-    normalize.py       lowercase, punctuation, correction dictionary
-    system.py git.py developer.py general.py typing.py apps.py
-  platform/windows.py  volume, OCR, app index, foreground window
-  ui/tray.py, ui/wizard.py
-tests/
-  phrases.yaml         phrase -> expected command pairs
-  test_router.py
-packaging/
-  jarvis.spec          PyInstaller
-  installer.iss        Inno Setup
-.github/workflows/build.yml
-```
-
-Restructuring into src/ happens in the packaging phase, after the P1 behavior fixes, so each fix stays a small diff against today's files.
+The code lives in `src/ultron/` (done in D32); see [ARCHITECTURE.md](ARCHITECTURE.md) for the modules and the flow diagram. Still to come in the packaging phase: `timing.py`, a tray app and first-run wizard (`ui/`), and `packaging/` (PyInstaller spec, Inno Setup script).
 
 ### 8.6 Data and config locations
 
-- Program files: C:\Program Files\ULTRON (read-only)
-- Config: %APPDATA%\ULTRON\config.toml
-- Models: %LOCALAPPDATA%\ULTRON\models (large, not roamed)
-- Logs and timing: %LOCALAPPDATA%\ULTRON\logs
-- User data (notes, routines, corrections): %APPDATA%\ULTRON\data
+- Today (D32): everything is relative to the project folder through `paths.py`: `config/` (editable data), `models/`, `data/`, `memory.json`, `profile.md`, `ultron.log`, `.env`.
+- Installed target: program in C:\Program Files\ULTRON (read-only); config and user data in %APPDATA%\ULTRON; models, logs and the activity database in %LOCALAPPDATA%\ULTRON. Only `paths.py` has to change for that.
 
 ---
 
@@ -700,44 +606,26 @@ Tauri 2 desktop app with the engine as a sidecar (D16), then macOS (notarization
 ### 15.1 Model
 
 ```
-main  (stable, only tested phase merges via pull request)
+main  (stable; changes only at the end of a phase, through a pull request from dev)
   \
-   p1-fixes  (phase 1 integration branch)
-     |- feat/timing-log
-     |- fix/command-safety
-     |- tune/wake-threshold
-     |- perf/whisper-settings
-     |- feat/sounddevice-mic
-     |- feat/silero-vad
-     |- feat/streaming-llm-tts
-     |- feat/quick-replies-followup
-     |- test/phrase-suite
-     \- build/windows-installer
+   dev  (integration branch)
+     |- feat/... , fix/... , chore/...   (each starts from dev, goes into dev by pull request)
 ```
+
+History: phase 1 used `p1-fixes` as the integration branch (D18); on 2026-11-15 it became `dev` (PR #4 merged p1-fixes into main, PR #5 merged the live-run fixes). The revert tag `pre-cleanup` marks main before the repository cleanup.
 
 ### 15.2 Rules
 
-1. Before starting a feature branch, update it from the latest p1-fixes so it includes merged work.
-2. One feature per branch, small commits, honest messages.
-3. When done: describe the change in plain words, give laptop test steps, the owner tests, then merge into p1-fixes.
-4. When phase 1 is complete and tested, open a pull request from p1-fixes into main.
-5. Nothing is pushed or merged into main without the owner's go-ahead.
-6. Branches that touch the same files (for example sounddevice-mic and silero-vad both change audio.py) are done in order, not in parallel.
+1. Start each feature branch from the latest dev; one feature per branch, small commits, honest messages.
+2. When done: tests pass, the change is explained in plain words with laptop test steps, then the supervisor pushes and opens the pull request; merging needs the owner's OK.
+3. Builders never push or open pull requests. Never force-push.
+4. When a set of changes is tested live, open a pull request dev into main.
+5. Branches that touch the same files (for example the audio branches) run in order, not in parallel.
+6. CI (`.github/workflows/ci.yml`) runs ruff, pytest, the self-test and the COMMANDS.md freshness check on every push and pull request to main and dev.
 
-### 15.3 Order and dependencies
+### 15.3 Order of the remaining work
 
-| Order | Branch | Depends on | Main files |
-|---|---|---|---|
-| 1 | feat/timing-log | none | ultron.py, new timing.py |
-| 2 | fix/command-safety | none | commands/*, ultron.py (sleep phrase, confirm flow) |
-| 3 | tune/wake-threshold | none | config.py |
-| 4 | perf/whisper-settings | timing-log (to measure) | ultron.py, config.py |
-| 5 | feat/sounddevice-mic | none | audio.py, speaker.py, wakeword.py |
-| 6 | feat/silero-vad | sounddevice-mic | audio.py |
-| 7 | feat/streaming-llm-tts | sounddevice-mic | brain.py, speaker.py, ultron.py |
-| 8 | feat/quick-replies-followup | streaming-llm-tts | speaker.py, ultron.py |
-| 9 | test/phrase-suite | command-safety | tests/ |
-| 10 | build/windows-installer | P1 done | packaging/, pyproject.toml, workflows |
+Voice self-test harness, latency work (shorter prompt when only picking a command, Silero VAD, Whisper base on GPU), the "ask when the LLM picks a command outside the shortlist" gate, then window layout, voice commit, clipboard history, push-to-talk, health check, nudges, connectors (design first), sounddevice mic, quick replies, and the tray app and installer.
 
 ---
 
@@ -794,178 +682,59 @@ Open questions:
 
 ## 19. Build journal
 
-### 2026-11-15: Audit and setup
-- Read the whole repo and confirmed the stack and bugs in the project brief. Found two more: the sleep phrase is matched as a substring, and requirements.txt lists both PyAudio and sounddevice.
-- The local folder was a zip download. Ran git init, linked origin, reset the index to origin/main (no file changes; the tree matched exactly), created p1-fixes.
-- Added CLAUDE.md with project context, working rules, and the session handoff rule.
-- Wrote this build log (design sections 2 to 18).
-- Created feature branches for phase 1 (section 15).
-- Next: feat/timing-log.
+All entries are from 2026-11-15, grouped by phase. Measurements are from the owner's laptop (Ryzen 6 cores, 5.9 GB RAM, GTX 1650 4 GB).
 
-### 2026-11-15: Rename to ULTRON (feat/rename-ultron)
-- Renamed jarvis.py to ultron.py, download_jarvis_voice.py to download_voice.py, log to ultron.log.
-- New persona.py with ULTRON lines; greetings, wake, sleep and goodbye replies use it; removed "sir" from about 90 command replies; new LLM system prompt.
-- Docs, README, commands.txt, templates renamed. Wake phrase still "Hey Jarvis" (D21).
-- Owner approved a full cleanup, CI and a tested installer (D22).
+### Setup and safety (feat/rename-ultron, fix/command-safety, feat/hey-ultron-wakeword)
+- Audited the repo, made the zip a git repo, wrote this log and CLAUDE.md, created the feature branches.
+- Renamed JARVIS to ULTRON (persona.py, prompts, file names; "sir" removed from about 90 replies, D21). Owner approved the cleanup, CI and installer mandate (D22).
+- commands/text.py normalize(), commands/risky.py: shutdown, restart and recycle bin match only the whole normalised sentence and need a spoken "confirm" (D11). Typing is checked first; the sleep phrase must be the whole sentence; git_organic_committer.py deleted (D17).
+- Wake word: default model models/hey_ultron.onnx when it exists, else hey_jarvis; docs/WAKE_WORD_TRAINING.md. Waiting for the owner's trained model; tune the threshold to 0.5 then.
 
-### 2026-11-15: Command safety (fix/command-safety)
-- Branch reset onto feat/rename-ultron (it had no commits of its own) so it carries the rename.
-- New commands/text.py: normalize() lowercases, strips punctuation and filler words ("Ultron", "please", "now").
-- New commands/risky.py: shutdown, restart and empty recycle bin moved out of system.py. Each matches only when the whole normalized sentence is one of its phrases (fullmatch regex). Fixes audit bugs 1 and 2.
-- Spoken confirmation (D11): the router takes a confirm callback; ultron.py speaks "Say confirm to ...", listens up to 6 s, and runs only on "confirm" / "yes confirm" / "confirmed" / "i confirm". No callback means cancel. LLM-routed commands use the same path, and for risky ones ULTRON speaks the real result, not the model's claim (bug 5, partly).
-- Typing is checked first, with a regex that tolerates "Type, hello" (bug 3).
-- Sleep phrase must be the whole sentence after normalize (bug 4).
-- Deleted git_organic_committer.py (D17). commands.txt updated.
-- Not done here: other substring matches in system.py (for example "pause" anywhere pauses media) wait for the command registry (D10).
-- Next: feat/timing-log.
+### Voice, stop and the clock (feat/voice-and-stop, fix/time-and-heard-log, fix/speaker-gaps)
+- Laptop environment: venv on Python 3.11 with uv, voice and wake word downloaded. The owner heard text 2 to 3 s before the voice, odd pronunciations, and "stop" ran git log.
+- speaker.py rewritten: persistent sounddevice output, sentence-by-sentence streaming, cache for short lines, instant stop through a generation counter. First sound: fixed lines 0.00 s, greeting 0.67 s, command plus quip 0.81 s (was 1.35 and 2.2 s). tts_text.py fixes pronunciations (acronyms, "port 8080", percent) with a user file.
+- Stop phrases and Whisper hotwords added; "Assets stop" (a mishearing) no longer reaches the LLM as a command.
+- Time and date: commands/clock.py answers from the PC clock in many phrasings; the LLM prompt carries the real time. What was heard and the raw AI reply are logged.
+- Gaps at full stops: synthesis now runs up to 6 sentences ahead of playback, with a fixed 0.13 s pause. Quiet stretches 0.47 to 0.83 s -> 0.15 to 0.18 s.
 
-### 2026-11-15: Hey Ultron wake word (feat/hey-ultron-wakeword)
-- Wake phrase decided: custom openWakeWord model (D21 updated).
-- config.py: default WAKE_WORD_MODEL is models/hey_ultron.onnx when the file exists, else hey_jarvis; WAKE_PHRASE drives log lines. wakeword.py warns when it falls back.
-- docs/WAKE_WORD_TRAINING.md: Colab steps, file placement, test and threshold tuning, phonetic spellings and negatives if accuracy is poor.
-- README and commands.txt say "Hey Ultron" with the fallback noted.
-- Measured: nothing yet; waiting for the owner's trained model. Record hit rate (out of 10) and false wakes per 30 min here once tested.
-- Next: tune/wake-threshold should set 0.5 for the custom model.
+### Hardware and speech accuracy (feat/hardware-profiles, feat/accent-accuracy)
+- hardware.py picks models and devices (D23); stt.py loads Whisper on the chosen device with CPU fallback; benchmark.py. faster-whisper needed only cuBLAS (D24).
+- Whisper per 2.5 s command: base CPU 1.34 s; small CUDA int8_float16 0.53 s; base CUDA 0.24 s; small float16 1.59 s. VRAM 2.74 GB with the LLM, 3.10 GB with Whisper small too, of 4.0 GB. LLM cold first reply 6.7 s, warm 0.2 to 0.3 s.
+- tools/stt_benchmark.py (record 16 commands, compare models by word error rate) and config/corrections.json (user-editable fixes). The owner's own recordings are still pending; their result decides the GPU-4GB Whisper model.
 
-### 2026-11-15: Environment, voice speed and stop (feat/voice-and-stop)
-- Laptop setup: venv with Python 3.11 via uv, all requirements installed, voice and wake word models downloaded, Ollama llama3.2:3b already present. requirements.txt was missing piper-tts; added on p1-fixes.
-- Owner reported: text appears 2 to 3 s before the voice, some words sound wrong, and saying "stop" ran git log.
-- Measured voice (before): whole reply synthesized before playback; first sound 1.35 s for the greeting, 2.2 s for a command plus quip, 3.9 s for a 3-sentence reply. Synthesis itself runs 2.5x faster than real time, so the wait was purely architectural.
-- speaker.py rewritten: sounddevice output kept open, sentence-by-sentence streaming, cache for short lines, fixed persona lines pre-rendered at startup, text printed when the voice starts, instant stop through a generation counter. Measured (after): fixed lines 0.00 s, greeting 0.67 s, command plus quip 0.81 s; stop returns at once and playback ends within 0.1 s.
-- tts_text.py: pronunciation fixes before synthesis (acronyms spelled out, "port 8080" as "80 80", % as percent, markdown stripped) plus a user-editable pronunciations.json. VOICE_SPEED setting, default 1.0 (the model's own default was 1.15x slower).
-- Stop: "Assets stop." was Whisper mishearing "stop"; no rule matched, and the LLM invented [COMMAND: git log]. Added stop phrases (commands/text.py is_stop_phrase), commands/ai_routing.py (sentence must have 3+ words, allowlist of AI commands, git push/commit and organizing files need the key word), and ULTRON now speaks the command's real result instead of the model's text. Whisper gets hotwords for command words (WHISPER_HOTWORDS).
-- Removed dead pyttsx3 settings from config.py.
-- Next: hardware profiles so strong PCs get bigger, faster models and GPU use while 8 GB laptops stay light (owner request).
+### Memory, activity log and honest answers (feat/conversation-memory, feat/personal-log, feat/fast-honest-ai)
+- memory.py, memory_cmds.py, followups.py (D26): conversation kept across naps, facts in memory.json. A saved fact answers "When is my standup?"; a full 10-exchange window costs 3.75 s.
+- activity.py, activity_cmds.py (D27): app tracker, day summaries, profile note, "forget today"; titles are never stored by default. A simulated day summarised in 4.2 s.
+- Streamed, warm, honest answers (D28). First token 0.21 to 0.48 s warm; about 2.4 to 3.6 s from the end of speech to the first audio (was about 5 s); the target 1.0 to 1.5 s is not reached. Remaining costs: Piper first audio (about 0.13 s per word), the end-of-speech wait (Silero VAD would save about 0.4 s), the STT model choice. "My laptop's specs" and "check my email" now get one honest line.
 
-### 2026-11-15: Real time and date, heard-text log (fix/time-and-heard-log)
-- Owner asked the time and ULTRON said 2:47 pm at about 1:05 am. The phrasing missed the 4 exact time triggers, so the LLM answered, and it has no clock.
-- commands/clock.py: time and date questions matched on normalized text in many phrasings, answered from the PC clock, checked right after risky commands. Questions like "what time does the shop open" are not matched. Old exact-phrase blocks removed from general.py.
-- brain.py: every LLM call gets the current local date, time and timezone in the system message (not stored in history), with an instruction never to guess. Tested: the model answered the correct time.
-- ultron.py logs what it heard and the raw AI reply to ultron.log, so mishearings and invented commands can be traced.
-- Built in a separate git worktree because another session was working in the main folder.
+### Window control and voice interruption (fix/ai-command-keywords, feat/window-control-bargein)
+- commands/windows.py (close, minimise, restore, maximise, switch; the desktop and shell windows are excluded) and audio/bargein.py (talking over ULTRON stops it; the interrupting words are kept as preroll). D29. Not yet verified live on speakers; tune BARGE_IN_FACTOR from the "barge-in" log lines.
 
-### 2026-11-15: Hardware profiles (feat/hardware-profiles)
-- New hardware.py (detect and choose, D23), stt.py (load Whisper on the chosen device, warm-up transcription, CPU fallback), benchmark.py (ultron.py --benchmark). Fixed model settings removed from config.py; brain.py takes the LLM from the profile. tests/test_hardware.py covers weak, strong and tight-VRAM machines.
-- CUDA check: faster-whisper failed with "cublas64_12.dll not found". Installed the NVIDIA wheels with the owner's OK, then found only cuBLAS is used (D24). requirements-gpu.txt now lists only cuBLAS.
-- Measured on the laptop (GTX 1650, llama3.2:3b loaded in Ollama, 2.7 GB VRAM in use), 2.5 s spoken test clip, beam 5:
-  - before: Whisper base on CPU int8, 1.34 s per command (machine had 0.65 GB RAM free)
-  - after: profile GPU-4GB picks Whisper small on CUDA int8_float16, 0.53 s; base on CUDA 0.24 s; small float16 1.59 s (slower, so int8_float16 stays)
-  - VRAM: 2.74 GB with the LLM, 3.10 GB with Whisper small added, of 4.0 GB. Ollama stays 100 percent on the GPU.
-  - LLM: 6.7 s first reply when cold, 0.2 to 0.3 s when warm. Warming at startup (feat/streaming-llm-tts) matters.
-- Next: accent benchmark.
+### Understand any phrasing (feat/understand-phrasing)
+- Part 1 (D30): registry, router, matcher, slots and app index; 89 commands migrated; [COMMAND] tags and ai_routing.py removed; native tool calls. Rules 0.03 to 0.3 ms, matcher 1.3 ms per sentence, 0.5 s model load plus 1 s index build at start. Kill port became a confirm command; git commit, git push, close app and organise downloads are announced first.
+- Part 2a: tests/intents.yaml (1780 paraphrases, 104 negatives, the owner's real Heard lines) and tools/intent_eval.py. Weighted accuracy, rules and matcher only: old router 38.3 percent, new 82.1 percent (83.0 on the final 1952 cases); heard commands right 13 -> 18 of 20; only 8 of 1894 wrong answers ran a wrong command at once, the rest asked "Did you mean". Guards added from the failures: questions about a thing do not run, unexplained content words make it ask, app rules need a known app. Incident: an unmarked test routed 200 sentences outside dry-run and ran real commands (closes, a screenshot, a paste); tests/conftest.py now forces dry-run unless a test is marked real_handlers.
+- Live-run fixes: Store apps found through shell:AppsFolder; sound-alike app names ("clod" -> Claude) only when exactly one app matches; maximise brings the window front; create_folder; every command's spoken result is logged. The owner's 42 real commands: old 20 right, new 40.
+- Part 2b: LLM comparison on the 250 sentences left to the LLM. qwen2.5:3b made 29 wrong tool calls against llama3.2:3b's 76 (7 against 34 on negatives, 1 malformed against 44), uses 0.4 GB less VRAM, costs 18 fewer right tools (144 against 162) and 0.25 s more first-token time (1.42 against 1.17 s). The shortlist beat the full 89-tool list (165 wrong calls against 76). gemma3:4b has no tool support in Ollama; qwen3:4b reasons too long. GPU-4GB default is now qwen2.5:3b, then llama3.2:3b. Not measured: chat quality and the honest-AI rules on qwen2.5 (needs the voice self-test).
 
-### 2026-11-15: Accent accuracy tools (feat/accent-accuracy)
-- tools/stt_benchmark.py: "record" saves 16 spoken commands to recordings/stt (git-ignored); "run" compares Whisper models on CPU and GPU with ULTRON's settings and reports word error rate, exact matches, time per command, load time and VRAM. It recommends the fastest model within 3 WER points of the best and suggests corrections.json entries with one word of context ("open pro" -> "open chrome", never "pro" -> "chrome").
-- corrections.py and corrections.json: user-editable fixes for repeat mishearings, applied to every transcription in stt.py and logged. Seeded with git and VS Code mishearings.
-- Tested with ULTRON's own voice as fake recordings (base 9 percent WER, base.en 36 percent on 5 phrases). The owner's real recordings are pending; their winner becomes the GPU-4GB default.
-- Next: owner records, then conversation memory.
+### Live-run fixes (fix/live-run-2, PR #5)
+- D31 gate, repairs ("not base, best" swaps the word and re-runs; "it isn't open" offers a retry), open_folder by any name, pycaw volume on the new API, timing that no longer counts ULTRON's own announcement as routing time (1961 ms for "close Chrome" was speech), noise transcripts ignored, BARGE_IN_MIN_RMS 700 -> 200 (the measured echo is 0 to 8 RMS).
+- Second batch: optional slots filled only from their own clause; the answer to "Did you mean?" can be a new sentence (Reroute); app names as Whisper hotwords; "New folder (2)" and rename_item; the app index built in a background thread at start. Tradeoff: "close clod" now closes Claude (announced first, so interrupting cancels). A did-you-mean round trip still takes 8 to 9 s.
+- Better ideas: restrict the shortlist by risk and group; train the gate floors on more of the owner's phrases; an "I can do X, Y, Z" help reply.
 
-### 2026-11-15: Conversation memory (feat/conversation-memory)
-- memory.py (Conversation with idle timeout and window, Facts in memory.json), commands/memory_cmds.py (remember, list, forget, forget conversation), commands/followups.py (close it, louder, quieter, again). brain.py builds each prompt from system prompt, time, facts and the recent window. ultron.py no longer resets the brain on sleep. D26.
-- Measured (llama3.2:3b on GPU): "When is my standup?" answered from a saved fact; "What did I just ask you to open?" answered from the noted command, 0.88 s warm. Full 10-exchange window: 3.75 s.
-- Tests: tests/test_memory.py (timeout, window, facts on disk, vague forgets ignored, follow-ups).
-- Next: personal activity log.
+### Workflow and repository cleanup (chore/cleanup)
+- PR #4 (p1-fixes into main) and PR #5 merged; `dev` became the integration branch; the revert tag `pre-cleanup` marks main.
+- Cleanup (D32): src/ultron layout, paths.py, pyproject.toml, CI, self-test, dead code removed (see CHANGELOG), docs rewritten. Checks before and after: 173 tests (now 215 with the smoke tests), intent_eval identical on all 1952 cases, command list identical, ruff clean.
 
-### 2026-11-15: Personal activity log (feat/personal-log)
-- activity.py (log, tracker, summariser, profile note), commands/activity_cmds.py, profile.example.md. ultron.py logs each command and marks the conversation busy so summaries wait. brain.py adds ask_once() for summaries and the profile note to every prompt. D27.
-- Measured: see D27. Live summary of a simulated day took 4.2 s on llama3.2:3b.
-- Tests: tests/test_activity.py (rows, speed, app time, titles not stored, exclusions, forget today, summary never sees titles, summariser waits while busy, prompt cap, voice commands).
-- Next: window control, voice commit, clipboard history, push-to-talk, health check, nudges, then the connectors design.
+### Live-run 2 command fixes (fix/commands-live2)
+- Six fixes from the owner's live test, see D33. Checks before -> after: 215 -> 267 tests, intent_eval weighted 83.0 -> 83.2 percent (heard 60 of 68 -> 64 of 72 run at once; negatives passing 94 of 104 -> 93 of 103, the same 10 wrong), ruff clean, self-test passes, 96 commands. Dry-run only; Bluetooth was checked read-only against the real radio list, never toggled.
 
-### 2026-11-15: Faster, honest AI answers (feat/fast-honest-ai)
-- D28. Tests: tests/test_streaming.py (sentence and first-clause splits, command detection).
-- Measured silently on the laptop (no speakers, llama3.2:3b on GPU, Piper on CPU):
-  - before: "What is the best protein powder?" full reply 3.66 s with the old prompt, then about 0.5 s to the first sound; with the 0.8 s end wait and 1 s STT, about 5 s after the user stopped. A question after idle hit the cold start (5.6 to 9.8 s).
-  - after: first token 0.21 to 0.48 s when warm; first sentence ready 0.4 to 0.8 s; first audio ready 1.3 to 2.5 s (Piper about 0.13 s per word with the CPU busy); with 0.6 s end wait and 0.53 s STT (small on GPU), about 2.4 to 3.6 s after the user stopped. Model now shows "Forever" in ollama ps.
-  - honesty: "specifications of my laptop" and "check my email" now get one line ("I do not have access to that information."); "why is the sky blue" and protein powder are answered.
-- Not yet at the 1.0 to 1.5 s target. Remaining costs, in order: Piper time to first audio, end-of-speech wait (Silero VAD, about 0.4 s), STT model choice (base on GPU is 0.24 s; the accent benchmark decides).
-- Next: system specs command, then the voice self-test harness.
+### Live-run fixes 3 (fix/app-live2)
+- Evidence from the 20:25 run (D34). Fixed: silence no longer reaches Whisper and an idle conversation ends after 45 s; close_app announces only for apps with possible unsaved work and never says both lines; Whisper temperature fallback off by default with low-confidence logging; `AI said`, `AI tool`, confirm and did-you-mean questions are logged; ULTRON runs at above-normal priority so launches cannot starve the voice.
+- Tests 283 passed, 0 skipped (with the meaning-matcher model, rebased on fix/commands-live2); ruff clean; self-test passes. The first_sound gain on web searches is still to be read from the live log.
 
-### 2026-11-15: Even pauses between sentences (fix/speaker-gaps)
-- Owner reported a long pause at every full stop. Cause: playback ran in the synthesis thread, so the next sentence was synthesized only after the current one finished playing. The streamed LLM answers hit the same gap.
-- speaker.py now has a synthesis thread that runs up to 6 sentences ahead into a bounded queue and a player thread that writes continuously. Each sentence's edge silence is trimmed (20 ms kept) and a fixed pause added (VOICE_SENTENCE_PAUSE, 0.13 s). stop() still drops everything at once through the generation counter.
-- Measured silently (fake output stream at real-time pace, 4-sentence reply): quiet stretches at full stops before 0.83, 0.73, 0.47 s; after 0.18, 0.15, 0.15 s. stop() returns at once and no audio is written after it.
-
-### 2026-11-15: Window control, barge-in, keyword-gated AI commands (fix/ai-command-keywords, feat/window-control-bargein)
-- Log review: close and minimise phrases went to the LLM (route=llm); no command existed apart from an Alt+F4 "close window" on whatever was in front. Talking over ULTRON only worked with the wake word or a key.
-- commands/windows.py and tests/test_windows.py (fake window list). A read-only check of the real window list found the desktop (Progman) listed as explorer; shell and tool windows are now excluded.
-- bargein.py, tests/test_bargein.py; audio.record_phrase(preroll=...) keeps the interrupting words; one "barge-in: echo level, trigger above" log line per reply for tuning.
-- ai_routing: every command needs a key word (tests for "Assets stop", "wave protein", unrelated questions). corrections.json: wave/way protein -> whey protein.
-- Tests: 84 pass. Not yet verified live on the laptop speakers.
-
-### 2026-11-15: Understand any phrasing, part 1 (feat/understand-phrasing)
-- D30. commands/registry.py (declarations, schema, validation, dry run), commands/router.py (stages and safety), commands/intent.py (model2vec matcher with a null class), commands/slots.py (numbers, apps, choices, cue text), commands/apps.py (alias table, fuzzy names, Start Menu index so "open <any installed app>" works). All handler modules migrated: 89 commands. commands.txt is generated (tools/gen_commands_txt.py) and tested. ai_routing.py and the [COMMAND] prompt section are gone; brain.py streams native Ollama tool calls (and catches a call written out as JSON text).
-- Behaviour changes: kill port is now a confirm command; git commit, git push, close app and organize downloads are announced; the LLM-backed helpers (debug, review, translate, drafts) use ask_once so they no longer enter the conversation; non-Windows branches removed.
-- Measured (laptop, silent): rules 0.03 to 0.3 ms; matcher 1.3 ms per sentence, 0.5 s model load plus 1 s index build at startup. "crank it up a bit" -> volume_up (0.88), "what were my last few commits" -> git_log (0.94), "get rid of chrome" -> asks "Did you mean: close Chrome?" (0.69); "I meant on the wave protein" (0.26), "restart the dev server" and "remind me to go to sleep at 11" reach no command.
-- Tests: 87 pass (tests/test_router.py added: confirm in every stage, announce and barge-in, did-you-mean, tool-call schema checks, blocked, negatives, stage timing).
-- Not done yet (part 2): tests/intents.yaml paraphrase set, tests/test_intents.py, tools/intent_eval.py, before and after accuracy, LLM comparison and the GPU-4GB default. Thresholds in router.py are the starting values from D30, not yet tuned.
-
-### 2026-11-15: Understand any phrasing, part 2a: phrase set and accuracy (feat/understand-phrasing)
-- tests/intents.yaml: 1780 paraphrases (20 per command, written by the coding model, reviewed, not copies of registry examples), 66 near-miss negatives, 48 real Heard lines (20 commands, 28 not commands). tools/intent_eval.py, tests/test_intents.py (accuracy floors, negatives never run).
-- Accuracy, rules and matcher only (no LLM), same set. Weighted: heard 3, negatives 2, paraphrases 1. "Asked" = right command after "Did you mean".
-
-| Router | Heard commands right (of 20) | Paraphrases ran right | asked right | wrong | left to LLM | Negatives clean (of 94) | Weighted |
-|---|---|---|---|---|---|---|---|
-| old (p1-fixes rules) | 13 | 572 | 0 | 100 | 1108 | 83 | 38.3 % |
-| new (rules + matcher) | 18 (17 ran, 1 asked) | 1037 | 405 | 90 | 248 | 84 | 82.1 % |
-
-- New: of all wrong answers, only 8 of 1894 ran the wrong command at once; the rest only asked "Did you mean" (a "no" cancels). Of the 248 left to the LLM, 214 have the right command in the tool shortlist. Rules plus matcher take about 1.6 ms per sentence.
-- Guards added after reading the failures (general, not per phrase): questions about a thing ("what does git push do") do not run through the matcher; content words a command's examples never use ("restart nginx") make it ask, and stop confirm commands entirely; rules with an app parameter only claim the sentence when the app is known or installed; "write" is dictation only when no thing to compose follows; one rule for date and time in any order; Start Menu matching uses whole names.
-- Known gaps: "search a file in my PC" opens a web search (no file search command yet); laptop specs have no command (next steps item B).
-- Incident: an unmarked test (test_stages_are_fast) routed 200 sentences outside dry-run, so real commands ran on the laptop (window closes and minimises, focus mode mute, a screenshot on the Desktop, a pasted "hello world", a fact in the dev folder's memory.json). Fixed the test, and tests/conftest.py now forces dry-run for every test unless it is marked real_handlers.
-- Next (part 2b): LLM tool stage per model, shortlist versus full tool list, the GPU-4GB default (done, see the next entry).
-- Live-run fixes (owner's log 13:10 to 13:16, its Heard lines now in intents.yaml):
-  - Store apps such as Claude are found through shell:AppsFolder (index built once, about 1.2 s, in a startup thread).
-  - For opening only, a sound-alike match ("clod", "cloud" -> Claude) applies when exactly one installed app shares the consonants.
-  - Extra words after an app name are trimmed ("clod the application by Anthropic").
-  - Maximise now also brings the window to the front. "Maximise it" means the window ULTRON just minimised; "maximise everything" restores all windows.
-  - New create_folder command (name, location, Desktop by default, says so if the folder exists).
-  - "open chrome and search for X" searches; "3000routes" -> "3000 rupees" in corrections.json.
-  - Every command's spoken result is now logged ("Command x (route, args) said: ...").
-  - The barge-in line shows the measured echo and the 700 floor separately (the old line divided the floor by the factor and always showed 233).
-  - Owner's 42 real commands: old 20 right, new 40 right (39 ran, 1 asked). Weighted 38.4 % -> 82.5 %. 116 tests.
-  - Tradeoffs: the sound-alike match could open the wrong app when two apps share consonants, so it only acts when exactly one does. The Apps-folder scan adds 1.2 s of startup work in a background thread. "Open cloud storage" would open Claude if no "cloud storage" app exists.
-
-### 2026-11-15: Understand any phrasing, part 2b: LLM stage comparison and the GPU-4GB default (feat/understand-phrasing)
-- tools/llm_compare.py runs the sentences the rules and matcher leave to the LLM (250 of 1925, 216 of them with the right command in the shortlist) against each model with native tool calls, unloading the others first (`ollama stop`). Five vague or off-registry sentences from the owner's live run (13:31) were added as must-not-act cases (tests/intents.yaml, key llm_must_not_act, used only by this tool). A call whose arguments the registry rejects, or that holds a schema or other non-scalar, counts as malformed. Raw output: results/llm_compare_part1.log and _part2.log (not in git).
-- Results (laptop GTX 1650, 4096 context, num_predict 60). "Right" = right tool among the 250 LLM-stage sentences; "wrong" = any tool call that is not the expected command, over all 1925 sentences, with the 98 negatives and the 5 vague ones shown separately.
-
-| Model | Tools | Right (of 250) | Wrong calls, all | Wrong on negatives (of 98) | Wrong on vague (of 5) | Malformed | Median first token | VRAM (ollama ps) |
-|---|---|---|---|---|---|---|---|---|
-| llama3.2:3b, shortlist | yes | 162 | 76 | 34 | 2 | 44 | 1.17 s | 2.8 GB |
-| llama3.2:3b, full list (89 tools) | yes | 152 | 165 | 77 | 5 | 24 | 0.78 s | 2.8 GB |
-| qwen2.5:3b, shortlist | yes | 144 | 29 | 7 | 0 | 1 | 1.42 s | 2.4 GB |
-| qwen3:4b, shortlist (think off) | yes | 0 counted, see below | 0 | 0 | 0 | 0 | 1.47 s | 3.6 GB |
-| gemma3:4b | no: Ollama answers "does not support tools" (400) | - | - | - | - | - | - | 3.3 GB file |
-
-- Shortlist versus full list (llama3.2:3b only): the full list made 77 wrong calls on negatives against 34 and 165 wrong in all against 76, and it lost 10 right answers; its only gain is fewer malformed arguments and a faster first token (0.78 s against 1.17 s, because the model answers less). The full list was measured on llama only: the qwen2.5:3b full-list run was stopped after more than 22 minutes as too slow, which is itself a data point against the full list (89 schemas, several thousand tokens per call on this GPU).
-- qwen3:4b: with thinking switched off it still writes its reasoning into the reply ("Okay, the user wants to terminate the Zoom app. Let me check the tools...") before the tool call. With the 60-token cap used for every model no call ever arrived, so its 0 right and 0 wrong mean "no usable answer", not "perfect". A single check with 300 tokens showed it still reasoning at that length. It is also 3.6 GB. Not usable for a voice reply under 1 to 2 s, not measured further.
-- Pick: GPU-4GB default is now qwen2.5:3b, then llama3.2:3b, then llama3.2:1b (hardware.py, tests/test_hardware.py). Why: it makes 29 wrong calls against llama's 76, 7 wrong on negatives against 34, 0 on the vague sentences against 2, and almost no malformed arguments (1 against 44; llama once sent the schema itself as an argument, the registry check catches that but it costs an answer). It uses 0.4 GB less VRAM (2.4 against 2.8), so Whisper small (about 0.4 GB int8_float16) stays on the GPU: the profile pick test still gives Whisper on CUDA. Cost: 18 fewer right tools (144 against 162, about 7 percent of the LLM-stage sentences, which are 13 percent of all sentences) and a first token about 0.25 s slower (1.42 against 1.17 s). A missed tool means the model answers in words, a wrong tool can act, so fewer wrong calls is worth more. If qwen2.5:3b is not installed the profile falls back to llama3.2:3b.
-- Tradeoffs and better ideas:
-  - The first-token times include the tool-call prompt (shortlist of at most 6 schemas); qwen2.5:3b is a little slower to start but never needed the longer outputs.
-  - Chat quality was not measured: this set only tests tool choice. qwen2.5:3b answers general questions in its own style and has not been checked against the honest-AI rules and the 30-word target in config.py. Before the default ships in the installer, run the voice self-test (next steps item C) with it.
-  - The matcher already ran or asked on 1479 sentences, so the model only matters for about 13 percent of them. A better fix for the remaining wrong calls than a model swap is to add a cheap post-check: when the LLM picks a tool, require the matcher score of that command to be above the TOOL_FLOOR and ask "Did you mean" when it is a confirm or announce command. Not done.
-  - A fine-tuned small classifier or a no-tool pseudo-tool would reduce wrong calls further; not measured.
-  - The comparison used one run per model at temperature default; differences of a few sentences are noise, the 34 against 7 gap on negatives is not.
-- Not done: the 98 "asked wrong" cases (window commands, media) were not tuned in this branch; D30 thresholds are unchanged.
-
-### 2026-11-15: Live-run fixes 2 (fix/live-run-2)
-- From the owner's 13:31 to 13:36 run. D31: a tool call from the LLM passes a gate before it runs: similarity to the command's examples at least 0.50 to run, 0.47 to ask "Did you mean", below that no. Two smells weaken a match under 0.65: a content word the command never uses ("bluetooth" for volume_up) and a runner-up within 0.03. One smell asks first, two refuse; a refused request-like sentence gets an honest "I can't do that yet" instead of a wrong action.
-- Measured with tools/intent_eval.py (dry run, 1920 cases): stages a and b unchanged (negatives 92 of 102 pass, heard 50 of 53 run). Of 223 positives left for the LLM with the right command on the shortlist, the gate lets 161 through (110 run, 51 ask) and stops 62 (28 percent). Negatives that could be run by some shortlisted command without asking: 44 of 44 before, 14 of 44 after. Cost: a rare paraphrase with new words now gets a question or an answer in words instead of an action.
-- Repairs (router.repair, commands/context.py): "not base, best" swaps the word in the last command's text parameter and re-runs it; a complaint ("it isn't open") says what was done and offers a retry; neither picks an unrelated command, and without a previous command both fall through to normal routing. The last run and the last created folder live in commands/context.py, cleared with the conversation.
-- open_folder takes any name: standard folders and their OneDrive copies, a folder inside them (two levels), the Windows Recent list, or "the new folder you just created". Malformed tool arguments (a dict as a string) raise ArgumentError. web_search drops "google for", "on google", "the web" leftovers.
-- Volume: pycaw's GetSpeakers() now returns a wrapper; one helper (system._endpoint) uses its EndpointVolume and still supports the old Activate API.
-- Timing: the 1961 ms for "close Chrome" was ULTRON speaking its announcement inside the rule stage, not slow routing. route() now reports rule_ms without it plus announce_ms; the Win32 wrapper is built once (it cost about 140 ms on first use) and the process-tree walk is lazy. The result line ("Closed Chrome.") is always spoken, also after an announcement.
-- Noise transcripts (".", filler sounds) are ignored without asking the LLM. BARGE_IN_MIN_RMS 700 -> 200: measured echo is 0 to 8 RMS (x3 under 25), so 700 never fired; 200 is far above the echo and room noise. Each recorded phrase now logs its median and peak speech RMS ("speech level"), so the floor can be tuned from real data.
-- Second batch (15:00 to 15:06 run, qwen2.5:3b). Optional app slots ("keep") are filled only from their own "except/but" clause, and one word never fills two slots. The answer to "Did you mean X?" is now yes (run), no or silence (cancel), or any other words, which are routed once as a new sentence (Reroute in router.py). Whisper gets the app names ULTRON knows plus the window verbs as hotwords, and window commands (close, minimise, maximise, switch) accept the same sound-alike app names as "open" (exactly one match). An unnamed "create folder" makes "New folder (2)" like Windows; rename_item renames the folder ULTRON just created, asks "What should I call it?" when no name is given (context.pending), and refuses paths outside the user's profile. The installed-app index (0.75 s on first use, the 422 ms "open edge") is now built in a background thread at startup. Tradeoff: "close clod" now closes Claude (announced first, so talking over it cancels). A did-you-mean round trip is still 8 to 9 s because it waits for the LLM first token, speech and a second recording; the question text is already short.
-- Better ideas: restrict the shortlist by risk and group, not only similarity; train the gate floors on more of the owner's real phrases; a small "I can do X, Y, Z" help reply for refused requests.
-
-<!-- New entries go above this line, newest last. Format:
-### YYYY-MM-DD: Short title
-- What changed (branch)
-- Measured: before -> after
-- Decisions changed
-- Next
+<!-- New entries go above this line, newest last, per phase:
+### Short title (branch)
+- What changed; measured before -> after; decisions changed; next
 -->
 
 ---
@@ -998,9 +767,11 @@ Open questions:
 | LLM_KEEP_ALIVE | -1 | how long Ollama keeps the model loaded (-1 forever) |
 | LLM_MAX_TOKENS | 120 | cap on spoken answer length |
 | END_SILENCE_SECONDS | 0.6 | pause that ends your sentence |
+| CONVERSATION_IDLE_SECONDS | 45 | silence that ends a conversation (0 = off) |
 | VOICE_SENTENCE_PAUSE | 0.13 | pause between spoken sentences |
 | WHISPER_LANGUAGE | en | fixed language to avoid noise hallucinations |
 | WHISPER_VAD_FILTER | True | Whisper's own VAD (off once Silero is in) |
+| WHISPER_TEMPERATURE_FALLBACK | 0 | 1 = let Whisper retry unclear audio (slower) |
 | SAMPLE_RATE | 16000 | required by wake word and Whisper |
 | CHUNK_SIZE | 1280 | 80 ms frames |
 

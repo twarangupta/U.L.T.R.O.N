@@ -1,7 +1,0 @@
-# Optional: lets Whisper run on an NVIDIA GPU (CUDA 12 cuBLAS runtime).
-# Only for PCs with an NVIDIA card. About 550 MB to download, 772 MB on disk.
-# Measured on a GTX 1650: ctranslate2 loads only cublas64_12.dll and cublasLt64_12.dll;
-# cuDNN is not needed for Whisper.
-# Install:  uv pip install --python venv\Scripts\python.exe -r requirements-gpu.txt
-# Without it, ULTRON still works and runs Whisper on the CPU.
-nvidia-cublas-cu12>=12.4,<13; sys_platform == 'win32' or sys_platform == 'linux'

@@ -1,8 +1,8 @@
 """Window commands, tested against a fake window list (nothing on screen changes)."""
 import pytest
 
-from commands import windows
-from commands.windows import Window, handle, parse
+from ultron.commands import windows
+from ultron.commands.windows import Window, handle, parse
 
 
 class FakeWindows:
@@ -78,7 +78,7 @@ def test_switch_only_claims_open_apps():
 
 @pytest.mark.real_handlers  # the Win32 layer is faked below
 def test_router_sends_close_to_windows_before_alt_f4(monkeypatch):
-    from commands import execute_command
+    from ultron.commands import execute_command
     seen = []
     monkeypatch.setattr(windows, "_Win32", lambda: FakeWindows([CHROME]))
     monkeypatch.setattr(FakeWindows, "close", lambda self, w: seen.append(w.process))

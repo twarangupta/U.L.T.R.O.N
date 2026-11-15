@@ -2,16 +2,13 @@ import pytest
 
 pytestmark = pytest.mark.real_handlers  # handlers run against temp files set up in these tests
 
-import os
-import sys
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest  # noqa: E402
 
-import memory  # noqa: E402
-from commands import memory_cmds  # noqa: E402
-from commands.followups import resolve  # noqa: E402
+from ultron import memory  # noqa: E402
+from ultron.commands import memory_cmds  # noqa: E402
+from ultron.commands.followups import resolve  # noqa: E402
 
 
 class FakeClock:
