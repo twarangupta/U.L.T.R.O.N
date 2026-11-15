@@ -42,7 +42,8 @@ def test_commands_are_noted_for_followups():
     c = memory.Conversation(clock=FakeClock())
     c.note_command("open chrome", "Opening Chrome.")
     assert c.last_command == "open chrome"
-    assert "Opening Chrome." in c.recent()[-1]["content"]
+    assert c.recent() == []  # kept out of the chat history on purpose (D39)
+    assert "Opening Chrome." in c.actions_note()
 
 
 @pytest.fixture

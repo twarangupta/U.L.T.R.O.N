@@ -7,7 +7,8 @@ Two kinds of memory:
    CONVERSATION_FORGET_MINUTES of silence (default 10), or when you say
    "forget this conversation". Only the last CONVERSATION_MAX_EXCHANGES
    exchanges (default 10) are sent to the LLM, so replies stay fast.
-   Commands ULTRON runs are noted too ("open chrome" -> "Opening Chrome.").
+   Commands ULTRON runs are kept apart, as a note in the system prompt, never as
+   assistant turns (D39), so the model cannot copy them and pretend to act.
 
 2. Long-term facts. "Remember that my standup is at 10" saves a line to
    memory.json (plain, readable, yours to edit). Facts are included in every
@@ -29,6 +30,7 @@ FORGET_SECONDS = float(os.getenv("CONVERSATION_FORGET_MINUTES", "10")) * 60
 MAX_EXCHANGES = int(os.getenv("CONVERSATION_MAX_EXCHANGES", "10"))
 MEMORY_FILE = os.getenv("MEMORY_FILE", paths.MEMORY_FILE)
 MAX_FACTS_IN_PROMPT = 30
+MAX_ACTIONS = 4
 _FILLER = {"the", "a", "an", "my", "about", "that", "of", "to", "is", "was", "i", "me"}
 
 
@@ -46,6 +48,7 @@ class Conversation:
         self.max_exchanges = max_exchanges
         self._clock = clock
         self._messages: list[dict] = []
+        self._actions: list[tuple[str, str]] = []  # recent commands (what was said, what the PC answered)
         self._last = clock()
         self.last_command: str | None = None  # what the user said for the last command run
         self._just_cleared = False
@@ -54,8 +57,9 @@ class Conversation:
     def expire_if_idle(self) -> bool:
         """Forget everything after a long silence. Returns True if it forgot."""
         with self._lock:
-            if self._messages and self._clock() - self._last > self.forget_seconds:
+            if (self._messages or self._actions) and self._clock() - self._last > self.forget_seconds:
                 self._messages.clear()
+                self._actions = []
                 self.last_command = None
                 _clear_context()
                 logger.info("Conversation forgotten after a long silence.")
@@ -65,6 +69,7 @@ class Conversation:
     def clear(self):
         with self._lock:
             self._messages.clear()
+            self._actions = []
             self.last_command = None
             _clear_context()
             self._just_cleared = True
@@ -82,7 +87,21 @@ class Conversation:
             self._just_cleared = False
             return
         self.last_command = user
-        self.add_exchange(user, f"(ran a command) {result}" if result else "(ran a command, done)")
+        # Not stored as an assistant turn: the model copied "(ran a command) ..." and claimed actions it never
+        # performed (D39). Kept in a separate list and shown to it as a note about what the PC did.
+        with self._lock:
+            self._actions = (self._actions + [(user, result)])[-MAX_ACTIONS:]
+            self._last = self._clock()
+
+    def actions_note(self) -> str:
+        """What the command system recently did, for the system prompt ("" when nothing)."""
+        with self._lock:
+            if not self._actions:
+                return ""
+            lines = [f"- user said {u!r}: {r or 'done'}" for u, r in self._actions]
+        return ("Commands the PC ran recently. The command system did these, not you; you cannot run "
+                "commands in a reply, and you must never say you did, are doing or will do an action:\n"
+                + "\n".join(lines))
 
     def recent(self) -> list[dict]:
         """The last max_exchanges exchanges, oldest first."""

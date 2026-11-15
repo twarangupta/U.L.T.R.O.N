@@ -391,6 +391,11 @@ def _route(text: str, io: Interaction | None, use_matcher: bool, single: bool = 
         context.pending = None
         if normalize(text) not in NO_WORDS:
             text = f"rename it to {text.strip(' .')}"
+    if context.take_pending("type_text"):  # "Type what?" was asked: the answer is what to type (D39)
+        if normalize(text) not in NO_WORDS and normalize(text):
+            text = f"type {text.strip()}"
+        else:
+            return Outcome("Fine, nothing typed.", "rule", "start_typing", {}, 1.0)
     n = clean(text)
     _announce_seconds[0] = 0.0
     start = time.perf_counter()

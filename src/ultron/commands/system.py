@@ -184,10 +184,36 @@ def _launch(app: str) -> str | None:
 def open_app(app: str) -> str | None:
     if app in ("this", "everything"):
         return None
+    from ultron.commands import windows
+    if windows.bring_up(app):  # already running: never a second window unless asked (D39)
+        return Done(f"{apps.pretty(app)} is already open, bringing it up.")
     name = _launch(app)
     if name is None:
         return None
     return Done(f"Opening {name}.")
+
+
+_NOT_APPS = {"tab", "file", "folder", "document", "note", "email", "message", "one", "chat", "project", "page",
+             "window", "terminal", "line", "list", "account", "ticket", "issue"}
+
+
+@command("open_new_window", "Open a NEW window or another copy of an app, even if it is already open.",
+         group=_APPS, title="open a new {app} window", doing=None, priority=36, stages=("rule", "tool"),
+         params=[Param("app", "app", "the app to open another window of", cues=("new", "another"))],
+         rules=[r"(?:open|launch|start|make)(?: up)? (?:a |one )?new (?P<app>.+?)(?: window| instance| one| copy)?",
+                r"(?:open|launch|start)(?: up)? (?:another|a second|one more) (?P<app>.+?)(?: window| instance| copy)?",
+                r"(?:open|launch|start) (?:a )?(?:new |another )?(?:window|instance) (?:of|for|in) (?:the |my )?(?P<app>.+)",
+                r"(?:open|launch|start) (?:the |my )?(?P<app>.+?) (?:in |as )?(?:a )?(?:new|another|second) (?:window|instance)"],
+         examples=["open a new chrome window", "open another vs code window", "launch a new window of notepad",
+                   "open chrome in a new window", "start another spotify"],
+         not_examples=["open vs code", "open a new tab", "open a new file", "open chrome"])
+def open_new_window(app: str) -> str | None:
+    if app in _NOT_APPS or app in ("this", "everything"):
+        return None
+    name = _launch(app)
+    if name is None:
+        return None
+    return Done(f"Opening a new {name} window.")
 
 
 FOLDERS = ("downloads", "documents", "desktop", "pictures", "music", "videos")

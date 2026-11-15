@@ -3,7 +3,7 @@
 Started by `python -m ultron` (run_ultron.bat). Voice interruption (barge-in), the
 sleep and stop phrases, yes/no confirmation by voice and the timing log live here."""
 
-from ultron.config import BARGE_IN, CONVERSATION_IDLE_SECONDS, SLEEP_WORD, VAD_BARGE_IN, WAKE_PHRASE
+from ultron.config import BARGE_IN, CONFIRM_LISTEN_SECONDS, CONVERSATION_IDLE_SECONDS, SLEEP_WORD, VAD_BARGE_IN, WAKE_PHRASE
 from ultron.audio.bargein import BargeInDetector
 import sys
 import time
@@ -16,7 +16,7 @@ from ultron.commands import intent
 from ultron.commands import context
 from ultron.commands.router import NO_WORDS, YES_WORDS, Interaction, repair, route, run_tool_call, tool_schemas
 from ultron.commands.text import is_noise
-from ultron.commands.text import normalize, is_stop_phrase
+from ultron.commands.text import normalize, is_goodbye, is_stop_phrase
 from ultron.commands.followups import resolve as resolve_followup
 from ultron.voice.speaker import speak, stop_speaking, wait_speaking, is_speaking, prewarm, first_sound_at
 from ultron.logger import logger
@@ -61,7 +61,6 @@ def get_startup_greeting() -> str:
 
 # Replies that approve a risky command. Anything else cancels it.
 CONFIRM_WORDS = {"confirm", "confirmed", "yes confirm", "i confirm"}
-CONFIRM_LISTEN_SECONDS = 6.0
 
 
 def transcribe(whisper_model, audio_data) -> str:
@@ -85,7 +84,13 @@ def raise_priority() -> bool:
     if sys.platform != "win32":
         return False
     try:
+        from ctypes import wintypes
         k = _kernel32()
+        # Without these, ctypes treats the handle as a C int and mangles the pseudo-handle -1 (D39).
+        k.GetCurrentProcess.restype = wintypes.HANDLE
+        k.GetCurrentProcess.argtypes = []
+        k.SetPriorityClass.restype = wintypes.BOOL
+        k.SetPriorityClass.argtypes = [wintypes.HANDLE, wintypes.DWORD]
         ok = bool(k.SetPriorityClass(k.GetCurrentProcess(), ABOVE_NORMAL_PRIORITY_CLASS))
     except Exception as e:
         logger.warning(f"Could not raise the process priority: {e}")
@@ -387,6 +392,7 @@ def main():
                 
             # Record user phrase with silence detection
             preroll, pending_preroll[:] = list(pending_preroll), []
+            talked_over = bool(preroll)  # this phrase began while ULTRON was speaking
             audio_data = audio_handler.record_phrase(preroll=preroll)
             end_wait = audio_handler.last_end_silence
             speech_end = time.perf_counter()  # end_wait after you actually stopped
@@ -415,6 +421,13 @@ def main():
             if is_stop_phrase(transcription):
                 logger.info("Stop phrase heard. Going back to sleep.")
                 speak(persona.pick(persona.STOP_REPLIES))
+                wait_speaking()
+                break
+
+            # "Goodbye", "that's all for now": the same as stop, with a goodbye line
+            if is_goodbye(transcription):
+                logger.info("Goodbye phrase heard. Going back to sleep.")
+                speak(persona.pick(persona.BYE_REPLIES))
                 wait_speaking()
                 break
 
@@ -452,6 +465,10 @@ def main():
                     interrupted = False
                 else:
                     interrupted = speak_and_interruptible(persona.maybe_quip(outcome.reply), detector)
+            elif talked_over and len(normalize(transcription).split()) <= 2:
+                # "Maximizing": a scrap of a sentence heard over ULTRON's voice is not a question for the AI
+                logger.info(f"Fragment {transcription!r} heard over ULTRON and not a command: asking again")
+                interrupted = speak_and_interruptible(persona.pick(persona.SORRY_REPLIES), detector)
             else:
                 # Ask the LLM, offering the closest commands as tools, streaming its answer into the voice
                 interrupted = answer_with_ai(transcription, outcome.candidates, io, detector, timing,

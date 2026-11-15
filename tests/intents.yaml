@@ -116,7 +116,7 @@ heard:
   - {text: "What is the best protein powder?", command: null}
   - {text: "you have a very witty personality.", command: null}
   - {text: "address", command: null}
-  - {text: "type", command: null}
+  - {text: "type", command: start_typing}
 
 negatives:
   - restart the dev server

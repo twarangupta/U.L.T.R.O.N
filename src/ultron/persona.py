@@ -73,6 +73,17 @@ STOP_REPLIES = [
     "As you wish.",
 ]
 
+# A one or two word fragment heard while talking over ULTRON: not worth an AI answer (D39).
+SORRY_REPLIES = [
+    "Sorry?",
+    "Say that again?",
+]
+
+BYE_REPLIES = [
+    "Goodbye. Try not to break anything.",
+    "Bye. I'll be here, judging quietly.",
+]
+
 UNSURE_REPLIES = [
     "I didn't catch that. Try again, slower.",
     "That made no sense. Say it again.",
@@ -167,4 +178,4 @@ def maybe_quip(reply: str) -> str:
 
 def fixed_lines() -> list[str]:
     """Lines that never change, pre-rendered at startup so they play instantly."""
-    return WAKE_REPLIES + STOP_REPLIES + UNSURE_REPLIES + DONE_REPLIES + SLEEP_REPLIES + IDLE_REPLIES + CANCELLED_REPLIES + CANT_DO_REPLIES
+    return WAKE_REPLIES + STOP_REPLIES + UNSURE_REPLIES + DONE_REPLIES + SLEEP_REPLIES + IDLE_REPLIES + CANCELLED_REPLIES + CANT_DO_REPLIES + SORRY_REPLIES + BYE_REPLIES
