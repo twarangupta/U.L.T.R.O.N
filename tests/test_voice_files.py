@@ -12,6 +12,7 @@ def test_default_is_joe_then_legacy():
 
 def test_empty_name_means_legacy_only_and_paths_pass_through():
     assert model_paths("")[0].endswith("ultron-voice.onnx")
+    assert model_paths("jarvis")[0].endswith("ultron-voice.onnx")
     assert model_paths("C:/x/custom.onnx")[0] == "C:/x/custom.onnx"
 
 

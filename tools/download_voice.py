@@ -8,8 +8,10 @@
 Licence column: ok = free for commercial use, flag = unclear, share-alike or
 needs attribution (check before shipping), blocked = non-commercial or no
 clear terms (refused unless --force-licence is passed, for listening only).
-The old Jarvis voice is no longer downloaded (D35); an existing models/ultron-voice.onnx
-is only used as a fallback.
+  python tools/download_voice.py jarvis       the old Jarvis-style voice into models/ultron-voice.onnx
+
+The old voice stays available (VOICE_MODEL= empty selects it, and it is the fallback if joe
+is missing). Whether it ships in the installer is the owner's decision (D35).
 """
 import argparse
 import os
@@ -17,7 +19,7 @@ import sys
 import time
 import urllib.request
 
-DEFAULT_VOICE = "joe"      # CC0, the voice the installer ships (D35)
+DEFAULT_VOICE = "joe"      # CC0, the default voice (D35)
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODELS = os.path.join(ROOT, "models")
 HF = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en"
@@ -38,6 +40,12 @@ VOICES = {
              "Mimic3 apope dataset: 'All Rights Reserved Mycroft AI', terms unclear", "UK male, calm"),
     "ryan": ("en_US/ryan/high/en_US-ryan-high", "blocked",
              "CC BY-NC-SA 4.0 (non-commercial), RyanSpeech", "US male, high quality"),
+}
+
+
+LEGACY = {  # the old default, imitates the film Jarvis; whether it ships is the owner's decision (D35)
+    "onnx": "https://huggingface.co/jgkawell/jarvis/resolve/main/en/en_GB/jarvis/high/jarvis-high.onnx",
+    "json": "https://huggingface.co/jgkawell/jarvis/resolve/main/en/en_GB/jarvis/high/jarvis-high.onnx.json",
 }
 
 
@@ -83,6 +91,14 @@ def fetch_voice(name: str, force_licence: bool = False) -> bool:
     return ok
 
 
+def fetch_legacy() -> bool:
+    ok = download_file(LEGACY["onnx"], os.path.join(MODELS, "ultron-voice.onnx"),
+                       "Piper voice model (old Jarvis-style voice)", "optional old ULTRON voice, VOICE_MODEL= (empty) selects it")
+    ok &= download_file(LEGACY["json"], os.path.join(MODELS, "ultron-voice.onnx.json"),
+                        "Piper voice config (old Jarvis-style voice)", "settings for the voice model")
+    return ok
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("names", nargs="*")
@@ -94,6 +110,10 @@ def main() -> int:
         for n, (_, status, lic, desc) in VOICES.items():
             print(f"{n:24} {status:8} {desc}; {lic}")
         return 0
+    if "jarvis" in args.names:
+        args.names.remove("jarvis")
+        if not fetch_legacy() or not args.names:
+            return 1 if not os.path.exists(os.path.join(MODELS, "ultron-voice.onnx")) else 0
     names = [n for n, v in VOICES.items() if v[1] != "blocked"] if args.all else args.names
     if not names:
         names = [DEFAULT_VOICE]

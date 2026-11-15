@@ -12,7 +12,7 @@ def model_paths(name: str = VOICE_MODEL) -> list[str]:
         os.getenv("VOICE_MODEL_PATH", os.path.join(paths.MODELS_DIR, "ultron-voice.onnx")),
         os.path.join(paths.MODELS_DIR, "jarvis-high.onnx"),  # name used by older installs
     ]
-    if not name:
+    if not name or name.lower() in ("jarvis", "ultron-voice"):
         return legacy
     if os.path.isabs(name) or name.endswith(".onnx"):
         chosen = name

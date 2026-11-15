@@ -112,7 +112,7 @@ WHISPER_HOTWORDS = os.getenv(
 VOICE_SPEED = float(os.getenv("VOICE_SPEED", "0.9"))
 # Which voice to use: a name from models/voices/, or a path to an .onnx file. The default is
 # en_US-joe-medium (CC0, the voice the installer ships; get it with
-# `python tools/download_voice.py joe`). Empty selects the old models/ultron-voice.onnx.
+# `python tools/download_voice.py joe`). Empty or "jarvis" selects the old models/ultron-voice.onnx.
 VOICE_MODEL = os.getenv("VOICE_MODEL", "en_US-joe-medium").strip()
 # Effects on top of the voice: VOICE_PRESET = none, subtle, ultron (default), heavy, silk, cold,
 # calm or deep, with optional
