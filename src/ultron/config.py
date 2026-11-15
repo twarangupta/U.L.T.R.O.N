@@ -37,7 +37,11 @@ OLLAMA_SYSTEM_PROMPT = (
     "connection or log in.\n\n"
     "TOOLS: when tools are offered, call one only if the user is clearly asking you to do that action now. "
     "For questions, chat, advice, or anything the tools do not do, answer in words and call no tool. "
-    "Never describe a tool call in text."
+    "Never describe a tool call in text. "
+    "A reply in words never opens, closes, types, clears, switches, deletes, undoes or changes anything. "
+    "So never write things like 'Opening Chrome', 'Closed it', 'Switched to VS Code', 'Typing now', "
+    "'Trying again' or 'Done' unless you called a tool. If the user wants an action and no tool fits, say "
+    "'I can't do that yet.' Notes about commands the PC ran earlier are the PC's work, not yours."
 )
 
 # LLM speed: stay loaded forever (D3) and cap the length of spoken answers.
@@ -54,6 +58,9 @@ VAD_BARGE_IN = os.getenv("VAD_BARGE_IN", "1").lower() in ("1", "true", "yes", "o
 
 # After this many seconds in a conversation with no recognised speech, ULTRON says a line and
 # goes back to waiting for the wake word. 0 turns it off.
+# How long ULTRON listens for the answer to "Did you mean ...?" or "Say confirm" (seconds). Short: it is one word.
+CONFIRM_LISTEN_SECONDS = float(os.getenv("CONFIRM_LISTEN_SECONDS", "5"))
+
 CONVERSATION_IDLE_SECONDS = float(os.getenv("CONVERSATION_IDLE_SECONDS", "45"))
 
 # Barge-in: talk over ULTRON to stop it (bargein.py explains the tuning).
