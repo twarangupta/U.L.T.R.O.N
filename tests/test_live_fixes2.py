@@ -197,7 +197,7 @@ def test_search_handler_cleans_the_query(monkeypatch):
 
 # ---- 6. closing apps: announcing is not routing time, and a result is always said ----
 def test_announcement_time_is_not_rule_time_and_result_is_said():
-    out = route("close Google Chrome", IO(announce_s=0.3))
+    out = route("close Notepad", IO(announce_s=0.3))
     assert out.command == "close_app"
     assert out.reply  # never ''
     assert out.timings["rule_ms"] < 100 and out.timings["announce_ms"] >= 290

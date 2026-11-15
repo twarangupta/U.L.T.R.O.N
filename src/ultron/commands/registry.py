@@ -203,7 +203,7 @@ def dry_run(on: bool = True):
 def call(cmd: Command, args: dict) -> str | None:
     if _dry_run[0]:
         shown = ", ".join(f"{k}={v!r}" for k, v in args.items())
-        return Done(f"Would run {cmd.name}({shown}).")
+        return f"Would run {cmd.name}({shown})."  # plain str: a dry run still says it, even after an announcement
     return cmd.handler(**args)
 
 
