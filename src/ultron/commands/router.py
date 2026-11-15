@@ -155,6 +155,12 @@ class Outcome:
 
 
 _announce_seconds = [0.0]  # time spent speaking announcements during this route() call
+_active_io: list[Interaction] = []  # the io of the command being run, for handlers that must ask (D37)
+
+
+def active_io() -> Interaction:
+    """How the running command can talk to the user (confirm, ask). Outside a command: never approves."""
+    return _active_io[-1] if _active_io else Interaction()
 
 
 class Reroute(Exception):
@@ -172,7 +178,12 @@ def execute(cmd: Command, args: dict, io: Interaction, sure: bool = True) -> str
         return persona.pick(persona.REFUSED_REPLIES)
     if cmd.risk == "confirm":
         # The confirm prompt names the action, so it replaces "Did you mean".
-        if not io.confirm(persona.pick(persona.CONFIRM_PROMPTS, action=cmd.confirm_text)):
+        action = cmd.confirm_text
+        try:  # "delete the {name} routine"
+            action = action.format(**{k: registry.pretty_value(v) for k, v in args.items()})
+        except (KeyError, IndexError, ValueError):
+            pass
+        if not io.confirm(persona.pick(persona.CONFIRM_PROMPTS, action=action)):
             return persona.pick(persona.CANCELLED_REPLIES)
     elif not sure:
         answer = io.ask_yes_no(f"Did you mean: {cmd.describe(args)}?")
@@ -190,12 +201,15 @@ def execute(cmd: Command, args: dict, io: Interaction, sure: bool = True) -> str
         if spoken:
             return ""  # the user talked over it: cancelled, and their words are the next request
         announced = spoken is False  # None: nothing was spoken (no voice), so the result is still said
+    _active_io.append(io)
     try:
         reply = registry.call(cmd, args)
     except Exception as e:
         from ultron.logger import logger
         logger.error(f"Command {cmd.name}({args}) failed: {e}")
         return f"That failed: {e}"
+    finally:
+        _active_io.pop()
     if reply is None:
         return None
     if announced and isinstance(reply, registry.Done):

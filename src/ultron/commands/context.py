@@ -5,6 +5,7 @@ Plain module state, filled by the main loop and by handlers. It is cleared with 
 """
 from __future__ import annotations
 
+from collections import deque
 from dataclasses import dataclass, field
 
 
@@ -21,11 +22,19 @@ pending: str | None = None          # a question ULTRON asked whose answer is th
 created_folder: str | None = None   # full path of the folder ULTRON created last
 
 
+# What the user said for the commands that ran lately, oldest first: "remember this as work mode" (D37).
+# Commands that work on routines, the selection or on history itself are left out.
+history: deque[str] = deque(maxlen=20)
+_NOT_RECORDED = ("routine", "selection")
+
+
 def note_run(command: str | None, args: dict | None, said: str, reply: str | None):
     """Remember a command that ran (an LLM answer in words is not one)."""
     global last_run
     if command:
         last_run = LastRun(command, dict(args or {}), said, reply or "")
+        if said and not any(word in command for word in _NOT_RECORDED):
+            history.append(said)
 
 
 def note_folder(path: str):
@@ -36,3 +45,4 @@ def note_folder(path: str):
 def clear():
     global last_run, created_folder, pending
     last_run = created_folder = pending = None
+    history.clear()

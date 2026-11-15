@@ -8,7 +8,7 @@ from typing import Callable
 
 # Importing a module registers its commands. Order only breaks priority ties.
 from ultron.commands import general, risky, clock, memory_cmds, activity_cmds, windows  # noqa: F401
-from ultron.commands import system, git_helpers, developer  # noqa: F401
+from ultron.commands import system, git_helpers, developer, selection, routines  # noqa: F401
 from ultron.commands.router import Interaction, _ConfirmOnly, route
 
 # Asks the user a yes/no question by voice. Gets the spoken prompt,
