@@ -73,7 +73,7 @@ Old empty placeholder branches (feat/timing-log, tune/wake-threshold, perf/whisp
 - 2026-11-15: feat/fast-honest-ai: streamed answers, warm LLM, honest prompt, timing log. AI answer about 5 s -> 2.4 to 3.6 s after the user stops (silent measurement); target 1.0 to 1.5 s not reached yet.
 
 - 2026-11-15: fix/ai-command-keywords (every AI command needs a key word; whey protein correction) and feat/window-control-bargein (commands/windows.py close/minimise/restore/maximise/switch, bargein.py voice interruption with preroll; D29) merged into local p1-fixes (38672f1). Not pushed. Barge-in not yet verified live: read the 'barge-in: echo level' log lines and tune BARGE_IN_FACTOR.
-## TOP PRIORITY: understand any phrasing (owner request, 2026-11-15; awaiting the owner's approval of this plan)
+## TOP PRIORITY: understand any phrasing (owner request, 2026-11-15; plan approved by the owner, in progress on feat/understand-phrasing, design in BUILD_LOG D30)
 Owner: "i dont want to fix these individual prompts by testing ... even if the question went to ai, it should understand what command to execute".
 Today commands are matched by hand-written phrases, and the LLM may only emit [COMMAND: x] tags for about 15 commands gated by hand-kept keyword lists (commands/ai_routing.py). Every new phrasing needs a code change. Replace that with one design:
 1. Command registry (D10): every command is declared once with name, one-line description, typed parameters (for example app: str, level: int), risk level (safe, confirm, blocked) and 5 to 10 example sentences. Migrate all existing handlers (system, git, developer, general, windows, clock, memory, activity). commands.txt is generated from the registry.
