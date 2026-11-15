@@ -44,7 +44,9 @@ END_SILENCE_SECONDS = float(os.getenv("END_SILENCE_SECONDS", "0.6"))
 # Barge-in: talk over ULTRON to stop it (bargein.py explains the tuning).
 BARGE_IN = os.getenv("BARGE_IN", "1").lower() in ("1", "true", "yes", "on")
 BARGE_IN_FACTOR = float(os.getenv("BARGE_IN_FACTOR", "3.0"))
-BARGE_IN_MIN_RMS = float(os.getenv("BARGE_IN_MIN_RMS", "700"))
+# 200: the measured echo of ULTRON's own voice is 0 to 8 RMS (x3 = under 25), so a 700 floor never let
+# normal speech through; 200 still sits well above room noise. The "speech level" log line shows your real level.
+BARGE_IN_MIN_RMS = float(os.getenv("BARGE_IN_MIN_RMS", "200"))
 BARGE_IN_CHUNKS = int(os.getenv("BARGE_IN_CHUNKS", "4"))  # 4 x 80 ms of loud speech
 
 # Wake Word Settings

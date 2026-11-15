@@ -103,7 +103,7 @@ def test_tool_schema_shape():
     schema = registry.get("open_folder").tool_schema()["function"]
     assert schema["name"] == "open_folder"
     assert schema["parameters"]["required"] == ["folder"]
-    assert "downloads" in schema["parameters"]["properties"]["folder"]["enum"]
+    assert schema["parameters"]["properties"]["folder"]["type"] == "string"  # any folder name, not a fixed list
 
 
 def test_blocked_command_never_runs():

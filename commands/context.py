@@ -1,0 +1,37 @@
+"""What ULTRON just did, so the next sentence can refer to it ("not base, best", "open the folder you just made").
+
+Plain module state, filled by the main loop and by handlers. It is cleared with the conversation
+(memory.Conversation.clear and the idle expiry), so nothing stale outlives a "forget this conversation".
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+
+
+@dataclass
+class LastRun:
+    command: str
+    args: dict = field(default_factory=dict)
+    said: str = ""      # what the user said
+    reply: str = ""     # what ULTRON answered
+
+
+last_run: LastRun | None = None
+created_folder: str | None = None   # full path of the folder ULTRON created last
+
+
+def note_run(command: str | None, args: dict | None, said: str, reply: str | None):
+    """Remember a command that ran (an LLM answer in words is not one)."""
+    global last_run
+    if command:
+        last_run = LastRun(command, dict(args or {}), said, reply or "")
+
+
+def note_folder(path: str):
+    global created_folder
+    created_folder = path
+
+
+def clear():
+    global last_run, created_folder
+    last_run = created_folder = None

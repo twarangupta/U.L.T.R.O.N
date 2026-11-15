@@ -52,6 +52,8 @@ class Result:
     llm_first_token: float | None = None
     llm_args: dict | None = None
     llm_malformed: bool = False
+    scores: dict = field(default_factory=dict)
+    sentence: str = ""
 
     @property
     def verdict(self) -> str:
@@ -112,7 +114,8 @@ def eval_new(cases: list[Case]) -> list[Result]:
         for case in cases:
             io = _recording_io()
             out = route(case.text, io)
-            results.append(Result(case, out.command, io.asked, out.route, out.candidates))
+            results.append(Result(case, out.command, io.asked, out.route, out.candidates,
+                                  scores=out.scores, sentence=out.sentence))
     return results
 
 
@@ -339,6 +342,29 @@ def summarize(results: list[Result], llm: bool = False) -> dict:
     return rows
 
 
+def gate_report(results: list[Result]) -> dict:
+    """What the gate on the LLM's tool call (router.gate) costs and saves, for sentences that reach the LLM.
+
+    positives: cases left for the LLM whose right command is on the shortlist; "kept" = the gate lets
+    that call run or asks. negatives: sentences that must not run anything; "open" = some shortlisted
+    command would still pass the gate (the LLM could act), before the gate: any shortlisted command.
+    """
+    from commands import registry
+    from commands.router import gate
+    pos = [r for r in results if r.verdict == "llm" and r.case.expected in r.candidates]
+    kept = {"run": 0, "ask": 0, "no": 0}
+    for r in pos:
+        kept[gate(r.sentence, registry.get(r.case.expected), r.scores.get(r.case.expected), {}, r.scores)] += 1
+    negs = [r for r in results if r.case.expected is None and r.verdict == "pass" and r.candidates]
+    open_after = sum(1 for r in negs if any(
+        gate(r.sentence, registry.get(c), r.scores.get(c), {}, r.scores) != "no" for c in r.candidates))
+    acts = sum(1 for r in negs if any(
+        gate(r.sentence, registry.get(c), r.scores.get(c), {}, r.scores) == "run" for c in r.candidates))
+    return {"positives_for_llm": len(pos), "gate_run": kept["run"], "gate_ask": kept["ask"], "gate_no": kept["no"],
+            "negatives_with_candidates": len(negs), "negatives_still_open_after_gate": open_after,
+            "negatives_that_could_run_unasked": acts}
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--old", action="store_true", help="also evaluate the old router (p1-fixes)")
@@ -351,6 +377,7 @@ def main() -> int:
     new = eval_new(cases)
     report["new"] = summarize(new)
     report["new"]["seconds"] = round(time.perf_counter() - start, 2)
+    report["gate"] = gate_report(new)
     if args.old:
         report["old"] = summarize(eval_old(cases))
     if args.llm:

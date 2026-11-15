@@ -25,6 +25,22 @@ heard:
   - {text: "type hello world", command: type_text}
   - {text: "vacuum mute", command: mute}
   - {text: "What did I do today?", command: day_summary}
+  # live run 2026-11-15 13:31 to 13:35 (null: must not run a command; repairs are handled before routing)
+  - {text: "Minimize everything", command: minimize_windows}
+  - {text: "create a new folder on desktop", command: create_folder}
+  - {text: "open the new folder you just created", command: open_folder}
+  - {text: "Maximize VS Code", command: maximize_window}
+  - {text: "search for best protein pow-", command: web_search}
+  - {text: "I said search for base protein powder", command: web_search}
+  - {text: "not base, best", command: null}
+  - {text: "search for best protein powder", command: web_search}
+  - {text: ".", command: null}
+  - {text: "search google for new cars", command: web_search}
+  - {text: "close, Google Chrome", command: close_app}
+  - {text: "create a new folder on desktop, name it cast", command: create_folder}
+  - {text: "open the cast folder", command: open_folder}
+  - {text: "it isn't open", command: null}
+  - {text: "Can you turn on Bluetooth?", command: null}
   # live run 2026-11-15 13:10 to 13:16
   - {text: "open google go", command: open_app}
   - {text: "close it", command: close_app}

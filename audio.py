@@ -95,6 +95,8 @@ class AudioHandler:
             # Underflow/Overflow or hardware issues
             return np.zeros(CHUNK_SIZE, dtype=np.int16)
 
+    last_speech_level = 0.0  # median RMS of the last recorded phrase's speech chunks (for tuning barge-in)
+
     def record_phrase(self, silence_threshold=500, silence_timeout_seconds=0.8, max_seconds=10.0,
                       preroll=None) -> np.ndarray:
         """
@@ -116,6 +118,7 @@ class AudioHandler:
         max_total_chunks = int(max_seconds / chunk_duration)
         
         started_speaking = bool(recorded_frames)
+        voiced_rms: list[float] = []  # loudness of the chunks that counted as speech
 
         for _ in range(max_total_chunks):
             # If the user presses any key, stop recording and process immediately
@@ -131,6 +134,7 @@ class AudioHandler:
             amplitude = np.max(np.abs(chunk))
             
             if amplitude > silence_threshold:
+                voiced_rms.append(float(np.sqrt(np.mean(chunk.astype(np.float32) ** 2))))
                 if not started_speaking:
                     # Voice activity detected
                     started_speaking = True
@@ -144,6 +148,10 @@ class AudioHandler:
         
         # Clean up stream after phrase is recorded
         self.stop_stream()
+        self.last_speech_level = speech_level(voiced_rms)
+        if voiced_rms:
+            logger.info(f"speech level: median rms {self.last_speech_level:.0f}, "
+                        f"peak rms {max(voiced_rms):.0f} over {len(voiced_rms)} chunks")
         
         if not recorded_frames:
             return np.zeros(0, dtype=np.float32)
@@ -159,3 +167,8 @@ class AudioHandler:
 
 # Global audio handler instance
 audio_handler = AudioHandler()
+
+
+def speech_level(voiced_rms: list[float]) -> float:
+    """The typical loudness (median RMS, 16-bit units) of the chunks that counted as speech."""
+    return float(np.median(voiced_rms)) if voiced_rms else 0.0

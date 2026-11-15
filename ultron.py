@@ -8,7 +8,9 @@ from brain import brain
 import activity
 import memory
 from commands import intent
-from commands.router import YES_WORDS, Interaction, route, run_tool_call, tool_schemas
+from commands import context
+from commands.router import YES_WORDS, Interaction, repair, route, run_tool_call, tool_schemas
+from commands.text import is_noise
 from commands.text import normalize, is_stop_phrase
 from commands.followups import resolve as resolve_followup
 from speaker import speak, stop_speaking, wait_speaking, is_speaking, prewarm, first_sound_at
@@ -105,14 +107,15 @@ class VoiceInteraction(Interaction):
         return interrupted
 
 
-def note_command(said: str, reply: str):
+def note_command(said: str, reply: str, command: str | None = None, args: dict | None = None):
     memory.conversation.note_command(said, reply)
+    context.note_run(command, args, said, reply)  # so "not base, best" and "it isn't open" can refer to it
     if log := activity.get_log():
         log.log_command(said, reply)
 
 
 def answer_with_ai(transcription: str, candidates: list[str], io: VoiceInteraction, detector,
-                   timing: dict) -> bool:
+                   timing: dict, scores: dict | None = None, sentence: str | None = None) -> bool:
     """Stream the LLM answer into the speaker; returns True if interrupted.
 
     The commands the matcher found closest are offered as tools (D30). A valid
@@ -132,16 +135,17 @@ def answer_with_ai(transcription: str, candidates: list[str], io: VoiceInteracti
     if reply.tool_call is not None:
         reply.join()
         name, arguments = reply.tool_call
-        outcome = run_tool_call(name, arguments, candidates, io)
+        outcome = run_tool_call(name, arguments, candidates, io, scores=scores, sentence=sentence)
         if outcome is not None:
-            logger.info(f"Command {name} (tool, {outcome.args}) said: {outcome.reply!r}")
-            timing["route"], timing["cmd"] = "tool", name
-            note_command(transcription, outcome.reply or "(done)")
+            logger.info(f"Command {outcome.command or name} ({outcome.route}, {outcome.args}) said: {outcome.reply!r}")
+            timing["route"], timing["cmd"] = outcome.route, outcome.command or name
+            if outcome.command:
+                note_command(transcription, outcome.reply or "(done)", outcome.command, outcome.args)
             if not outcome.reply:
                 return False
             return speak_and_interruptible(persona.maybe_quip(outcome.reply), detector)
         logger.info(f"Ignored tool call {name}({arguments}) for {transcription!r} (not offered or invalid)")
-        return answer_with_ai(transcription, [], io, detector, timing)  # answer in words instead
+        return answer_with_ai(transcription, [], io, detector, timing, scores, sentence)  # answer in words instead
     if reply.error and not reply.text:
         return speak_and_interruptible(
             "I am having trouble reaching my local model. Check that Ollama is running.", detector)
@@ -328,8 +332,8 @@ def main():
             logger.info("Transcribing...")
             transcription = transcribe(whisper_model, audio_data)
             timing["stt"] = time.perf_counter() - speech_end
-            if not transcription:
-                logger.info("No speech recognized")
+            if not transcription or is_noise(transcription):
+                logger.info(f"No speech recognized{f' (noise {transcription!r} ignored)' if transcription else ''}")
                 continue
                 
             print(f"You: {transcription}")
@@ -359,7 +363,7 @@ def main():
             if followup:
                 logger.info(f"Follow-up {transcription!r} -> {followup!r}")
             # Stages a (rules) and b (meaning matcher); stage c is the LLM's tool call (D30)
-            outcome = route(followup or transcription, io)
+            outcome = repair(transcription, io) or route(followup or transcription, io)
             timing.update(outcome.timings)  # rule_ms, match_ms
             timing["route"] = outcome.route
             if outcome.command:
@@ -367,14 +371,15 @@ def main():
 
             if outcome.reply is not None:
                 logger.info(f"Command {outcome.command} ({outcome.route}, {outcome.args}) said: {outcome.reply!r}")
-                note_command(followup or transcription, outcome.reply)
+                note_command(followup or transcription, outcome.reply, outcome.command, outcome.args)
                 if outcome.reply == "":
                     interrupted = False
                 else:
                     interrupted = speak_and_interruptible(persona.maybe_quip(outcome.reply), detector)
             else:
                 # Ask the LLM, offering the closest commands as tools, streaming its answer into the voice
-                interrupted = answer_with_ai(transcription, outcome.candidates, io, detector, timing)
+                interrupted = answer_with_ai(transcription, outcome.candidates, io, detector, timing,
+                                             outcome.scores, outcome.sentence)
 
             heard_at = first_sound_at()
             if heard_at is not None and heard_at >= speech_end:

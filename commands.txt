@@ -103,12 +103,12 @@ tools/stt_benchmark.py records your voice and suggests entries.
     "open the calculator", "fire up notepad", "open docker desktop", "run obsidian", "can
     you open file explorer", "open the paint app"
   * Name: open_app
-- Open my <folder> folder
-  * What it does: Open one of the user's folders in File Explorer.
+- Open the <folder> folder
+  * What it does: Open a folder in File Explorer by name, or the one just created.
   * You fill in: folder
   * Say for example: "open my downloads", "show me the documents folder", "open downloads
     folder", "go to my pictures", "open the desktop folder", "where are my downloads, open
-    them"
+    them", "open the invoices folder", "open the new folder you just created"
   * Name: open_folder
 - Create a folder <name> in <location>
   * What it does: Create a new folder, on the Desktop unless another folder is named.

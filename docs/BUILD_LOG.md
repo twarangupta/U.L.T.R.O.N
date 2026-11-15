@@ -949,6 +949,16 @@ Open questions:
   - The comparison used one run per model at temperature default; differences of a few sentences are noise, the 34 against 7 gap on negatives is not.
 - Not done: the 98 "asked wrong" cases (window commands, media) were not tuned in this branch; D30 thresholds are unchanged.
 
+### 2026-11-15: Live-run fixes 2 (fix/live-run-2)
+- From the owner's 13:31 to 13:36 run. D31: a tool call from the LLM passes a gate before it runs: similarity to the command's examples at least 0.50 to run, 0.47 to ask "Did you mean", below that no. Two smells weaken a match under 0.65: a content word the command never uses ("bluetooth" for volume_up) and a runner-up within 0.03. One smell asks first, two refuse; a refused request-like sentence gets an honest "I can't do that yet" instead of a wrong action.
+- Measured with tools/intent_eval.py (dry run, 1920 cases): stages a and b unchanged (negatives 92 of 102 pass, heard 50 of 53 run). Of 223 positives left for the LLM with the right command on the shortlist, the gate lets 161 through (110 run, 51 ask) and stops 62 (28 percent). Negatives that could be run by some shortlisted command without asking: 44 of 44 before, 14 of 44 after. Cost: a rare paraphrase with new words now gets a question or an answer in words instead of an action.
+- Repairs (router.repair, commands/context.py): "not base, best" swaps the word in the last command's text parameter and re-runs it; a complaint ("it isn't open") says what was done and offers a retry; neither picks an unrelated command, and without a previous command both fall through to normal routing. The last run and the last created folder live in commands/context.py, cleared with the conversation.
+- open_folder takes any name: standard folders and their OneDrive copies, a folder inside them (two levels), the Windows Recent list, or "the new folder you just created". Malformed tool arguments (a dict as a string) raise ArgumentError. web_search drops "google for", "on google", "the web" leftovers.
+- Volume: pycaw's GetSpeakers() now returns a wrapper; one helper (system._endpoint) uses its EndpointVolume and still supports the old Activate API.
+- Timing: the 1961 ms for "close Chrome" was ULTRON speaking its announcement inside the rule stage, not slow routing. route() now reports rule_ms without it plus announce_ms; the Win32 wrapper is built once (it cost about 140 ms on first use) and the process-tree walk is lazy. The result line ("Closed Chrome.") is always spoken, also after an announcement.
+- Noise transcripts (".", filler sounds) are ignored without asking the LLM. BARGE_IN_MIN_RMS 700 -> 200: measured echo is 0 to 8 RMS (x3 under 25), so 700 never fired; 200 is far above the echo and room noise. Each recorded phrase now logs its median and peak speech RMS ("speech level"), so the floor can be tuned from real data.
+- Better ideas: restrict the shortlist by risk and group, not only similarity; train the gate floors on more of the owner's real phrases; a small "I can do X, Y, Z" help reply for refused requests.
+
 <!-- New entries go above this line, newest last. Format:
 ### YYYY-MM-DD: Short title
 - What changed (branch)
