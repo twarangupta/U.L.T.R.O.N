@@ -14,12 +14,17 @@ Tuning (.env): BARGE_IN=0 turns it off. BARGE_IN_FACTOR (default 3.0) is how
 many times louder than the echo the user must be; raise it if ULTRON stops
 itself, lower it if it ignores you. With headphones there is no echo, so it
 reacts to your voice almost at once.
+
+Loudness alone also fires on a slammed door or a loud key press. So when a voice
+detector (audio/vad.py, VAD_BARGE_IN=0 turns this off) is given, a loud chunk
+only counts when the detector hears speech in it. ULTRON's own voice is speech
+too, so the detector cannot replace the loudness test; it only adds to it.
 """
 from collections import deque
 
 import numpy as np
 
-from ultron.config import BARGE_IN_CHUNKS, BARGE_IN_FACTOR, BARGE_IN_MIN_RMS
+from ultron.config import BARGE_IN_CHUNKS, BARGE_IN_FACTOR, BARGE_IN_MIN_RMS, VAD_THRESHOLD
 
 WARMUP_CHUNKS = 6      # ~0.5 s: learn the echo level before judging
 BASELINE_CHUNKS = 25   # ~2 s of echo history
@@ -32,8 +37,9 @@ def rms(chunk: np.ndarray) -> float:
 
 class BargeInDetector:
     def __init__(self, factor: float = BARGE_IN_FACTOR, min_rms: float = BARGE_IN_MIN_RMS,
-                 needed: int = BARGE_IN_CHUNKS):
+                 needed: int = BARGE_IN_CHUNKS, vad=None):
         self.factor, self.min_rms, self.needed = factor, min_rms, needed
+        self.vad = vad   # optional: anything with probability(chunk) -> 0..1
         self.baseline: deque[float] = deque(maxlen=BASELINE_CHUNKS)
         self.recent: deque[np.ndarray] = deque(maxlen=PREROLL_CHUNKS)
         self.loud = 0
@@ -51,15 +57,21 @@ class BargeInDetector:
         self.seen += 1
         self.recent.append(chunk)
         level = rms(chunk)
+        speech = self._sounds_like_speech(chunk)   # every chunk, so the detector keeps its memory
         if self.seen <= WARMUP_CHUNKS:
             self.baseline.append(level)
             return False
-        if level > self.threshold():
+        louder = level > self.threshold()
+        if louder and speech:
             self.loud += 1
         else:
             self.loud = 0
-            self.baseline.append(level)  # only quiet chunks teach the echo level
+            if not louder:
+                self.baseline.append(level)  # only quiet chunks teach the echo level
         return self.loud >= self.needed
+
+    def _sounds_like_speech(self, chunk: np.ndarray) -> bool:
+        return self.vad is None or self.vad.probability(chunk) >= VAD_THRESHOLD
 
     def preroll(self) -> list[np.ndarray]:
         return list(self.recent)
