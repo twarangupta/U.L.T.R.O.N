@@ -1,3 +1,7 @@
+"""Settings read from the environment or a .env file at the project root, with their defaults.
+
+Also holds the LLM system prompt (the honesty rules). Paths are not here: see paths.py."""
+
 import os
 
 from ultron import paths

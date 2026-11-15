@@ -68,7 +68,7 @@ Note: the downloaded file may be named after the phrase you typed, for example `
 ### 7. Test it
 
 ```
-python ultron.py
+run_ultron.bat
 ```
 
 The log should say `Wake phrase: "Hey Ultron"` and the sleeping line should say `Say "Hey Ultron" to wake me`. If it still says Hey Jarvis, the file is not in the right place or has the wrong name.

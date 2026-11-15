@@ -1,3 +1,8 @@
+"""The main loop: wake word, record, transcribe, route the command (or ask the LLM), speak.
+
+Started by `python -m ultron` (run_ultron.bat). Voice interruption (barge-in), the
+sleep and stop phrases, yes/no confirmation by voice and the timing log live here."""
+
 from ultron.config import BARGE_IN, END_SILENCE_SECONDS, SLEEP_WORD, WAKE_PHRASE
 from ultron.audio.bargein import BargeInDetector
 import sys

@@ -1,3 +1,7 @@
+"""Microphone input: opens the mic, records one phrase and ends it after a pause.
+
+Creates one AudioHandler (PyAudio) when imported. Silence is found by loudness (RMS)."""
+
 import pyaudio
 import numpy as np
 import sys

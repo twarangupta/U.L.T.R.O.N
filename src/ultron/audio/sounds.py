@@ -1,3 +1,5 @@
+"""The short start-up and go-to-sleep tones, synthesised in code (no sound files)."""
+
 import numpy as np
 import pyaudio
 import time

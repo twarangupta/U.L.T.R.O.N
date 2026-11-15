@@ -1,3 +1,7 @@
+"""Wake word detection with openWakeWord ("Hey Ultron", or the built-in "Hey Jarvis" until trained).
+
+Downloads the built-in model files on first use. See docs/WAKE_WORD_TRAINING.md."""
+
 import os
 import numpy as np
 from openwakeword.model import Model

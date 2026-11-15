@@ -1,3 +1,5 @@
+"""The shared 'ultron' logger: INFO to the console, everything to ultron.log (5 MB, 5 backups)."""
+
 import logging
 import logging.handlers
 import sys

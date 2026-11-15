@@ -16,5 +16,5 @@ Fixes # (issue)
 - [ ] My code follows the PEP 8 style guidelines of this project.
 - [ ] I have verified that my changes are portable and work across Windows, Linux, and macOS.
 - [ ] I have updated the configuration defaults in `config.py` and `.env.example` if applicable.
-- [ ] I have updated the `README.md` and `commands.txt` file with any new voice command triggers.
+- [ ] I have updated the `README.md` and `docs/COMMANDS.md` (run `tools/gen_commands_txt.py`) with any new voice command triggers.
 - [ ] I have tested my changes locally.

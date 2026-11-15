@@ -1,3 +1,8 @@
+"""The conversation brain: Ollama chat with the honest-AI prompt, streamed answers and tool calls.
+
+The model is chosen by hardware.py, kept loaded (keep_alive -1) and warmed at start-up.
+ask_stream() speaks sentence by sentence; ask_once() is for one-off prompts such as summaries."""
+
 import re
 import threading
 import time

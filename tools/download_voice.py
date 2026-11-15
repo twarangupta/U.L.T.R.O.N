@@ -1,3 +1,5 @@
+"""Download the Piper voice model into models/ (run once: python tools/download_voice.py)."""
+
 import urllib.request
 import os
 
