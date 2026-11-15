@@ -49,7 +49,7 @@ def test_rule_stage_confirm():
 @needs_model
 def test_match_stage_confirm():
     io = FakeIO(confirm=False, yes=True)  # a yes to "did you mean" is not enough
-    out = route("could you power down this machine", io)
+    out = route("could you switch off the pc for me", io)
     assert out.command == "shutdown_pc" and not ran(out)
     assert [kind for kind, _ in io.prompts] == ["confirm"]
 

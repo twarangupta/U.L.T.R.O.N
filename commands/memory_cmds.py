@@ -58,7 +58,7 @@ def forget_last_fact() -> str:
 
 @command("forget_fact", "Forget saved facts that contain some words.", group=_GROUP, title="forget {words}",
          params=[Param("words", "str", "words in the fact to forget", cues=("about", "that", "fact"))],
-         priority=74, rules=["forget (?:that|about|the fact that) (?P<words>.+)"],
+         priority=74, rules=[r"forget (?:that|about|the fact that) (?!(?:last|it|this|that|everything|all)\b)(?P<words>.+)"],
          examples=["forget about my standup", "forget that my sister is called asha",
                    "forget the fact that i like tea", "delete the memory about my car"])
 def forget_fact(words: str) -> str | None:

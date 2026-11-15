@@ -70,6 +70,12 @@ def is_known(name: str) -> bool:
     return canonical(name) in APP_ALIASES
 
 
+def resolvable(name: str) -> bool:
+    """A known app, "this" or "everything", or an installed app's Start Menu name."""
+    key = canonical(name)
+    return key in APP_ALIASES or key in ("this", "everything") or find_installed(key) is not None
+
+
 def find_in_text(text: str) -> str | None:
     """The app named somewhere in a sentence (longest alias first), for the matcher."""
     words = f" {clean(text)} "
@@ -118,5 +124,8 @@ def find_installed(name: str) -> tuple[str, str] | None:
     if len(name) < 3:
         return None
     from rapidfuzz import fuzz, process
-    hit = process.extractOne(name, list(index), scorer=fuzz.WRatio, score_cutoff=88)
+    if len(name) < 4:
+        return None
+    # Whole-name similarity only: WRatio matched partial words ("over" in a shortcut name).
+    hit = process.extractOne(name, list(index), scorer=fuzz.ratio, score_cutoff=85)
     return (hit[0], index[hit[0]]) if hit else None

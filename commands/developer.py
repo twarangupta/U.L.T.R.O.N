@@ -105,11 +105,14 @@ def api_request(method: str, url: str) -> str:
 
 @command("explain_file", "Explain a code file in the current folder.", group=_GROUP, title="explain {file}",
          params=[Param("file", "str", "file name, for example ultron.py", cues=("file", "code"))], priority=55,
-         rules=[r"explain (?:the )?(?:code )?(?:file )?(?P<file>[\w.-]+\.\w+)", r"explain (?:code )?file (?P<file>[\w. -]+)"],
+         # normalize() turns "brain.py" into "brain py"
+         rules=[r"(?:explain|describe|summari[sz]e)(?: to me)? (?:the )?(?:code )?(?:in )?(?:file )?(?P<file>\w+ (?:py|js|ts|md|json|txt))(?: to me)?",
+                r"(?:what does|what is in|walk me through|tell me what) (?:the file )?(?P<file>\w+ (?:py|js|ts|md|json|txt))(?: do| does| is for)?",
+                r"explain (?:code )?file (?P<file>[\w -]+)"],
          examples=["explain the file ultron.py", "explain code file brain.py", "what does speaker.py do",
                    "explain file audio.py"])
 def explain_file(file: str) -> str:
-    file = file.replace(" dot ", ".").replace(" ", "")
+    file = re.sub(r" (py|js|ts|md|json|txt)$", r".\1", file.strip()).replace(" dot ", ".").replace(" ", "_")
     if not os.path.exists(file):
         return f"File {file} does not exist in the current directory."
     with open(file, encoding="utf-8", errors="ignore") as f:
@@ -193,7 +196,7 @@ _SKIP_DIRS = ("venv", ".venv", ".git", "__pycache__", "node_modules")
 @command("search_codebase", "Search the code files in the current folder for a word.", group=_GROUP,
          title="search the codebase for {term}",
          params=[Param("term", "str", "the text to find", cues=("for",))], priority=56,
-         rules=[r"search (?:the )?(?:codebase|code|project) for (?P<term>.+)", r"find (?P<term>.+) in (?:the |my )?code(?:base)?"],
+         rules=[r"search (?:the |my )?(?:codebase|code|project) for (?P<term>.+)", r"find (?P<term>.+) in (?:the |my )?code(?:base)?"],
          examples=["search codebase for speak", "search the code for wake word", "find logger in the code",
                    "where in the project is transcribe used"])
 def search_codebase(term: str) -> str:

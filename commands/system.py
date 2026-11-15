@@ -133,7 +133,7 @@ def _launch(app: str) -> str | None:
          rules=[r"(?:open|launch|start|run|fire up|load)(?: up)?(?: in)? (?:the |my )?(?P<app>.+?)(?: app| application| for me)?"],
          examples=["open chrome", "open google chrome", "launch spotify", "start vs code", "open the calculator",
                    "fire up notepad", "open docker desktop", "run obsidian", "can you open file explorer",
-                   "bring up the calculator app"],
+                   "open the paint app"],
          not_examples=["open the door", "open a bank account", "is the shop open today", "open up about my feelings"])
 def open_app(app: str) -> str | None:
     if app in ("this", "everything"):

@@ -65,7 +65,8 @@ def _reply(wants_time: bool, wants_date: bool, now: datetime | None = None) -> s
 
 
 # Rules: a sentence asking for both is caught first; then time, then date.
-_BOTH = rf"(?=.*(?:{'|'.join(_TIME_PATTERNS)}))(?=.*(?:{'|'.join(_DATE_PATTERNS)})).*"
+_BOTH = (rf"(?=.*(?:{'|'.join(_TIME_PATTERNS)}))(?=.*(?:{'|'.join(_DATE_PATTERNS)})).*"
+         r"|.*\b(?:date|day)\b.*\band\b.*\btime\b.*|.*\btime\b.*\band\b.*\b(?:date|day)\b.*")
 
 
 @command("tell_date_and_time", "Say the current date and time from the PC clock.", group="Time and date",

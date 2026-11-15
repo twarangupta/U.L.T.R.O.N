@@ -39,6 +39,47 @@ _DEFER = re.compile(r"\b(?:later|tomorrow|tonight|this evening|next week|in the 
                     r"|in (?:a|an|\d+|\w+) (?:few )?(?:second|minute|hour|day)s?|at \d+(?: ?[ap] ?m)?|when i)\b")
 
 
+# A question about a thing is not a request to do it: "what does git push do", "is it safe to empty
+# the recycle bin". Rules still answer "what is my ip"; only the matcher is held back.
+_ABOUT = re.compile(r"^(?:what (?:does|do|did)|what is (?:a|an|the (?:meaning|history|difference|point))|what s (?:a|an)"
+                    r"|explain (?:what|how|why)|why (?:do|does|is|are|did)|how (?:do|does|can|should) (?:i|you|one|we)"
+                    r"|is it (?:safe|ok|okay|good|bad|possible)|tell me about|should i|which is better|who (?:is|was|invented))\b")
+
+# Words that carry no meaning of their own, for the unknown-word check.
+_FUNCTION_WORDS = set("""a an the my me i you your it this that these those to of in on at for with and or but
+is are was were be been am do does did can could would will should shall please just so now then up down
+some any all one there here what s t m re ll d ve let us we our its out off from by as into about over
+too very really bit little more again also yeah ok okay hey ultron""".split())
+
+
+def unknown_words(n: str, cmd: Command) -> set[str]:
+    """Content words in the sentence that none of the command's examples, title or description use.
+
+    "restart nginx" has "nginx", which no restart_pc example has: static embeddings
+    cannot tell that apart from "restart the pc", this check can.
+    """
+    vocab = _vocab(cmd.name)
+    return {w for w in n.split() if w not in vocab and w not in _FUNCTION_WORDS and not w.isdigit()}
+
+
+_VOCAB: dict[str, set] = {}
+
+
+def _vocab(name: str) -> set[str]:
+    if name not in _VOCAB:
+        from commands import apps
+        cmd = registry.get(name)
+        words = set()
+        for text in (*cmd.examples, cmd.description, cmd.title or "", cmd.name.replace("_", " ")):
+            words |= set(clean(text).split())
+        for p in cmd.params:
+            words |= set(" ".join(p.choices).split())
+            if p.type == "app":
+                words |= set(" ".join(apps.APP_ALIASES).split())
+        _VOCAB[name] = words
+    return _VOCAB[name]
+
+
 def guard(n: str) -> str | None:
     """Why a cleaned sentence must not run a command directly, or None."""
     if _NEGATION.search(n):
@@ -168,10 +209,17 @@ def _stage_rules(text: str, n: str, io: Interaction, cmds: list[Command]) -> Out
             args = cmd.validate(raw_args)
         except ArgumentError:
             continue
+        if not _apps_resolve(cmd, args):
+            continue  # "show me the desktop", "start over": an app rule, but no such app
         reply = execute(cmd, args, io)
         if reply is not None:
             return Outcome(reply, "rule", cmd.name, args, 1.0)
     return None
+
+
+def _apps_resolve(cmd: Command, args: dict) -> bool:
+    from commands import apps
+    return all(apps.resolvable(args[p.name]) for p in cmd.params if p.type == "app" and p.name in args)
 
 
 def run_rules(text: str, group: str | None = None, names: tuple[str, ...] | None = None,
@@ -199,6 +247,12 @@ def _stage_match(n: str, io: Interaction, timings: dict) -> tuple[Outcome | None
     blocked = guard(n)
     if blocked and not (blocked == "time" and _takes_time(cmd)):
         return None, ranked
+    if _ABOUT.search(n):
+        return None, ranked  # a question about it: the LLM answers, and may still call a tool
+    free_text = any(p.type == "str" for p in cmd.params)
+    strange = set() if free_text else unknown_words(n, cmd)
+    if strange and cmd.risk == "confirm":
+        return None, ranked  # never offer to shut down for "shut down the old project"
     if top.score >= ASK_SCORE and top.margin >= MARGIN:
         try:
             args = cmd.validate(slots.fill(cmd, n))
@@ -207,7 +261,7 @@ def _stage_match(n: str, io: Interaction, timings: dict) -> tuple[Outcome | None
         if args is not None:
             runner_up = ranked[1].score if len(ranked) > 1 else 0.0
             sure = (top.score >= RUN_SCORE and len(n.split()) >= SHORT_WORDS
-                    and top.score - runner_up >= SECOND_MARGIN)
+                    and top.score - runner_up >= SECOND_MARGIN and not strange)
             reply = execute(cmd, args, io, sure=sure)
             if reply is not None:
                 return Outcome(reply, "match", cmd.name, args, top.score), ranked

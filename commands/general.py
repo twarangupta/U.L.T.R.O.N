@@ -38,7 +38,9 @@ _UNIT_SECONDS = {"second": 1, "minute": 60, "hour": 3600}
 @command("type_text", "Type the dictated words at the cursor (dictation).", group="Typing",
          title="type {text}", raw=True, stages=("rule",), priority=100,
          params=[Param("text", "str", "the words to type")],
-         rules=[r"^\s*(?:type|write|insert)\b(?!\s+(?:a\s+)?note\b)[\s,:.-]+(?P<text>.+)$"],
+         # "write" is dictation unless a thing to compose follows: "write a note", "write tests for x.py"
+         rules=[r"^\s*(?:type|insert|write(?!\s+(?:a|an|the|some|down|me|my|unit|tests?|boilerplate|template"
+                r"|code|email|mail|message|reply|letter|note|pytest)\b))\b[\s,:.-]+(?P<text>.+)$"],
          examples=["type hello world", "type restart later", "write see you tomorrow", "insert my email signature"])
 def type_text(text: str) -> str:
     """Words after "type" are pasted, never run: "type restart later" types it."""
@@ -355,7 +357,8 @@ def news_headlines() -> str:
 
 @command("wikipedia", "Read the Wikipedia summary of a topic.", group=_ONLINE, title="look up {topic} on Wikipedia",
          params=[Param("topic", "str", "the topic", cues=("wikipedia for", "wikipedia", "about"))], priority=50,
-         rules=[r"(?:search )?wikipedia(?: for)? (?P<topic>.+)", r"(?:what does )?wikipedia (?:say )?about (?P<topic>.+)"],
+         rules=[r"(?:search )?wikipedia(?: for)? (?P<topic>.+)", r"(?:what does )?wikipedia (?:say )?about (?P<topic>.+)",
+                r"(?:look up|search for|search) (?P<topic>.+) on wikipedia"],
          examples=["wikipedia alan turing", "search wikipedia for black holes", "what does wikipedia say about rome"])
 def wikipedia(topic: str) -> str:
     try:

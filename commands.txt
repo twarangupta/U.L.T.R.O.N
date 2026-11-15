@@ -101,7 +101,7 @@ tools/stt_benchmark.py records your voice and suggests entries.
   * You fill in: app
   * Say for example: "open chrome", "open google chrome", "launch spotify", "start vs code",
     "open the calculator", "fire up notepad", "open docker desktop", "run obsidian", "can
-    you open file explorer", "bring up the calculator app"
+    you open file explorer", "open the paint app"
   * Name: open_app
 - Open my <folder> folder
   * What it does: Open one of the user's folders in File Explorer.

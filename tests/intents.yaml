@@ -1,0 +1,1994 @@
+# Phrasings ULTRON must understand (D30). Used by tests/test_intents.py and tools/intent_eval.py.
+# heard: the owner's real sentences from ultron.log ("Heard:" lines), command null = not a command.
+# negatives: must never run a command. paraphrases: written at development time by the coding
+# model (Claude), reviewed against each handler, and never copied from the registry examples.
+# Weights in the eval: heard 3, negatives 2, paraphrases 1.
+
+heard:
+  - {text: "What's the time right now?", command: tell_time}
+  - {text: "watch the time", command: tell_time}
+  - {text: "Can you take a screenshot?", command: take_screenshot}
+  - {text: "close Google Chrome", command: close_app}
+  - {text: "close VS code", command: close_app}
+  - {text: "close my global application", command: close_app}
+  - {text: "focus mode", command: meeting_mode}
+  - {text: "git status", command: git_status}
+  - {text: "how much RAM is being used", command: system_status}
+  - {text: "I said check how much RAM is being used", command: system_status}
+  - {text: "minimize everything", command: minimize_windows}
+  - {text: "Now, what do you remember?", command: list_memories}
+  - {text: "What do you remember?", command: list_memories}
+  - {text: "open Chrome", command: open_app}
+  - {text: "open Google Chrome", command: open_app}
+  - {text: "open in Google Chrome", command: open_app}
+  - {text: "remember that this project is called Ultron.", command: remember_fact}
+  - {text: "type hello world", command: type_text}
+  - {text: "vacuum mute", command: mute}
+  - {text: "What did I do today?", command: day_summary}
+  - {text: "it's still not closed", command: null}
+  - {text: "So what's my project name?", command: null}
+  - {text: "Are you better than Jarvis?", command: null}
+  - {text: "Are you better than Ultron?", command: null}
+  - {text: "Can you check my email?", command: null}
+  - {text: "Can you click on my screen?", command: null}
+  - {text: "Can you search a file for me in my PC?", command: null}
+  - {text: "Can you tell me my specifications of my laptop?", command: null}
+  - {text: "What are my laptop specs?", command: null}
+  - {text: "check how much time is being used", command: null}
+  - {text: "close, clod", command: null}
+  - {text: "Go make me a sandwich", command: null}
+  - {text: "Hello.", command: null}
+  - {text: "How are you today?", command: null}
+  - {text: "How can I improve you?", command: null}
+  - {text: "I meant on the wave protein.", command: null}
+  - {text: "I said quit", command: null}
+  - {text: "I said store, no nothing", command: null}
+  - {text: "Nothing, I just like you", command: null}
+  - {text: "What can you do?", command: null}
+  - {text: "What does audio device have to do with anything with the activator?", command: null}
+  - {text: "What guns am I up on?", command: null}
+  - {text: "so I need a protein powder for me, what is the best protein powder?", command: null}
+  - {text: "What is the best protein powder for me under 3000 rupees?", command: null}
+  - {text: "What is the best protein powder?", command: null}
+  - {text: "you have a very witty personality.", command: null}
+  - {text: "address", command: null}
+  - {text: "type", command: null}
+
+negatives:
+  - restart the dev server
+  - restart nginx
+  - reboot the router
+  - restart the docker container
+  - can you restart the backend
+  - shut down the old project
+  - type restart later
+  - remind me to go to sleep at 11
+  - Assets stop
+  - I meant whey protein
+  - take out the trash
+  - remind me to empty the trash
+  - what is in the recycle bin
+  - don't close chrome
+  - close chrome later
+  - do not restart my computer
+  - restart my laptop tomorrow
+  - lock the pc in five minutes
+  - never mute the sound
+  - why does chrome use so much memory
+  - which is better, chrome or firefox
+  - how do i take a screenshot on a mac
+  - what does git push do
+  - explain what a merge conflict is
+  - is it safe to empty the recycle bin
+  - what is the volume of a cube
+  - how loud is a jet engine
+  - what is the capital of japan
+  - tell me about the history of git
+  - who invented the computer
+  - should i buy more ram
+  - how much ram does gaming need
+  - what is a good battery for a car
+  - my battery at home is dead
+  - the music at the party was too loud
+  - i love this song
+  - play a game with me
+  - can you sing
+  - lock the door when you leave
+  - open the window, it is hot
+  - close the curtains
+  - turn on the fan
+  - order food from swiggy
+  - book an uber
+  - send a message to rahul
+  - call mom
+  - what's the weather on mars
+  - how long do i have to wait
+  - what time does the bank open
+  - how much time is left in the match
+  - i have no time today
+  - spell it out for me, why are you like this
+  - that was a joke
+  - you are not funny
+  - what is a branch in a tree
+  - i want to push myself at the gym
+  - pull the car over
+  - commit to the plan
+  - my friend logged out of facebook
+  - how do vpn ports work
+  - who is the prime minister of india
+  - recommend a laptop under 60000
+  - what should i cook tonight
+  - how are you feeling
+  - thank you, that's all for now
+  - nothing, never mind that
+
+paraphrases:
+  close_app:
+    - shut chrome down
+    - close the spotify app
+    - please quit vs code
+    - exit the chrome browser
+    - close down discord
+    - can you close notepad
+    - quit google chrome now
+    - close teams for me
+    - terminate the zoom app
+    - close slack
+    - quit the window i'm on
+    - close this one
+    - get spotify off my screen and close it
+    - exit visual studio code
+    - close the explorer window
+    - close whatsapp
+    - kill the chrome browser
+    - close outlook please
+    - shut the notepad window
+    - close my browser
+  minimize_windows:
+    - minimise all the windows
+    - hide all apps
+    - put everything down to the taskbar
+    - minimize every window except chrome
+    - hide every window but vs code
+    - minimise spotify
+    - minimize this window
+    - send all windows to the taskbar
+    - show me the desktop
+    - go to the desktop
+    - minimise all except discord
+    - hide chrome for now
+    - minimize all my apps
+    - clear my screen of all windows
+    - minimise the browser
+    - hide the window in front
+    - minimize everything other than the terminal
+    - make every window go away
+    - drop all windows down
+    - minimise everything please
+  restore_windows:
+    - restore all windows
+    - bring all my windows back
+    - unminimize everything
+    - put my windows back
+    - show my windows again
+    - restore everything i minimised
+    - undo minimise all
+    - bring back all windows
+    - get my apps back on screen
+    - unhide all windows
+    - restore the windows
+    - bring everything back up
+    - show all my apps again
+    - put everything back the way it was
+    - reopen my minimised windows
+    - restore all my windows please
+    - un minimise all
+    - bring my stuff back on screen
+    - give me my windows back
+    - restore minimized windows
+  maximize_window:
+    - maximise the chrome window
+    - make vs code full screen
+    - full screen this
+    - maximize spotify
+    - blow this window up to full size
+    - make this window fill the screen
+    - maximise this window please
+    - full screen chrome
+    - make the browser bigger
+    - maximize the current window
+    - expand this window
+    - make notepad full screen
+    - fullscreen vs code
+    - maximise discord
+    - make this app take the whole screen
+    - enlarge this window
+    - maximize it
+    - fill the screen with chrome
+    - make teams full screen
+    - maximise my terminal
+  switch_to_app:
+    - switch over to chrome
+    - go to vs code
+    - bring chrome to the front
+    - focus spotify
+    - show me vs code
+    - switch to the terminal
+    - jump to chrome
+    - take me to spotify
+    - bring up discord
+    - switch to notepad
+    - go back to vs code
+    - put chrome in front
+    - focus on the browser
+    - switch to teams
+    - bring the calculator forward
+    - show me discord
+    - move to chrome
+    - open up the chrome window that is already open
+    - focus visual studio code
+    - switch windows to spotify
+  open_app:
+    - launch chrome
+    - start spotify
+    - open vs code
+    - open up notepad
+    - fire up the calculator
+    - start visual studio code
+    - can you launch discord
+    - open file explorer
+    - run notepad
+    - start docker desktop
+    - open the spotify app
+    - launch the browser
+    - open task manager
+    - load vs code
+    - please open the calculator
+    - start up chrome
+    - open my code editor vs code
+    - launch file explorer for me
+    - open docker
+    - get notepad running
+  open_website:
+    - open youtube in the browser
+    - go to github dot com
+    - launch gmail
+    - take me to reddit
+    - open stack overflow
+    - pull up youtube
+    - open github please
+    - show me my gmail
+    - open reddit
+    - visit youtube
+    - go to youtube
+    - open linkedin
+    - load gmail
+    - can you open github
+    - open the reddit website
+    - bring up stackoverflow
+    - open chatgpt
+    - go to amazon
+    - open netflix
+    - check my gmail inbox in the browser
+  web_search:
+    - search for best pizza near me
+    - google python list comprehension
+    - look up the population of india
+    - search the web for cheap headphones
+    - google what is docker
+    - search for how to tie a tie
+    - look up train times to mumbai
+    - search online for laptop reviews
+    - google cricket scores
+    - search for the meaning of serendipity
+    - can you google how tall everest is
+    - look up flight prices to dubai
+    - search for javascript promises
+    - google weather in bangalore
+    - search for a biryani recipe
+    - look up the latest iphone price
+    - search google for rust tutorials
+    - google how to fix a flat tyre
+    - search for news about isro
+    - look up what fastapi is
+  open_folder:
+    - open the downloads folder
+    - show my documents
+    - open my pictures folder
+    - go to downloads
+    - open documents
+    - show me the downloads directory
+    - open my desktop folder
+    - reveal the pictures folder
+    - open my videos
+    - show the music folder
+    - take me to my downloads
+    - open the documents directory
+    - show me my pictures
+    - open my downloads please
+    - go to my documents folder
+    - show my downloads folder
+    - open videos folder
+    - can you open my documents
+    - open the pictures directory
+    - browse my downloads
+  lock_pc:
+    - lock my pc
+    - lock the computer now
+    - lock my screen
+    - lock this laptop
+    - lock the workstation
+    - lock up the computer
+    - lock my laptop please
+    - secure my computer, i'm leaving
+    - lock the system
+    - lock it
+    - please lock my machine
+    - lock windows
+    - lock the screen right away
+    - put the pc on the lock screen
+    - lock everything, i'm going for lunch
+    - lock this pc
+    - lock my workstation
+    - quickly lock the screen
+    - can you lock my computer
+    - lock down the laptop
+  system_status:
+    - how much memory is in use
+    - what is my ram usage
+    - cpu usage please
+    - how hard is my cpu working
+    - give me a status report
+    - check my system status
+    - how much ram am i using right now
+    - is my memory full
+    - what's the cpu load
+    - how loaded is my laptop
+    - show system telemetry
+    - check the ram usage
+    - how much of my memory is free
+    - what's eating my ram
+    - system health
+    - is my computer running slow
+    - report cpu and memory
+    - how much processor is being used
+    - ram usage
+    - how busy is the processor
+  take_screenshot:
+    - take a screen shot
+    - capture my screen
+    - grab a screen capture
+    - screenshot this
+    - take a picture of my screen
+    - save a screenshot
+    - snap a screenshot
+    - capture the screen please
+    - screenshot my desktop
+    - take screenshot now
+    - get me a screenshot
+    - make a screenshot
+    - capture what's on screen
+    - take a quick screenshot
+    - can you screenshot the screen
+    - grab my screen
+    - print screen
+    - save what's on my screen as a picture
+    - take a screen grab
+    - screen capture please
+  battery_status:
+    - battery level
+    - how much charge do i have
+    - what's the battery at
+    - check the battery
+    - how much battery do i have left
+    - is my laptop charging
+    - battery percentage
+    - how long until my battery dies
+    - check my battery status
+    - how's my battery
+    - am i plugged in
+    - what is my battery percentage
+    - battery life left
+    - how much power is left
+    - is the charger connected
+    - tell me the battery level
+    - how much juice is left
+    - battery check
+    - is my battery low
+    - remaining battery
+  disk_space:
+    - how much disk space is left
+    - check my disk space
+    - how full is my hard drive
+    - free space on my laptop
+    - storage left
+    - how much storage do i have
+    - is my disk full
+    - check free space on c
+    - how many gigabytes are free
+    - how much room is left on my drive
+    - disk usage
+    - am i running out of space
+    - check hard drive space
+    - how much space is free on c drive
+    - storage check
+    - how much free storage is there
+    - what's my free disk space
+    - check the c drive
+    - do i have enough space left
+    - space left on disk
+  organize_downloads:
+    - organise my downloads
+    - sort out the downloads folder
+    - tidy my downloads
+    - clean up my downloads
+    - organize the downloads folder by file type
+    - sort my downloaded files
+    - put my downloads into folders
+    - arrange my downloads
+    - my downloads folder is messy, organise it
+    - sort downloads
+    - organize downloads
+    - clean my downloads folder
+    - group my downloads by type
+    - tidy up downloads
+    - sort the files in downloads
+    - organise the download folder
+    - make my downloads neat
+    - file away my downloads
+    - categorize my downloads
+    - declutter my downloads
+  media_play_pause:
+    - pause the music
+    - play the song
+    - resume playback
+    - pause playback
+    - unpause
+    - play
+    - pause this video
+    - resume the song
+    - continue the music
+    - hit play
+    - pause it
+    - start the music again
+    - stop for a second, pause the song
+    - play my music
+    - toggle play
+    - pause the track
+    - resume
+    - play the video
+    - pause spotify
+    - keep playing the music
+  media_next:
+    - next
+    - skip the song
+    - next one
+    - play next track
+    - skip to the next song
+    - change the song
+    - skip track
+    - go to the next track
+    - next song please
+    - skip ahead
+    - i don't like this song, skip
+    - move to the next song
+    - another song
+    - skip it
+    - next music
+    - forward to the next track
+    - skip this
+    - next video
+    - play something else, next
+    - jump to the next song
+  media_previous:
+    - previous
+    - play the previous song
+    - go back one track
+    - last song
+    - back a track
+    - play the last song again
+    - go to the previous track
+    - previous track please
+    - back to the previous song
+    - play that again, previous song
+    - rewind to the last track
+    - go back
+    - one song back
+    - last track
+    - the song before this one
+    - return to the previous song
+    - back up a song
+    - previous music
+    - play the one before
+    - skip back
+  media_stop:
+    - stop the music
+    - stop playing
+    - stop the video
+    - end playback
+    - stop the song now
+    - turn the music off
+    - stop music playback
+    - kill the playback
+    - stop playing music
+    - music off
+    - halt the music
+    - stop spotify playing
+    - stop all media
+    - end the song
+    - no more music, stop it
+    - stop the audio playing
+    - switch off the music
+    - stop the track
+    - stop media
+    - cut the music
+  volume_up:
+    - raise the volume
+    - turn it up
+    - make it a bit louder
+    - increase volume
+    - louder please
+    - boost the sound
+    - volume higher
+    - turn the sound up
+    - pump up the volume
+    - i can't hear, louder
+    - more volume
+    - turn up the volume a little
+    - increase the sound a bit
+    - raise the sound
+    - up the volume
+    - louder music
+    - make the audio louder
+    - volume up a bit
+    - bump the volume up
+    - it's too quiet
+  volume_down:
+    - lower the volume
+    - turn it down
+    - make it quieter
+    - decrease volume
+    - quieter please
+    - reduce the sound
+    - volume lower
+    - turn the sound down
+    - it's too loud, lower it
+    - less volume
+    - turn down the volume a little
+    - decrease the sound a bit
+    - lower the sound
+    - down the volume
+    - softer music
+    - make the audio quieter
+    - volume down a bit
+    - bring the volume down
+    - reduce the volume
+    - not so loud
+  volume_set:
+    - volume 50
+    - set volume to 30 percent
+    - put the volume at 80
+    - change volume to 10
+    - set the sound to 60 percent
+    - make the volume 25
+    - volume at 45 percent
+    - set the volume level to 90
+    - turn the volume to 20
+    - volume to fifty
+    - set audio to 70
+    - put the sound at 15 percent
+    - adjust the volume to 40
+    - set volume 100
+    - volume 5 percent
+    - change the sound level to 55
+    - make the sound 35 percent
+    - volume should be at 65
+    - set my volume to 75
+    - put volume on 30
+  mute:
+    - mute the audio
+    - mute everything
+    - silence the sound
+    - turn the audio off
+    - mute my laptop
+    - mute the speakers
+    - sound off
+    - go silent
+    - mute it
+    - kill the audio
+    - silence
+    - mute please
+    - turn off the sound
+    - mute the pc
+    - no sound
+    - shut the sound off
+    - mute volume
+    - make it silent
+    - cut the sound
+    - silence my computer
+  unmute:
+    - unmute the audio
+    - unmute it
+    - turn the audio back on
+    - bring the sound back
+    - unmute the speakers
+    - sound back on
+    - unmute please
+    - turn sound on
+    - unmute my laptop
+    - give me sound again
+    - restore the sound
+    - undo mute
+    - unmute everything
+    - turn the volume back on
+    - unmute the pc
+    - audio on
+    - switch the sound on
+    - put the sound back
+    - unmute volume
+    - un mute
+  meeting_mode:
+    - turn on meeting mode
+    - enable focus mode
+    - start meeting mode
+    - activate focus mode
+    - i'm joining a call, meeting mode
+    - meeting mode on
+    - focus mode please
+    - get ready for my meeting
+    - quiet everything for a meeting
+    - go into focus mode
+    - switch to meeting mode
+    - i need to focus, focus mode
+    - prepare for a call
+    - meeting time, mute and hide everything
+    - enter meeting mode
+    - turn on focus
+    - do not disturb mode
+    - meeting mode now
+    - set up for a meeting
+    - start focus
+  tell_time:
+    - what is the time
+    - what's the time now
+    - time
+    - tell me what time it is
+    - what time is it right now
+    - current time please
+    - got the time
+    - do you have the time
+    - what's the time ultron
+    - can you tell me the time
+    - time check
+    - what is the current time
+    - what o'clock is it
+    - how late is it
+    - the time please
+    - what's the exact time
+    - give me the time
+    - time right now
+    - tell me the current time
+    - what hour is it
+  tell_date:
+    - what is today's date
+    - what's the date today
+    - today's date please
+    - what day is today
+    - which date is it
+    - what's today
+    - tell me the date
+    - what is the date
+    - date please
+    - what day of the week is it
+    - give me today's date
+    - current date
+    - what's the date ultron
+    - which day is it today
+    - what date is it today
+    - can you tell me the date
+    - today is what date
+    - the date today
+    - tell me today's date
+    - what's today's day
+  tell_date_and_time:
+    - what's the date and time
+    - tell me the date and the time
+    - give me the time and date
+    - what day and time is it now
+    - current date and time please
+    - date and time
+    - what is the time and date
+    - time and date please
+    - tell me the day and time
+    - what's today's date and the time
+    - give me the date and time
+    - what's the time and the date today
+    - date and time now
+    - tell me the time and the date
+    - time and day please
+    - can you tell me the date and time
+    - what is the date and the current time
+    - the date and the time please
+    - time and date ultron
+    - day and time now
+  shutdown_pc:
+    - shut down my pc
+    - turn off the computer
+    - power down
+    - switch off my laptop
+    - shut the computer down
+    - turn the pc off
+    - power off my laptop
+    - shutdown the system
+    - shut down now
+    - turn off this machine
+    - power off
+    - i'm done for the day, shut down the computer
+    - shut down the laptop
+    - kill the power on my pc
+    - shutdown please
+    - power down the computer
+    - switch the pc off
+    - turn my computer off
+    - shut it all down
+    - shut down this pc
+  restart_pc:
+    - restart the computer
+    - reboot
+    - restart my pc
+    - reboot the laptop
+    - restart this machine
+    - give my pc a restart
+    - reboot the system
+    - restart the laptop now
+    - reboot my computer please
+    - restart windows
+    - do a restart
+    - reboot this pc
+    - restart my machine
+    - turn it off and on again
+    - reboot now
+    - restart the pc please
+    - can you restart my laptop
+    - system restart
+    - reboot the computer
+    - restart everything
+  empty_recycle_bin:
+    - empty my recycle bin
+    - clear the recycle bin
+    - empty the trash
+    - clean the recycle bin
+    - delete everything in the recycle bin
+    - wipe the trash
+    - empty the bin
+    - clear out the trash
+    - purge the recycle bin
+    - empty recycle bin now
+    - get rid of everything in the bin
+    - clear my trash can
+    - clean out my recycle bin
+    - empty my trash
+    - throw away the recycle bin contents
+    - flush the recycle bin
+    - clear the bin
+    - remove all files from the recycle bin
+    - empty the recycle bin please
+    - nuke the recycle bin
+  git_status:
+    - git status please
+    - what's my git status
+    - check the git status
+    - any changes in git
+    - show git status
+    - is the repo clean
+    - what changed in my repo
+    - how many files have i modified
+    - do i have unsaved changes in git
+    - status of my repo
+    - get status
+    - is anything uncommitted
+    - what's the state of my branch
+    - check my repo for changes
+    - git status now
+    - are there modified files
+    - any untracked files
+    - is my working tree clean
+    - repo status
+    - what's pending in git
+  git_commit:
+    - commit everything
+    - git commit please
+    - commit the changes
+    - commit all my work
+    - make a git commit
+    - commit my code
+    - save my changes to git
+    - commit with message updated the readme
+    - git commit message fixed typo
+    - commit what i have
+    - create a commit
+    - commit all files
+    - check in my changes
+    - commit now
+    - stage and commit everything
+    - commit my work please
+    - do a commit
+    - commit these changes
+    - git add and commit
+    - commit with the message cleanup
+  git_push:
+    - push
+    - git push please
+    - push my code
+    - push to github
+    - push the changes
+    - push my branch
+    - push to origin
+    - upload my commits
+    - push everything to the remote
+    - send my code to github
+    - push the commits
+    - get push
+    - push it to the remote
+    - push my work
+    - push the branch to origin
+    - publish my commits
+    - push now
+    - push the latest commits
+    - sync my commits up to github
+    - push code to remote
+  git_pull:
+    - pull
+    - git pull please
+    - pull the latest code
+    - pull changes from github
+    - sync with remote
+    - get the latest changes
+    - update from origin
+    - pull from github
+    - fetch and merge the latest
+    - pull my branch
+    - update my repo
+    - get pull
+    - pull the newest commits
+    - pull down the changes
+    - sync my branch
+    - grab the latest from remote
+    - pull updates
+    - refresh my repo from github
+    - pull from remote
+    - bring my branch up to date
+  git_stash:
+    - stash
+    - stash the changes
+    - stash my work
+    - git stash please
+    - put my changes aside
+    - save my changes for later in a stash
+    - stash everything
+    - shelve my work
+    - stash my current changes
+    - put this work on hold
+    - stash it
+    - git stash now
+    - hide my changes in a stash
+    - stash uncommitted work
+    - park my work
+    - stash these changes
+    - set my changes aside
+    - stash before i switch
+    - make a stash
+    - stash the work in progress
+  git_stash_pop:
+    - pop my stash
+    - git stash pop please
+    - unstash
+    - apply my stash
+    - bring back my stash
+    - restore the stashed changes
+    - pop the last stash
+    - get my stashed work back
+    - stash pop
+    - apply the stash
+    - unstash my changes
+    - take my changes out of the stash
+    - pop stash
+    - restore my stashed work
+    - bring my changes back from the stash
+    - get back what i stashed
+    - pop the stash now
+    - recover the stash
+    - apply stashed changes
+    - un stash
+  git_conflicts:
+    - any conflicts
+    - check merge conflicts
+    - do i have merge conflicts
+    - are there any conflicts
+    - git conflict check
+    - show conflicts
+    - list conflicted files
+    - which files are in conflict
+    - check for git conflicts
+    - merge conflicts
+    - did the merge cause conflicts
+    - conflicts in my repo
+    - find merge conflicts
+    - anything conflicting
+    - check conflicts please
+    - are there unresolved conflicts
+    - show me the conflicts
+    - conflict status
+    - what files conflict
+    - is my merge clean
+  git_log:
+    - show commits
+    - show me the last commits
+    - git log please
+    - recent commits
+    - what did i commit recently
+    - show the git history
+    - list my last five commits
+    - what are the latest commits
+    - commit history
+    - git history please
+    - read me my recent commits
+    - show the log
+    - last commits
+    - what was my last commit
+    - show the commit log
+    - get log
+    - what have i committed today
+    - tell me the recent commits
+    - list recent commits
+    - history of my commits
+  git_create_branch:
+    - create a branch called test
+    - make a branch named hotfix
+    - new branch login page
+    - create branch dark mode
+    - start a new branch called refactor
+    - create a new branch named docs
+    - make branch cleanup
+    - create a branch for the settings page
+    - new branch called experiment
+    - branch off into a new branch named fix
+    - create new branch api
+    - make a new branch called ui
+    - create a git branch named speed
+    - open a new branch called tests
+    - new branch named voice
+    - create a feature branch called search
+    - make new branch release
+    - create branch called wake word
+    - start branch named backup
+    - create a branch named demo
+  git_switch_branch:
+    - switch to main
+    - checkout main
+    - switch branch to develop
+    - check out the develop branch
+    - change to the main branch
+    - switch to branch test
+    - go to branch main
+    - checkout branch feature
+    - move to the develop branch
+    - switch over to the main branch
+    - checkout develop
+    - change branch to release
+    - switch branches to main
+    - check out main
+    - switch to the hotfix branch
+    - jump to the main branch
+    - change to branch dev
+    - switch to the p1 fixes branch
+    - checkout the release branch
+    - go back to main branch
+  git_branches:
+    - list my branches
+    - show branches
+    - what branches are there
+    - which branch is this
+    - what branch am i on
+    - git branches
+    - show all branches
+    - list git branches
+    - current branch
+    - which git branch is active
+    - tell me my branches
+    - what's my current branch
+    - list all local branches
+    - show me the branches
+    - git branch list
+    - how many branches do i have
+    - name of the current branch
+    - what branch is checked out
+    - list the branches
+    - branches please
+  debug_clipboard_error:
+    - debug the error
+    - analyze the stack trace
+    - explain this error
+    - debug this traceback
+    - what's wrong with this error
+    - analyze the error i copied
+    - help me debug this crash
+    - explain the stack trace on my clipboard
+    - why did this crash
+    - analyze this crash
+    - debug my error
+    - look at the error in my clipboard
+    - figure out this exception
+    - what does this traceback mean
+    - fix the error i copied
+    - explain the exception
+    - analyse this error
+    - debug the crash log
+    - what caused this stack trace
+    - help with this error message
+  audit_dependencies:
+    - check my dependencies
+    - audit the dependencies
+    - are my packages up to date
+    - check for outdated packages
+    - any outdated dependencies
+    - audit packages
+    - check the requirements for updates
+    - which packages need updating
+    - dependency check
+    - check python packages for updates
+    - are my libraries outdated
+    - audit my packages
+    - check npm packages
+    - outdated packages
+    - scan my dependencies
+    - check dependency health
+    - do my packages need updates
+    - audit project dependencies
+    - list outdated packages
+    - check if dependencies are current
+  api_request:
+    - send a get request to localhost 3000
+    - send get request to api dot github dot com
+    - send a post request to localhost 8000 slash login
+    - make a get request to example dot com
+    - send a get request to localhost colon 5000
+    - post request to localhost 8080
+    - send a post request to my local api
+    - hit localhost 3000 with a get request
+    - send get to httpbin dot org
+    - make a post request to localhost 9000
+    - get request localhost 8000
+    - send an http get to example dot org
+    - call localhost 4000 with get
+    - send a get request to google dot com
+    - post to localhost 3000 slash api
+    - send request get localhost 7000
+    - get localhost 8000 slash health
+    - send a get request to my server
+    - fire a get request at localhost 3000
+    - post the clipboard to localhost 8000
+  explain_file:
+    - explain ultron.py
+    - explain the file brain.py
+    - what does audio.py do
+    - explain the code in speaker.py
+    - explain file config.py
+    - tell me what memory.py does
+    - explain the code file stt.py
+    - walk me through hardware.py
+    - what is in wakeword.py
+    - explain activity.py
+    - describe what logger.py does
+    - explain persona.py to me
+    - what does the file corrections.py do
+    - summarise the code in bargein.py
+    - explain this file benchmark.py
+    - what is tts_text.py for
+    - explain the file router.py
+    - explain code registry.py
+    - what does download_voice.py do
+    - explain startup_audio.py
+  container_logs:
+    - container logs for web
+    - show container logs for api
+    - get the logs of the redis container
+    - check container logs postgres
+    - logs for the backend container
+    - fetch container logs for nginx
+    - container logs db
+    - show me the logs of container worker
+    - check the container logs for app
+    - get container logs for frontend
+    - docker logs for api
+    - container logs of mongo
+    - pull the logs of the web container
+    - show logs for container cache
+    - check container logs for auth
+    - get the container logs for search
+    - logs of container queue
+    - container logs for mysql
+    - read container logs for server
+    - latest container logs for proxy
+  check_port:
+    - what is on port 3000
+    - check port 5000
+    - who's using port 8080
+    - what's running on port 8000
+    - is port 3000 in use
+    - which process is on port 5432
+    - check what's on port 4000
+    - port 8080 status
+    - what is listening on port 9000
+    - is anything on port 5000
+    - check port 3000 please
+    - who is on port 6379
+    - what process uses port 8000
+    - check if port 80 is busy
+    - is port 443 taken
+    - what's on port 1234
+    - check port 7000
+    - is something running on port 3001
+    - which app is on port 8081
+    - port 5173 check
+  kill_port:
+    - kill port 8080
+    - kill whatever is on port 3000
+    - free port 5000
+    - stop the process on port 8000
+    - kill the process using port 4000
+    - end the process on port 9000
+    - free up port 3000
+    - kill port 5432
+    - terminate the process on port 8080
+    - kill the thing on port 6379
+    - stop port 3000
+    - clear port 8000
+    - kill the server on port 5000
+    - release port 3001
+    - kill port 80
+    - end whatever uses port 4200
+    - stop whatever is running on port 8081
+    - kill process on port 1234
+    - free port 5173
+    - kill the app on port 7000
+  docker_status:
+    - check docker
+    - docker status please
+    - what containers are running
+    - list running containers
+    - is docker running
+    - show docker containers
+    - which docker containers are up
+    - docker ps
+    - running containers
+    - check my containers
+    - are any containers running
+    - list docker containers
+    - what's running in docker
+    - show me the docker status
+    - container status
+    - how many containers are running
+    - docker check
+    - check running containers
+    - what docker containers do i have up
+    - list active containers
+  format_json:
+    - format the json
+    - prettify json
+    - pretty print the json
+    - format the json on my clipboard
+    - beautify json
+    - make the json readable
+    - indent the json
+    - clean up this json
+    - format my json
+    - tidy the json i copied
+    - json format
+    - prettify the clipboard json
+    - fix the json formatting
+    - pretty json please
+    - format clipboard json
+    - beautify the json i copied
+    - make my json pretty
+    - reformat the json
+    - format this json
+    - pretty print clipboard json
+  search_codebase:
+    - search the codebase for logger
+    - search code for transcribe
+    - find speak in the code
+    - search the project for wake word
+    - look for hotwords in the codebase
+    - search codebase for timing
+    - find barge in in the code
+    - search the code for whisper
+    - where is persona used, search the codebase
+    - search my project for todo
+    - find ollama in the codebase
+    - search codebase for confirm
+    - search the code for activity
+    - find the word profile in my code
+    - search the project for memory
+    - search code for registry
+    - look through the code for pyaudio
+    - search the codebase for config
+    - find record phrase in the code
+    - search the code for router
+  boilerplate:
+    - fastapi boilerplate
+    - create a fastapi app
+    - boilerplate for flask
+    - write a template for a react component
+    - create boilerplate for an express app
+    - starter code for a django view
+    - give me boilerplate for a python cli
+    - create a boilerplate for a html page
+    - boilerplate for a dockerfile
+    - template for a github action
+    - create fastapi
+    - starter code for a pytest file
+    - boilerplate for a node server
+    - write boilerplate for a vue app
+    - create a boilerplate for a websocket server
+    - template for a bash script
+    - boilerplate for a sql table
+    - starter code for a discord bot
+    - create boilerplate for a chrome extension
+    - template for a readme
+  review_code:
+    - review my changes
+    - do a code review
+    - review the code
+    - review my diff
+    - check my code for bugs
+    - review what i changed
+    - code review please
+    - look over my changes
+    - review my uncommitted code
+    - give me a code review
+    - review the git diff
+    - review my work
+    - critique my code changes
+    - inspect my diff
+    - review the changes i made
+    - review the code before i commit
+    - can you review my code
+    - check my changes
+    - review my latest code
+    - analyse my diff for problems
+  write_unit_test:
+    - write tests for memory.py
+    - generate a test for audio.py
+    - write a unit test for brain.py
+    - generate unit tests for speaker.py
+    - write a test suite for config.py
+    - create tests for hardware.py
+    - write unit tests for stt.py
+    - generate tests for logger.py
+    - write a pytest for persona.py
+    - make unit tests for activity.py
+    - write tests for wakeword.py
+    - generate a unit test for corrections.py
+    - write a test for bargein.py
+    - create a test file for router.py
+    - generate tests for registry.py
+    - write unit test for slots.py
+    - make a test for apps.py
+    - write tests for intent.py
+    - generate unit tests for tts_text.py
+    - write a test suite for followups.py
+  start_project:
+    - start my project
+    - launch the project
+    - open my workspace
+    - start the workspace
+    - set up the project
+    - launch my project workspace
+    - open the project
+    - get my workspace ready
+    - start coding workspace
+    - launch workspace
+    - open project workspace
+    - start work on the project
+    - fire up my project
+    - prepare my coding setup
+    - open my dev workspace
+    - start the dev environment
+    - launch the coding workspace
+    - get the project open
+    - open everything for my project
+    - start project workspace
+  read_screen:
+    - read the screen
+    - scan my screen
+    - ocr my screen
+    - copy all the text on screen
+    - read the text on my screen
+    - scan the screen for text
+    - grab the text from my screen
+    - extract text from the screen
+    - read what's on screen
+    - ocr the screen
+    - copy screen text
+    - get the text off my screen
+    - read screen text
+    - scan screen
+    - pull the text off the screen
+    - read the words on my screen
+    - text from screen please
+    - capture the text on screen
+    - turn my screen into text
+    - read my display
+  draft_message:
+    - draft an email asking for a refund
+    - draft a reply to my boss
+    - draft a message to the team about the delay
+    - draft email to hr about leave
+    - draft a reply saying thanks
+    - write an email to my teacher about the assignment
+    - draft a mail to the client
+    - compose an email about the meeting
+    - draft a message for my landlord
+    - draft an email declining the invite
+    - draft a reply accepting the offer
+    - write a message to my friend saying happy birthday
+    - draft an apology email
+    - draft a quick reply
+    - compose a reply to this email
+    - draft a mail asking for an update
+    - draft an email to support
+    - draft a follow up email
+    - draft message to my manager
+    - draft a polite reminder email
+  log_expense:
+    - log 200 for coffee
+    - log 50 dollars on snacks
+    - i spent 400 on dinner
+    - log expense 90 for bus fare
+    - log 1000 rupees for rent
+    - log thirty for lunch
+    - i spent 250 on books
+    - log 60 spent on tea
+    - log an expense of 300 for petrol
+    - log 15 for parking
+    - log 500 on groceries
+    - i spent 120 on a movie
+    - log 75 rupees for juice
+    - log expense 45 for snacks
+    - log twenty for chai
+    - log 800 for electricity
+    - log 99 on an app
+    - i spent 350 on clothes
+    - log 40 for auto rickshaw
+    - log 150 rupees on medicine
+  spending_summary:
+    - how much have i spent
+    - total spending
+    - check budget
+    - what did i spend so far
+    - spending report
+    - how much money have i spent
+    - show my expenses
+    - summary of my spending
+    - total expenses
+    - how much did i spend this month
+    - my spending summary
+    - what's my total spent
+    - check my spending
+    - expense summary
+    - how much have i spent so far
+    - tell me my expenses
+    - budget check
+    - what are my expenses
+    - spending total
+    - add up my expenses
+  show_calendar:
+    - my schedule
+    - what's my schedule today
+    - show my calendar
+    - what's on my schedule
+    - read my calendar
+    - what events do i have
+    - calendar please
+    - what's coming up on my calendar
+    - check my schedule
+    - show me my schedule
+    - what do i have today
+    - my calendar events
+    - what's on today
+    - next events on my calendar
+    - read my schedule
+    - calendar check
+    - what's planned for today
+    - show calendar events
+    - list my events
+    - what's on the agenda
+  write_note:
+    - write a note that the rent is due
+    - save a note buy eggs
+    - take a note meeting at 4
+    - make a note to call the plumber
+    - note down the parking spot is b2
+    - jot down buy a charger
+    - write a note saying fix the bug
+    - save a note the code is 4321
+    - take a note that mom called
+    - make a note pay the bill
+    - note down that the api key expires friday
+    - write down a note to email rahul
+    - save note groceries on sunday
+    - jot down that the meeting moved
+    - add a note to renew the insurance
+    - take a note remember the dentist
+    - write note pick up the parcel
+    - note down call the bank
+    - save a note that the wifi is slow
+    - make a note about the demo
+  read_notes:
+    - read my notes please
+    - what notes do i have
+    - read me my notes
+    - show my notes
+    - what did i note down
+    - read the notes
+    - my notes
+    - read back my notes
+    - what's in my notes
+    - tell me my notes
+    - list my notes
+    - read out my notes
+    - what notes have i saved
+    - check my notes
+    - open my notes and read them
+    - read the last notes
+    - what did i jot down
+    - recent notes
+    - read my saved notes
+    - any notes
+  set_timer:
+    - set a timer for 10 minutes
+    - timer for 2 minutes
+    - start a timer for 30 seconds
+    - set a 5 minute timer
+    - timer 15 minutes
+    - set timer for one hour
+    - start a 20 minute timer
+    - timer for 45 seconds
+    - set a timer for three minutes
+    - countdown 10 minutes
+    - start timer for 25 minutes
+    - set a 1 hour timer
+    - timer for 90 seconds
+    - set a timer of 8 minutes
+    - give me a 5 minute timer
+    - set timer 12 minutes
+    - start a timer for two hours
+    - 10 minute timer please
+    - set a timer for 40 minutes
+    - timer for 1 minute
+  set_reminder:
+    - remind me in 5 minutes to drink water
+    - remind me in an hour to call dad
+    - remind me to check the oven in 10 minutes
+    - remind me in 30 minutes to stand up
+    - remind me to take my medicine in 2 hours
+    - remind me in 15 minutes to send the email
+    - remind me to stretch in 20 minutes
+    - remind me in 1 hour to leave
+    - remind me in 45 minutes to eat
+    - remind me to push my code in 30 minutes
+    - remind me in 3 minutes to turn off the stove
+    - remind me to reply to rahul in 10 minutes
+    - remind me in 2 hours to go home
+    - remind me to water the plants in 1 hour
+    - remind me in 25 minutes to check the build
+    - remind me in 5 minutes to pick up the call
+    - remind me to drink tea in 40 minutes
+    - remind me in 90 seconds to flip the toast
+    - remind me in ten minutes to breathe
+    - remind me to rest my eyes in 20 minutes
+  spell_word:
+    - spell accommodate
+    - how do you spell definitely
+    - spell the word separate
+    - spell receive
+    - how do i spell restaurant
+    - spell out necessary
+    - spell embarrass
+    - how do you spell bureaucracy
+    - spell the word conscience
+    - spell occurrence
+    - spell entrepreneur
+    - how do you spell liaison
+    - spell the word cemetery
+    - spell maintenance
+    - spell rhythm for me
+    - how is mischievous spelled
+    - spell pneumonia
+    - spell the word millennium
+    - spell questionnaire
+    - how do you spell weird
+  flip_coin:
+    - flip a coin for me
+    - toss a coin please
+    - heads or tails?
+    - coin flip
+    - flip coin
+    - do a coin toss
+    - toss a coin to decide
+    - flip a coin now
+    - throw a coin
+    - give me heads or tails
+    - can you flip a coin
+    - coin toss please
+    - flip it, heads or tails
+    - let's flip a coin
+    - toss coin
+    - decide with a coin flip
+    - flip a quick coin
+    - coin flip please
+    - spin a coin
+    - toss up a coin
+  roll_die:
+    - roll the die
+    - roll dice
+    - roll a die for me
+    - throw a dice
+    - dice roll
+    - roll a six sided die
+    - can you roll a dice
+    - roll dice please
+    - give me a dice roll
+    - roll it
+    - throw the dice
+    - roll one die
+    - let's roll a die
+    - roll a dice now
+    - random dice roll
+    - toss a die
+    - roll the dice for me
+    - dice please
+    - do a dice roll
+    - roll a die quickly
+  calculate:
+    - calculate 25 times 4
+    - what is 100 minus 37
+    - what's 12 plus 30
+    - how much is 81 divided by 9
+    - calculate 7 times 8
+    - what is 15 times 3
+    - calculate 1000 divided by 25
+    - what's 99 plus 1
+    - how much is 6 times 7
+    - calculate 250 minus 75
+    - what is 3 plus 4 times 2
+    - calculate 18 divided by 3
+    - what's 45 times 2
+    - how much is 300 plus 450
+    - calculate 64 minus 16
+    - what is 9 times 9
+    - calculate 2 point 5 times 4
+    - what's 144 divided by 12
+    - how much is 50 times 20
+    - calculate 33 plus 67
+  tell_joke:
+    - tell a joke
+    - tell me another joke
+    - say a joke
+    - know any jokes
+    - give me a joke
+    - joke please
+    - make me laugh with a joke
+    - got a joke for me
+    - tell me something funny
+    - i need a joke
+    - one more joke
+    - crack a joke
+    - tell me a programming joke
+    - entertain me with a joke
+    - share a joke
+    - any good jokes
+    - be funny, tell a joke
+    - a joke please
+    - tell me a funny one
+    - cheer me up with a joke
+  speed_test:
+    - speed test
+    - test my internet speed
+    - how fast is the internet
+    - check internet speed
+    - run speed test
+    - is my internet slow
+    - check my wifi speed
+    - internet speed test please
+    - what's my internet speed
+    - how good is my connection
+    - test the connection speed
+    - measure my internet
+    - check the network speed
+    - how fast is my wifi
+    - do a speed test
+    - test internet
+    - check my connection
+    - what's my download speed
+    - internet speed
+    - is the wifi working fast
+  translate:
+    - translate hello to french
+    - translate good night into hindi
+    - translate how are you to german
+    - translate i love you to spanish
+    - how do you say thank you in french
+    - translate water to japanese
+    - translate where is the bathroom to italian
+    - translate good morning into tamil
+    - how do you say hello in korean
+    - translate see you later to portuguese
+    - translate my name is ravi into french
+    - translate happy birthday to german
+    - how do you say goodbye in spanish
+    - translate the bill please to italian
+    - translate i am hungry to hindi
+    - translate excuse me into japanese
+    - how do you say friend in arabic
+    - translate welcome to russian
+    - translate one coffee please to french
+    - translate good luck into chinese
+  ip_address:
+    - what is my ip
+    - my ip
+    - show my ip address
+    - what's my ip address
+    - tell me my ip
+    - ip address please
+    - what's my public ip
+    - check my ip
+    - give me my ip address
+    - find my ip
+    - local ip address
+    - what ip am i on
+    - my ip address please
+    - get my ip
+    - what's the ip of this pc
+    - display my ip
+    - ip configuration please
+    - tell me the ip address
+    - current ip address
+    - which ip do i have
+  news_headlines:
+    - news
+    - read the news
+    - today's headlines
+    - what's the latest news
+    - top headlines
+    - news headlines please
+    - read me the headlines
+    - what's happening in the world
+    - world news
+    - give me the news
+    - any news today
+    - current headlines
+    - latest headlines
+    - tell me the news
+    - what's in the news today
+    - read world headlines
+    - news update
+    - headlines please
+    - today's news
+    - breaking news
+  wikipedia:
+    - wikipedia einstein
+    - search wikipedia for mars
+    - wikipedia for the eiffel tower
+    - what does wikipedia say about gandhi
+    - wikipedia article on python
+    - look up taj mahal on wikipedia
+    - wikipedia newton
+    - search wikipedia for black holes
+    - wikipedia about dinosaurs
+    - wikipedia for isro
+    - check wikipedia for tesla
+    - wikipedia the moon
+    - what does wikipedia say about chess
+    - wikipedia summary of india
+    - wikipedia linux
+    - search wikipedia for volcanoes
+    - wikipedia for the himalayas
+    - wikipedia on photosynthesis
+    - wikipedia shakespeare
+    - wikipedia about the internet
+  weather:
+    - weather please
+    - how's the weather
+    - what's the weather like
+    - weather today
+    - is it hot outside
+    - what's the temperature
+    - how hot is it today
+    - weather report
+    - is it raining
+    - what's it like outside
+    - temperature outside
+    - how cold is it
+    - weather now
+    - will i need an umbrella
+    - current weather
+    - check the weather
+    - how warm is it
+    - tell me the weather
+    - what's the forecast
+    - weather outside
+  forget_conversation:
+    - forget the conversation
+    - clear this conversation
+    - new conversation please
+    - forget what we talked about
+    - start over
+    - reset the conversation
+    - wipe this chat
+    - clear our chat
+    - forget our conversation
+    - start a fresh conversation
+    - let's begin again
+    - erase this conversation
+    - clear the chat history
+    - forget everything we just said
+    - reset our talk
+    - new chat
+    - clear conversation
+    - start the conversation again
+    - forget this chat
+    - drop the conversation
+  list_memories:
+    - what have you remembered
+    - list my facts
+    - what do you remember about me
+    - tell me what you know about me
+    - show my memories
+    - what facts do you know
+    - what have you saved
+    - read my memories
+    - list memories
+    - what do you know
+    - what did you remember
+    - recall what you know about me
+    - what's in your memory
+    - tell me your memories
+    - what else do you remember
+    - what facts have you stored
+    - list what you remember
+    - what do you have saved about me
+    - memories please
+    - what have you learned about me
+  forget_last_fact:
+    - forget the last fact
+    - forget what i just said
+    - delete that fact
+    - forget the last thing i told you
+    - remove the last memory
+    - undo that memory
+    - forget it, the last fact
+    - scrap the last fact
+    - delete the last thing you remembered
+    - erase the last memory
+    - don't remember that
+    - forget the previous fact
+    - remove that last fact
+    - drop the last memory
+    - forget that last one
+    - delete what i just told you
+    - unremember that
+    - wipe the last fact
+    - forget the most recent fact
+    - remove the newest memory
+  forget_fact:
+    - forget about my birthday
+    - forget that i like tea
+    - forget the fact that my car is red
+    - forget about the meeting time
+    - forget about my sister
+    - forget that my office is in pune
+    - forget the fact that i drink coffee
+    - delete the memory about my dog
+    - forget about the project name
+    - forget that i work nights
+    - forget about my phone number
+    - forget the fact that i am vegetarian
+    - forget about the standup
+    - remove the fact about my bike
+    - forget that my wifi password is old
+    - forget about my gym
+    - forget the fact about my laptop
+    - forget that i hate mondays
+    - delete the fact about the deadline
+    - forget about my favourite colour
+  remember_fact:
+    - remember that my birthday is in june
+    - remember my office is in pune
+    - remember that i am vegetarian
+    - remember i work from 10 to 7
+    - remember that the wifi password is on the router
+    - please remember my dog is called bruno
+    - remember that i prefer short answers
+    - remember my standup is at 9:30
+    - remember that my manager is priya
+    - remember i drink tea not coffee
+    - remember that the repo is on github
+    - remember my car is a honda city
+    - remember that friday is a holiday
+    - remember i use vs code
+    - remember that my sister lives in delhi
+    - remember my gym is at 7 am
+    - remember that i like dark mode
+    - remember my laptop has 6 gb ram
+    - remember that i am learning rust
+    - remember my favourite food is biryani
+  day_summary:
+    - what did i work on today
+    - what did i do yesterday
+    - summarise my day
+    - recap today
+    - what have i done today
+    - what did i work on yesterday afternoon
+    - give me a recap of my day
+    - summarize yesterday
+    - what have i been working on
+    - how was my day, what did i do
+    - recap yesterday
+    - what was i doing today
+    - day summary
+    - summary of today
+    - what did i get done today
+    - what did i spend my time on today
+    - what did i do all day
+    - recap my work today
+    - what did i achieve yesterday
+    - tell me what i did today
+  continue_work:
+    - continue where i stopped
+    - pick up where i left
+    - resume where i left off
+    - where did i leave off
+    - back to work
+    - reopen my last project
+    - continue my work
+    - take me back to my project
+    - let's continue from where i was
+    - resume work
+    - open what i was working on
+    - continue my last session
+    - get me back to my code
+    - where was i working
+    - reopen the last folder in vs code
+    - let's get back to it
+    - continue from last time
+    - resume my project
+    - open my previous work
+    - carry on where i left off
+  morning_brief:
+    - good morning ultron
+    - give me my morning brief
+    - morning briefing
+    - daily briefing
+    - brief me on yesterday
+    - what's my morning brief
+    - morning update
+    - start my day
+    - catch me up
+    - daily brief please
+    - morning summary
+    - what did i leave yesterday, brief me
+    - my morning briefing
+    - give me the brief
+    - morning brief please
+    - briefing
+    - catch me up on what i did
+    - day start brief
+    - good morning, brief me
+    - today's brief
+  pause_tracking:
+    - pause tracking please
+    - stop tracking
+    - pause activity tracking
+    - stop watching my apps
+    - pause the activity log
+    - stop tracking my activity
+    - don't track me for now
+    - pause the app tracker
+    - turn tracking off
+    - stop logging my apps
+    - tracking off
+    - pause monitoring
+    - stop recording my activity
+    - give me some privacy, pause tracking
+    - disable tracking
+    - pause the tracking
+    - stop following my apps
+    - halt tracking
+    - no tracking for a while
+    - suspend tracking
+  resume_tracking:
+    - resume tracking please
+    - start tracking
+    - turn tracking back on
+    - resume activity tracking
+    - start tracking me again
+    - tracking on
+    - continue tracking
+    - resume the tracker
+    - enable tracking
+    - start logging my apps again
+    - you can track again
+    - unpause tracking
+    - restart tracking
+    - start the activity log again
+    - track my activity again
+    - resume monitoring
+    - turn on tracking
+    - start the tracker
+    - begin tracking again
+    - tracking back on
+  forget_today:
+    - forget today's activity
+    - delete today
+    - erase today's activity
+    - forget everything i did today
+    - delete my activity for today
+    - wipe today's log
+    - forget today please
+    - clear today's activity
+    - remove today's tracking data
+    - delete today's log
+    - forget what i worked on today
+    - erase today
+    - clear today
+    - delete everything from today
+    - forget today's tracking
+    - wipe today
+    - delete today's history
+    - remove today's activity
+    - forget all of today
+    - clear the log for today
+  tracking_status:
+    - are you tracking
+    - is tracking on right now
+    - what do you track
+    - tracking status please
+    - are you monitoring me
+    - what are you recording
+    - do you track my apps
+    - is the tracker on
+    - are you logging my activity
+    - what do you log about me
+    - is activity tracking enabled
+    - are you watching what i do
+    - what data do you collect
+    - am i being tracked
+    - is tracking paused
+    - what does the tracker record
+    - are you spying on me
+    - status of tracking
+    - is the activity log running
+    - what's being tracked
+  type_text:
+    - type hello
+    - type good morning everyone
+    - write thanks for the update
+    - type i will be there in 5 minutes
+    - type, see you soon
+    - write ok sounds good
+    - type my name is twaran
+    - insert lorem ipsum
+    - type shutdown the server tonight
+    - type restart the build
+    - write please review my pr
+    - type let's meet at 4
+    - type happy birthday
+    - write cheers
+    - type delete this later
+    - type git push
+    - write call me back
+    - type the meeting is cancelled
+    - type yes
+    - type no worries

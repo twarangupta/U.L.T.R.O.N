@@ -1,4 +1,6 @@
 """Window commands, tested against a fake window list (nothing on screen changes)."""
+import pytest
+
 from commands import windows
 from commands.windows import Window, handle, parse
 
@@ -74,6 +76,7 @@ def test_switch_only_claims_open_apps():
     assert run("kill the process on port 3000") == (None, [])
 
 
+@pytest.mark.real_handlers  # the Win32 layer is faked below
 def test_router_sends_close_to_windows_before_alt_f4(monkeypatch):
     from commands import execute_command
     seen = []
