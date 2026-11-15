@@ -1,6 +1,6 @@
 # ULTRON: context for Claude sessions
 
-Read this first in every new session. It holds the project context so a fresh session can continue without the old chat. Full design, decisions (D1 to D34) and journal: docs/BUILD_LOG.md.
+Read this first in every new session. It holds the project context so a fresh session can continue without the old chat. Full design, decisions (D1 to D39) and journal: docs/BUILD_LOG.md.
 
 ## Session handoff rule (from the user)
 When a session's context reaches about 30 to 40 percent full, stop at a clean point and:
@@ -33,8 +33,11 @@ Organize the code neatly and human-readably, remove unnecessary code, change or 
 - Add a decision (section 6) and a journal entry (section 19) to docs/BUILD_LOG.md for each branch; keep it 20 to 30 pages.
 - Downloads: size is not a concern, but every download must say what it is, why, how big, and show live progress (D25). Prefer the fastest option.
 - Run everything with venv\Scripts\python.exe. Install packages with: uv pip install --python venv\Scripts\python.exe ...
-- Checks before every PR: venv\Scripts\python.exe -m ruff check . ; venv\Scripts\python.exe -m pytest -q (283 tests, all in dry-run; junction models/ so needs_model tests run) ; run_ultron.bat --self-test. CI (.github/workflows/ci.yml, windows-latest) runs the same.
+- Checks before every PR: venv\Scripts\python.exe -m ruff check . ; venv\Scripts\python.exe -m pytest -q (450 tests, all in dry-run; junction models/ so needs_model tests run) ; run_ultron.bat --self-test. CI (.github/workflows/ci.yml, windows-latest) runs the same.
 - The user tests ULTRON live on the same laptop: no tests that play sound or load heavy models (a second Whisper on the GPU, a full ULTRON startup) without telling them first. Render audio into memory instead.
+- DANGER: builders junction models/ to the main folder's models. `git worktree remove --force` on a folder with that junction deletes the shared models (happened 2026-11-15). Remove the junction first (`cmd /c rmdir models`) and say this in every brief. Better idea, not built yet: an ULTRON_MODELS_DIR override in paths.py.
+- Tests that import app.py need openwakeword and piper, which CI does not install: put them in a separate file with pytest.importorskip (see tests/test_honesty_typing_app.py, test_live_fixes5_audio.py).
+- The owner decides what is removed. Never remove a feature or file (for example the Jarvis voice) because an older brief or another session said so; ask the owner.
 - In the Bash tool, long heredocs with quotes sometimes break; write files with the Write tool and run small Python edit scripts from the scratchpad instead.
 
 ## Run it
@@ -50,16 +53,17 @@ Root: README.md, LICENSE, pyproject.toml, CLAUDE.md, run_ultron.bat, src/, confi
 - stt/whisper.py (Whisper on the profile device, CPU fallback, corrections), stt/corrections.py.
 - brain.py: Ollama, model from the profile (GPU-4GB: qwen2.5:3b, then llama3.2:3b), keep_alive -1, warmed at start, streamed sentences into the speaker, native tool calls, honest-AI prompt in config.py.
 - memory.py (conversation window, facts in memory.json), activity.py (data/activity.db, tracker, summaries, profile.md).
-- voice/speaker.py (Piper, streamed, cache), voice/tts_text.py (pronunciations).
-- audio/capture.py (PyAudio, amplitude silence detection), audio/wakeword.py, audio/bargein.py (voice interruption, speech_level), audio/sounds.py.
-- commands/: registry.py (@command declarations, dry run), router.py (rules, meaning matcher, LLM tool calls, gate D31, confirm and announce), intent.py (model2vec potion-base-8M in models/), slots.py, apps.py, text.py, context.py, followups.py, risky.py, and the command modules system, windows, general, clock, git_helpers, developer, memory_cmds, activity_cmds. 91 commands.
-- tests/ (dry-run via conftest.py; test_smoke.py imports every module and runs the self-test; tests marked needs_model skip without models/potion-base-8M), tools/ (intent_eval, gen_commands_txt, stt_benchmark, llm_compare, download_voice).
-- docs/: ARCHITECTURE.md, COMMANDS.md (generated), BUILD_LOG.md (D1 to D32 and journal), WAKE_WORD_TRAINING.md.
-- Known caveat: audio/capture.py, voice/speaker.py and app.py create their device objects at import, so the smoke test only compiles them. A lazy start would fix it.
+- voice/speaker.py (Piper, streamed, cache; VOICE_MODEL default en_US-joe-medium in models/voices/, "jarvis" selects the old models/ultron-voice.onnx), voice/effects.py (VOICE_PRESET default ultron: pitch, metal, double, reverb; D35), voice/tts_text.py (pronunciations).
+- audio/capture.py (one always-open sounddevice stream with a ring buffer, lazy at import; D36), audio/vad.py (Silero VAD, models/silero_vad.onnx, loudness fallback), audio/wakeword.py, audio/bargein.py, audio/sounds.py.
+- honesty.py (D39): the guard that replaces claimed actions when no tool ran. ocr.py (D37): Windows built-in OCR.
+- commands/: registry.py (@command declarations, dry run), router.py (rules, meaning matcher, LLM tool calls, gate D31, confirm and announce), intent.py (model2vec potion-base-8M in models/), slots.py, apps.py, text.py, context.py, followups.py, risky.py, and the command modules system, windows, general, clock, git_helpers, developer, memory_cmds, activity_cmds, selection (D37), routines (D37, data/routines.yaml). 108 commands.
+- tests/ (dry-run via conftest.py; test_smoke.py imports every module and runs the self-test; tests marked needs_model skip without models/potion-base-8M), tools/ (intent_eval, gen_commands_txt, stt_benchmark, llm_compare, download_voice, voice_samples). packaging/ (ultron.spec onedir, entry.py with --import-check, build.ps1; D38); CI job package builds the exe and runs its self-test.
+- docs/: ARCHITECTURE.md, COMMANDS.md (generated), BUILD_LOG.md (D1 to D39 and journal), FUTURE_IDEAS.md (not for version 1), WAKE_WORD_TRAINING.md.
+- Known caveat: capture.py is now lazy, but app.py still imports the wake word and voice at import (openwakeword, piper), so CI cannot import app.py.
 
 ## Branches
-- main = dev after PR #7 and the docs plan (tag v0.1.0, 2026-11-15); changes only at a phase end, by PR from dev. Revert tag pre-cleanup at fee7b65 on GitHub.
-- dev = the integration branch (PRs #5, #6, #7 and the docs plan merged). Feature branches start here.
+- main = dev after Phase 1 (tag v0.2.0, 2026-11-15; v0.1.0 before it); changes only at a phase end, by PR from dev. Revert tag pre-cleanup at fee7b65 on GitHub.
+- dev = the integration branch (PRs #5 to #14 merged). Feature branches start here. All merged branches are kept on GitHub.
 - chore/cleanup: the repository cleanup, merged into dev by PR #6. Kept (no branch deletion).
 - p1-fixes: retired, kept. The owner's test folder C:\Twaran files\Misc\ULTRON-timefix is on dev; never edit it from a builder session.
 - Old empty placeholder branches (feat/timing-log, tune/wake-threshold, perf/whisper-settings, feat/sounddevice-mic, feat/silero-vad, feat/streaming-llm-tts, feat/quick-replies-followup, test/phrase-suite, build/windows-installer) point at an old base; recreate each from dev when starting it.
@@ -68,7 +72,9 @@ Root: README.md, LICENSE, pyproject.toml, CLAUDE.md, run_ultron.bat, src/, confi
 - AMD Ryzen, 6 cores / 12 threads, 5.9 GB RAM (often under 1 GB free), NVIDIA GTX 1650 4 GB VRAM, driver 576.52. cuBLAS is in the venv; Whisper runs on CUDA.
 - Profile GPU-4GB: Whisper small on CUDA int8_float16, qwen2.5:3b in Ollama. VRAM about 2.4 GB for the LLM plus about 0.4 GB for Whisper, of 4.0.
 - Whisper per 2.5 s command: base CPU 1.34 s; small CUDA 0.53 s; base CUDA 0.24 s. LLM warm first token 0.2 to 0.5 s (cold 5.6 to 9.8 s). Voice: fixed lines instant, greeting 0.67 s.
-- Wake word: models/hey_ultron.onnx not trained yet, so "Hey Jarvis" is active.
+- Wake word: models/hey_ultron.onnx not trained yet, so "Hey Jarvis" is active. Whisper often hears "Ultron" as "Asset(s)".
+- Live run 21:54 (dev 0f09264): STT 0.8 to 1.0 s, LLM first token 1.1 to 4.7 s, rule replies 1.6 to 3.1 s after you stop, AI replies 3.6 to 7.6 s. Whisper load once took 24 s (RAM nearly full). Silero VAD should cut about 0.3 s (measured silently, not live yet).
+- The test folder ULTRON-timefix has its own models/ (copies, including silero_vad.onnx and voices/en_US-joe-medium). Copy new models there when a merge needs them.
 - The user is Indian; Whisper base transcribed their accent poorly. Their recordings for tools/stt_benchmark.py are pending.
 
 ## Progress log (all 2026-11-15)
@@ -79,17 +85,15 @@ Root: README.md, LICENSE, pyproject.toml, CLAUDE.md, run_ultron.bat, src/, confi
 - Dev workflow: main stable, dev integration, feature branches into dev (owner decision).
 - chore/cleanup: src/ultron layout, paths.py, pyproject pins, CI, --self-test, dead code removed, docs rewritten, BUILD_LOG condensed (D32). Before and after identical: 173 tests, intent_eval on 1952 cases, command list. Now 215 tests.
 - PR #7 live-run 2 fixes (D33 commands: leave focus mode, "open it", more sites, "open X and Y", Bluetooth; D34 app: no silence to Whisper, idle sleep after 45 s, quieter close, temperature 0, AI replies logged, above-normal priority). 283 tests.
-- Scope decision: version 1 = all 41 Excel items, then the installer; other ideas in docs/FUTURE_IDEAS.md.
+- Scope decision: version 1 = all 41 Excel items, then the installer; other ideas in docs/FUTURE_IDEAS.md. main = v0.1.0 (PRs #5 to #9).
+- Phase 1 (PRs #10 to #14): one sounddevice mic stream and Silero VAD (D36); selection commands, routines, Windows OCR (D37); PyInstaller skeleton and CI package job, 431 MB onedir (D38); original voice joe + ultron preset, Jarvis kept as an option (D35); honesty guard, "Type what?", undo typing, open-if-running, goodbye, priority fix, 5 s listen (D39). 450 tests. main = v0.2.0. None of Phase 1 is tested live yet.
 
 ## Next steps: version 1 (owner decision, 2026-11-15)
 Version 1 = all 41 items of JARVIS_improvements.xlsx, then the Windows installer, as fast as possible. Anything not in the Excel file lives in docs/FUTURE_IDEAS.md and is not built now; pull an idea in only when the installer needs it (for example an OpenAI-compatible client for the bundled llama.cpp server). Builders are Sonnet sessions, one per set of files, each from origin/dev. Excel item numbers in brackets.
 
 Already done (verify before rebuilding): 1, 2, 3, 4, 7, 8, 9, 10, 11, 12, 13, 16, 18, 19, 20, 21, 25 (qwen2.5:3b, revisit smaller models on 8 GB), 26, 28, 29, 30.
 
-Phase 1, P1 leftovers:
-- Audio builder: [5] one always-open mic stream (sounddevice ring buffer shared by wake word, recorder and barge-in); [6] Silero VAD replaces the amplitude check (end of speech about 0.3 to 0.4 s). Also covers the old latency item.
-- Commands builder: [14] "this" commands on the selection (copy, then explain, translate, summarise, reply); [15] routines and macros (YAML, "remember this as ..."); [17] Windows built-in OCR for read_screen (replaces Tesseract, which will not be in the installer).
-- Installer skeleton early, in parallel (packaging files only): PyInstaller build of the current app in CI, so packaging problems show up now and not at the end.
+Phase 1: done (PRs #10 to #14, v0.2.0). First step for the next supervisor: the owner's live test of v0.2.0, then a fix batch from its log.
 
 Phase 2, P2:
 - [27] streaming speech recognition (Moonshine or sherpa-onnx; compare against Whisper small on the owner's accent first).
@@ -110,10 +114,10 @@ Phase 3, P3:
 Phase 4, installer [22, 23, 24]:
 - Tray app and start with Windows (pystray, registry Run key).
 - First-run wizard: detect RAM and GPU, pick models, download with live progress (D25), mic level test.
-- build/windows-installer: llama.cpp server bundle sharing one CUDA 12 runtime folder with Whisper (D24, verify), download logic separate from UI with progress callbacks, GPU pack only on NVIDIA machines, bundle hey_ultron.onnx (check licences), PyInstaller + Inno Setup, GitHub Actions release with a silent-install smoke test, config and data moved to %APPDATA% and %LOCALAPPDATA% (only paths.py changes). The Jarvis voice must not ship (see the voice branch, D35).
+- build/windows-installer: llama.cpp server bundle sharing one CUDA 12 runtime folder with Whisper (D24, verify), download logic separate from UI with progress callbacks, GPU pack only on NVIDIA machines, bundle hey_ultron.onnx (check licences), PyInstaller + Inno Setup, GitHub Actions release with a silent-install smoke test, config and data moved to %APPDATA% and %LOCALAPPDATA% (only paths.py changes). Whether the Jarvis voice ships is the owner's decision, not made yet (D35); joe (CC0) is the default.
 - Make audio/capture.py, voice/speaker.py and app.py lazy at import (needed for packaging and tests).
 
 Running or waiting:
-- PR #7 (live-run 2 fixes, D33 and D34) open into dev.
-- feat/ultron-voice (original menacing voice, effects, silent samples, D35): builder running; the owner picks the voice from the sample WAVs.
+- Owner: live test of v0.2.0 in ULTRON-timefix (mic stream and VAD, selection commands, routines, read my screen, the new voice, honesty: "Open VS Code" while open, "Type" then text then "undo typing", "turn off my monitor", "Goodbye"). Read ultron.log from the last "Hardware:" line.
 - Reminder for the owner: the accent benchmark recordings (tools/stt_benchmark.py) decide the Whisper model and item 27.
+- Then Phase 2 builders (27 after the benchmark; 31, 32, 33, 34, 35 can run in parallel by file set).
