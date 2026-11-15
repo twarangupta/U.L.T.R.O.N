@@ -1,5 +1,4 @@
 """Fixes from the live run at 20:25 on 2026-11-15 (D34). Nothing real runs: no mic, no model, no browser."""
-import threading
 import time
 import types
 
@@ -7,7 +6,7 @@ import numpy as np
 
 from ultron import app, commands, persona  # noqa: F401  (commands registers every command)
 from ultron.audio import capture
-from ultron.commands import router, system
+from ultron.commands import router
 from ultron.commands.registry import Done
 from ultron.stt import whisper
 
@@ -138,59 +137,24 @@ def test_low_confidence_is_logged(monkeypatch):
     assert not any("Low-confidence" in line for line in lines)
 
 
-# ---- 5. launching a browser or app must not delay the voice ----
-def test_launch_is_held_until_the_voice_is_audible(monkeypatch):
-    """Before: the slow launch runs inside the command, so the reply waits for it.
-    After: the handler returns at once and the launch starts when the first sound plays."""
-    started = []
-
-    def slow_popen(*args, **kwargs):
-        time.sleep(0.4)  # stands in for a browser start-up
-        started.append(time.perf_counter())
-
-    monkeypatch.setattr(system.subprocess, "Popen", slow_popen)
-
-    t0 = time.perf_counter()
-    system._launch("calculator")
-    before = time.perf_counter() - t0
-
-    with router.defer_launches(system) as queue:
-        t0 = time.perf_counter()
-        system._launch("calculator")
-        after = time.perf_counter() - t0
-    print(f"reply ready after: before={before * 1000:.0f} ms, after={after * 1000:.0f} ms")
-    assert before >= 0.4 and after < 0.1
-    assert len(queue) == 1 and len(started) == 1  # held, not started
-
-    router.run_launches(queue)
-    assert len(started) == 2
+# ---- 5. a starting browser must not starve the voice: ULTRON runs at above-normal priority ----
+def test_priority_boost_calls_windows_once(monkeypatch):
+    calls = []
+    fake_kernel = types.SimpleNamespace(
+        GetCurrentProcess=lambda: 123, SetPriorityClass=lambda h, c: calls.append((h, c)) or 1)
+    monkeypatch.setattr(app.sys, "platform", "win32")
+    monkeypatch.setattr(app, "_kernel32", lambda: fake_kernel)
+    assert app.raise_priority() is True
+    assert calls == [(123, app.ABOVE_NORMAL_PRIORITY_CLASS)]
 
 
-def test_released_after_first_sound(monkeypatch):
-    state = [None]
-    fake = types.SimpleNamespace(first_sound_at=lambda: state[0])
-    monkeypatch.setitem(__import__("sys").modules, "ultron.voice.speaker", fake)
-    ran_at = []
-    monkeypatch.setattr(router, "run_launches", lambda q: ran_at.append(time.perf_counter()))
-    began = time.perf_counter()
-    t = threading.Thread(target=router._release_when_audible, args=([("Popen", (), {})], began, True))
-    t.start()
-    time.sleep(0.15)
-    assert not ran_at  # still waiting for the voice
-    state[0] = time.perf_counter()
-    t.join(2)
-    assert len(ran_at) == 1
+def test_priority_boost_is_a_noop_elsewhere(monkeypatch):
+    monkeypatch.setattr(app.sys, "platform", "linux")
+    assert app.raise_priority() is False
 
 
-def test_no_wait_when_nothing_is_spoken(monkeypatch):
-    ran_at = []
-    monkeypatch.setattr(router, "run_launches", lambda q: ran_at.append(1))
-    router._release_when_audible([("Popen", (), {})], time.perf_counter(), False)
-    assert ran_at
-
-
-def test_system_module_is_restored_after_the_block():
-    real = system.subprocess, system.os
-    with router.defer_launches(system):
-        pass
-    assert (system.subprocess, system.os) == real
+def test_priority_boost_failure_is_not_fatal(monkeypatch):
+    fake_kernel = types.SimpleNamespace(GetCurrentProcess=lambda: 1, SetPriorityClass=lambda h, c: 0)
+    monkeypatch.setattr(app.sys, "platform", "win32")
+    monkeypatch.setattr(app, "_kernel32", lambda: fake_kernel)
+    assert app.raise_priority() is False

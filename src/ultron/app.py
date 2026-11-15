@@ -71,6 +71,29 @@ def transcribe(whisper_model, audio_data) -> str:
     return whisper_model.transcribe(audio_data)
 
 
+ABOVE_NORMAL_PRIORITY_CLASS = 0x00008000
+
+
+def _kernel32():
+    import ctypes
+    return ctypes.windll.kernel32
+
+
+def raise_priority() -> bool:
+    """Run ULTRON at above-normal priority (Windows only), so a browser or app that is starting
+    cannot starve the voice synthesis. Logged once; returns whether it worked."""
+    if sys.platform != "win32":
+        return False
+    try:
+        k = _kernel32()
+        ok = bool(k.SetPriorityClass(k.GetCurrentProcess(), ABOVE_NORMAL_PRIORITY_CLASS))
+    except Exception as e:
+        logger.warning(f"Could not raise the process priority: {e}")
+        return False
+    logger.info("Process priority raised to above normal" if ok else "Could not raise the process priority")
+    return ok
+
+
 def idle_expired(last_activity: float, now: float, limit: float = CONVERSATION_IDLE_SECONDS) -> bool:
     """True when a conversation has had no recognised speech for `limit` seconds (0 turns it off)."""
     return limit > 0 and now - last_activity >= limit
@@ -259,6 +282,7 @@ def speak_and_interruptible(text: str | None, detector: WakeWordDetector, stream
     return interrupted
 
 def main():
+    raise_priority()
     from ultron.commands import apps as _apps
     _apps.warm()  # build the installed-app index now, not on the first "open <app>"
     if sys.prefix == sys.base_prefix:

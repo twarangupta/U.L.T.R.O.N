@@ -13,9 +13,7 @@ and a low-confidence match asks "Did you mean ...?" before running.
 from __future__ import annotations
 
 import re
-import threading
 import time
-from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass, field
 
 from ultron import persona
@@ -192,20 +190,12 @@ def execute(cmd: Command, args: dict, io: Interaction, sure: bool = True) -> str
         if spoken:
             return ""  # the user talked over it: cancelled, and their words are the next request
         announced = spoken is False  # None: nothing was spoken (no voice), so the result is still said
-    launches: list = []
-    began = time.perf_counter()
     try:
-        with (_held_launches(launches) if _is_launcher(cmd) else nullcontext()):
-            reply = registry.call(cmd, args)
+        reply = registry.call(cmd, args)
     except Exception as e:
         from ultron.logger import logger
         logger.error(f"Command {cmd.name}({args}) failed: {e}")
-        run_launches(launches)
         return f"That failed: {e}"
-    if launches:  # wait for the voice only if a reply is about to be spoken
-        speech_follows = bool(reply) and not announced
-        threading.Thread(target=_release_when_audible, args=(launches, began, speech_follows),
-                         daemon=True, name="launch-later").start()
     if reply is None:
         return None
     if announced and isinstance(reply, registry.Done):
@@ -230,78 +220,6 @@ def _worth_announcing(cmd: Command, args: dict) -> bool:
     app = str(args.get("app", "")).lower()
     words = set(re.findall(r"[a-z]+", app))
     return any((a in words) if " " not in a else (a in app) for a in UNSAVED_WORK_APPS)
-
-
-# ---- opening a browser or app must not delay the voice ----
-# Starting Chrome made the CPU so busy that the spoken reply came 2 s late (first_sound 3.9 s with
-# rule_ms 44). The handler's launches are held back and started once the reply is audible.
-LAUNCH_WAIT_SECONDS = 2.5
-
-
-class _Launches:
-    """Stands in for subprocess/os inside the system module: Popen and startfile are queued, the rest passes through."""
-
-    def __init__(self, real, queue: list, names: tuple[str, ...]):
-        self._real, self._queue, self._names = real, queue, names
-
-    def __getattr__(self, name):
-        if name in self._names:
-            def later(*args, **kwargs):
-                self._queue.append((name, args, kwargs))
-            return later
-        return getattr(self._real, name)
-
-
-def _is_launcher(cmd: Command) -> bool:
-    return getattr(cmd.handler, "__module__", "") == "ultron.commands.system"
-
-
-@contextmanager
-def defer_launches(module):
-    """Inside the block, module.subprocess.Popen and module.os.startfile only record the call.
-    Yields the list of recorded (kind, args, kwargs); run_launches() starts them."""
-    queue: list = []
-    real_sub, real_os = module.subprocess, module.os
-    module.subprocess = _Launches(real_sub, queue, ("Popen",))
-    module.os = _Launches(real_os, queue, ("startfile",))
-    try:
-        yield queue
-    finally:
-        module.subprocess, module.os = real_sub, real_os
-
-
-def run_launches(queue: list):
-    import os
-    import subprocess
-    for kind, args, kwargs in queue:
-        try:
-            (subprocess.Popen if kind == "Popen" else os.startfile)(*args, **kwargs)
-        except Exception as e:
-            from ultron.logger import logger
-            logger.error(f"Deferred launch failed: {e}")
-
-
-def _release_when_audible(queue: list, began: float, speech_follows: bool = True):
-    """Start the queued launches after the first sound of the reply (or after LAUNCH_WAIT_SECONDS)."""
-    try:
-        from ultron.voice.speaker import first_sound_at
-    except Exception:
-        first_sound_at = lambda: None  # noqa: E731  (no voice: nothing to wait for)
-    deadline = began + (LAUNCH_WAIT_SECONDS if speech_follows else 0)
-    while time.perf_counter() < deadline:
-        heard = first_sound_at()
-        if heard is not None and heard >= began:
-            break
-        time.sleep(0.02)
-    run_launches(queue)
-
-
-@contextmanager
-def _held_launches(into: list):
-    from ultron.commands import system
-    with defer_launches(system) as queue:
-        yield
-    into.extend(queue)
 
 
 # ---- stage a: rules ----
