@@ -130,7 +130,7 @@ class Speaker:
     def prewarm(self, lines: list[str]):
         """Render fixed lines into the cache in the background."""
         if self.voice:
-            threading.Thread(target=lambda: [self._render(l) for l in lines], daemon=True).start()
+            threading.Thread(target=lambda: [self._render(line) for line in lines], daemon=True).start()
 
     # Internals ------------------------------------------------------------
 

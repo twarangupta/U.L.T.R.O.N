@@ -3,8 +3,6 @@
 Silent and light: handlers run in dry-run mode, no audio, no LLM. Skipped when the
 30 MB matcher model is not downloaded. The full report: tools/intent_eval.py.
 """
-import os
-import sys
 
 import pytest
 

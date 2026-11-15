@@ -1,5 +1,3 @@
-import os
-import sys
 
 
 from ultron import brain  # noqa: E402

@@ -36,7 +36,7 @@ def git_status() -> str:
          params=[Param("message", "str", "commit message, only if the user said one", required=False,
                        cues=("with message", "with the message", "message", "saying"))],
          rules=[rf"{_GIT} commit(?: (?:with )?(?:the )?message (?P<message>.+))?",
-                rf"commit (?:my |all )?(?:the )?changes(?: (?:with )?(?:the )?message (?P<message>.+))?",
+                r"commit (?:my |all )?(?:the )?changes(?: (?:with )?(?:the )?message (?P<message>.+))?",
                 rf"{_GIT} check in"],
          examples=["git commit", "commit my changes", "commit everything", "commit all changes",
                    "git commit with message fix the login bug", "save my work in git", "make a commit"],

@@ -1,6 +1,4 @@
 """Profile choice for different machines. No GPU or Ollama needed to run these."""
-import os
-import sys
 
 
 from ultron.hardware import Hardware, choose_profile  # noqa: E402

@@ -1,5 +1,3 @@
-import os
-import sys
 
 
 from ultron.stt import corrections  # noqa: E402

@@ -2,8 +2,6 @@ import pytest
 
 pytestmark = pytest.mark.real_handlers  # handlers run against temp files set up in these tests
 
-import os
-import sys
 import time
 
 

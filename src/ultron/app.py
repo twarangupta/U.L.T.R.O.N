@@ -254,7 +254,7 @@ def main():
     try:
         from ultron.audio.sounds import play_startup_sound
         play_startup_sound()
-    except:
+    except Exception:
         pass
     
     # 1. Initialize text-to-speech speaker
@@ -369,7 +369,7 @@ def main():
                 try:
                     from ultron.audio.sounds import play_sleep_sound
                     play_sleep_sound()
-                except:
+                except Exception:
                     pass
                 break
                 

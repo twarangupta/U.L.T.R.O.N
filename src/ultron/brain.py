@@ -25,7 +25,6 @@ class Brain:
         """Checks connection to Ollama and verifies if the configured model is pulled."""
         try:
             models_list = ollama.list()
-            available_models = [m.get("model") for m in models_list.get("models", [])]
             # Ollama model names might include tags, e.g. 'llama3.2:3b' or 'llama3.2:latest'
             match_found = False
             for model_info in models_list.get("models", []):

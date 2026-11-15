@@ -1,6 +1,5 @@
 import pyaudio
 import numpy as np
-import time
 import sys
 import select
 from ultron.config import SAMPLE_RATE, CHUNK_SIZE
@@ -91,7 +90,7 @@ class AudioHandler:
         try:
             data = self.stream.read(CHUNK_SIZE, exception_on_overflow=False)
             return np.frombuffer(data, dtype=np.int16)
-        except Exception as e:
+        except Exception:
             # Underflow/Overflow or hardware issues
             return np.zeros(CHUNK_SIZE, dtype=np.int16)
 

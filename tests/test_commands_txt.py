@@ -1,6 +1,4 @@
 """docs/COMMANDS.md must be exactly what the registry generates (tools/gen_commands_txt.py)."""
-import os
-import sys
 
 
 import gen_commands_txt  # noqa: E402

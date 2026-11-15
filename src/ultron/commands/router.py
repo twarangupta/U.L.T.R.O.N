@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 
 from ultron import persona
 from ultron.commands import registry
-from ultron.commands.registry import ArgumentError, Command, Done
+from ultron.commands.registry import ArgumentError, Command
 from ultron.commands.text import normalize
 
 # Thresholds for the meaning matcher (cosine similarity, tuned on tests/intents.yaml; see D30).
@@ -180,7 +180,6 @@ def execute(cmd: Command, args: dict, io: Interaction, sure: bool = True) -> str
             raise Reroute(answer)  # not a yes or no: the answer is the next request
         if not answer:
             return persona.pick(persona.CANCELLED_REPLIES)
-    announced = False
     if cmd.doing:
         text = cmd.doing.format(**{k: registry.pretty_value(v) for k, v in args.items()},
                                 **{p.name: "" for p in cmd.params if p.name not in args})
@@ -189,7 +188,6 @@ def execute(cmd: Command, args: dict, io: Interaction, sure: bool = True) -> str
         _announce_seconds[0] += time.perf_counter() - began
         if spoken:
             return ""  # the user talked over it: cancelled, and their words are the next request
-        announced = spoken is False
     try:
         reply = registry.call(cmd, args)
     except Exception as e:
