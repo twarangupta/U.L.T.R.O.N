@@ -73,6 +73,19 @@ Old empty placeholder branches (feat/timing-log, tune/wake-threshold, perf/whisp
 - 2026-11-15: feat/fast-honest-ai: streamed answers, warm LLM, honest prompt, timing log. AI answer about 5 s -> 2.4 to 3.6 s after the user stops (silent measurement); target 1.0 to 1.5 s not reached yet.
 
 - 2026-11-15: fix/ai-command-keywords (every AI command needs a key word; whey protein correction) and feat/window-control-bargein (commands/windows.py close/minimise/restore/maximise/switch, bargein.py voice interruption with preroll; D29) merged into local p1-fixes (38672f1). Not pushed. Barge-in not yet verified live: read the 'barge-in: echo level' log lines and tune BARGE_IN_FACTOR.
+## TOP PRIORITY: understand any phrasing (owner request, 2026-11-15; awaiting the owner's approval of this plan)
+Owner: "i dont want to fix these individual prompts by testing ... even if the question went to ai, it should understand what command to execute".
+Today commands are matched by hand-written phrases, and the LLM may only emit [COMMAND: x] tags for about 15 commands gated by hand-kept keyword lists (commands/ai_routing.py). Every new phrasing needs a code change. Replace that with one design:
+1. Command registry (D10): every command is declared once with name, one-line description, typed parameters (for example app: str, level: int), risk level (safe, confirm, blocked) and 5 to 10 example sentences. Migrate all existing handlers (system, git, developer, general, windows, clock, memory, activity). commands.txt is generated from the registry.
+2. Understanding in three stages, fastest first:
+   a. Exact rules (current fast paths) for the most common phrases: instant.
+   b. Meaning matcher: model2vec potion-base-8M (MIT, about 30 MB, under 20 ms on CPU) embeds the sentence and compares it with every command's examples. A confident match runs the command; slots (app names, numbers) are filled from the sentence with the app index and fuzzy matching (rapidfuzz).
+   c. LLM with native tool calling (Ollama tools API; D12): the registry becomes the tool list, so the model returns a structured call {name, arguments} that is validated against the schema. No more [COMMAND] tags and no hand-kept keyword lists. If no tool fits, the model answers in words (honest-AI rules stay).
+3. Safety stays structural: risky commands always need the spoken confirm whatever stage picked them; medium-impact actions (close an app, git push) are announced first ("Closing Chrome.") so barge-in can stop them; a misheard or low-confidence match asks "Did you mean X?" instead of acting.
+4. No hand testing: generate 20 to 30 paraphrases per command once at development time (with the LLM, reviewed), store them in tests/intents.yaml, and measure accuracy per stage in CI. Add the owner's real phrasings from ultron.log (Heard lines) to the set. The voice self-test harness (C) reuses it.
+5. Pick the LLM by measurement: run the intent set against llama3.2:3b, qwen2.5:3b, qwen3:4b and gemma3:4b (tool-calling accuracy, first-token time, VRAM on the GTX 1650) and set the profile default from the results.
+Report accuracy before and after (current rules versus the new design) on the same intent set.
+
 ## Next steps (in order, all approved by the user)
 A0. Sentence gaps: DONE on fix/speaker-gaps (merged into p1-fixes 2cbb865). Synthesis runs ahead of playback, VOICE_SENTENCE_PAUSE 0.13 s; gaps at full stops 0.47 to 0.83 s -> 0.15 to 0.18 s (silent measurement).
 A. Finish latency (priority from the user): read the "timing:" lines in ultron.log from the user's live run. Biggest remaining cost is Piper time to first audio (about 0.13 s per word on the busy CPU): try a shorter first piece (max about 6 words), a faster Piper voice for the first piece, or Piper on onnxruntime-gpu if VRAM allows; then feat/silero-vad (end of speech about 0.4 s); STT model from the accent benchmark (base on GPU is 0.24 s vs small 0.53 s).
