@@ -1,8 +1,16 @@
 """The short start-up and go-to-sleep tones, synthesised in code (no sound files)."""
 
-import numpy as np
-import pyaudio
 import time
+
+import numpy as np
+
+
+def _play(samples: np.ndarray, sample_rate: int = 44100):
+    """Play a float32 mono tone and wait for it to finish."""
+    import sounddevice as sd
+    sd.play(samples, sample_rate)
+    sd.wait()
+
 
 def play_startup_sound():
     """
@@ -11,12 +19,6 @@ def play_startup_sound():
     to create a thick, metallic plasma charge and stabilizer lock sound.
     """
     try:
-        p = pyaudio.PyAudio()
-        stream = p.open(format=pyaudio.paFloat32,
-                        channels=1,
-                        rate=44100,
-                        output=True)
-        
         sample_rate = 44100
         
         # --- PHASE 1: Micro-thruster igniter spark (0.0 to 0.2s) ---
@@ -72,10 +74,7 @@ def play_startup_sound():
         full_sound = np.concatenate([sweep_data, chime_data])
         
         # Play audio
-        stream.write(full_sound.tobytes())
-        stream.stop_stream()
-        stream.close()
-        p.terminate()
+        _play(full_sound)
     except Exception as e:
         print(f"[Audio Boot warning] Failed to play startup tone: {e}")
 
@@ -85,12 +84,6 @@ def play_sleep_sound():
     using FM synthesis. Bypasses silently on any driver error.
     """
     try:
-        p = pyaudio.PyAudio()
-        stream = p.open(format=pyaudio.paFloat32,
-                        channels=1,
-                        rate=44100,
-                        output=True)
-        
         sample_rate = 44100
         duration = 1.0
         t = np.linspace(0, duration, int(sample_rate * duration), False)
@@ -109,10 +102,7 @@ def play_sleep_sound():
         env = np.exp(-3 * t)
         sound_data *= env * 0.22
         
-        stream.write(sound_data.tobytes())
-        stream.stop_stream()
-        stream.close()
-        p.terminate()
+        _play(sound_data)
     except Exception as e:
         print(f"[Audio Sleep warning] Failed to play sleep tone: {e}")
 
