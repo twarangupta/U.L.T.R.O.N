@@ -65,6 +65,10 @@ def fill_one(p: Param, text: str):
     if p.type == "int":
         return find_number(text)
     if p.type == "app":
+        if p.cues and not p.required:
+            # An optional app slot ("keep" in "minimise everything except vs code") is only filled from its
+            # own clause; the app named anywhere else in the sentence belongs to the main slot.
+            return apps.find_in_text(after_cue(text, p.cues) or "") if after_cue(text, p.cues) else None
         found = apps.find_in_text(text)
         if found is None and p.cues:
             found = after_cue(text, p.cues)
@@ -83,8 +87,23 @@ def fill_one(p: Param, text: str):
 def fill(cmd: Command, text: str) -> dict:
     """Best-effort values for every param found in the sentence (may miss some)."""
     values = {}
+    main_text = text
+    for p in cmd.params:  # the main slots never read an "except X" clause
+        if p.type == "app" and p.cues and not p.required:
+            low = f" {text.lower()} "
+            cuts = [low.find(f" {c} ") for c in p.cues if low.find(f" {c} ") >= 0]
+            if cuts:
+                main_text = low[:min(cuts)].strip()
     for p in cmd.params:
-        value = fill_one(p, text)
+        value = fill_one(p, text if (p.type == "app" and p.cues and not p.required) else main_text)
         if value is not None:
             values[p.name] = value
+    # One word cannot fill two slots ("minimise all the windows" is not "keep everything")
+    seen: dict = {}
+    for name in list(values):
+        key = values[name] if isinstance(values[name], str) else None
+        if key is not None and key in seen and not next(p for p in cmd.params if p.name == name).required:
+            del values[name]
+        elif key is not None:
+            seen[key] = name
     return values

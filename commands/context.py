@@ -17,6 +17,7 @@ class LastRun:
 
 
 last_run: LastRun | None = None
+pending: str | None = None          # a question ULTRON asked whose answer is the next sentence ("rename_name")
 created_folder: str | None = None   # full path of the folder ULTRON created last
 
 
@@ -33,5 +34,5 @@ def note_folder(path: str):
 
 
 def clear():
-    global last_run, created_folder
-    last_run = created_folder = None
+    global last_run, created_folder, pending
+    last_run = created_folder = pending = None

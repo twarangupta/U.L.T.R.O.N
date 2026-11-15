@@ -83,6 +83,8 @@ def act(action: str, app: str | None, keep: str | None, windows_api=None) -> str
     said_it = bool(app) and apps.clean(app) in ("it", "that")  # "maximise it", not "maximise this window"
     app = apps.canonical(app) if app else None
     keep = apps.canonical(keep) if keep else None
+    if keep == app:
+        keep = None  # "minimise everything" never keeps everything
 
     if action == "restore" or (action == "maximise" and app == "everything"):
         api.restore_all()  # "maximise everything" means: bring all my windows back

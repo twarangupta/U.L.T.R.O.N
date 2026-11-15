@@ -186,3 +186,25 @@ def resolve_name(name: str, sound_alike: bool = False) -> str | None:
         if key in APP_ALIASES or find_installed(key, sound_alike) is not None:
             return candidate
     return None
+
+
+def warm():
+    """Build the Start Menu index in the background at startup (it takes about 0.75 s, so the first
+    "open <app>" would otherwise pay for it)."""
+    import threading
+    threading.Thread(target=start_menu_index, daemon=True, name="app-index").start()
+
+
+_ACTION_WORDS = ("minimize", "maximize", "restore", "switch to", "close", "open", "screenshot")
+
+
+def hotword_names(limit: int = 24) -> list[str]:
+    """Words Whisper should expect: the app names ULTRON knows (aliases first, then installed apps) and
+    the window verbs. Fed to faster-whisper's hotwords so "VS Code" stops coming out as "via scroll"."""
+    names = [pretty(a) for a in APP_ALIASES if len(a) >= 3]  # all of them: the names ULTRON can act on
+    try:
+        installed = sorted((n for n in start_menu_index() if n.isascii() and 3 <= len(n) <= 18), key=len)
+    except Exception:
+        installed = []
+    extra = [pretty(n) for n in installed if pretty(n) not in names][:limit]  # a few of the shortest installed names
+    return list(_ACTION_WORDS) + names + extra

@@ -296,14 +296,62 @@ _NAMED = r"(?:,? (?:and )?(?:name it|call it|called|named|with the name) (?P<nam
 def create_folder(name: str | None = None, location: str | None = None) -> str:
     folder = location or "desktop"
     folder = folder if folder.endswith("s") or folder in ("desktop", "music") else folder + "s"
-    name = re.sub(r'[<>:"/\\|?*]', "", (name or "New folder")).strip() or "New folder"
-    path = os.path.join(os.path.expanduser("~"), folder.capitalize(), name)
-    if os.path.exists(path):
-        return f"A folder called {name} already exists in {folder.capitalize()}."
+    base = re.sub(r'[<>:"/\|?*]', "", (name or "New folder")).strip() or "New folder"
+    parent = os.path.join(os.path.expanduser("~"), folder.capitalize())
+    if name:  # a name the user chose is never changed silently
+        path = os.path.join(parent, base)
+        if os.path.exists(path):
+            return f"A folder called {base} already exists in {folder.capitalize()}."
+    else:
+        path = unique_path(parent, base)  # like Windows: "New folder", then "New folder (2)"
     os.makedirs(path)
     from commands import context
-    context.note_folder(path)  # "open the new folder you just created"
-    return f"Created the folder {name} in {folder.capitalize()}."
+    context.note_folder(path)  # "open the new folder you just created", "rename it"
+    return f"Created the folder {os.path.basename(path)} in {folder.capitalize()}."
+
+
+def unique_path(parent: str, name: str) -> str:
+    path = os.path.join(parent, name)
+    n = 2
+    while os.path.exists(path):
+        path = os.path.join(parent, f"{name} ({n})")
+        n += 1
+    return path
+
+
+def inside_user_folders(path: str) -> bool:
+    """True only for a path under the user's own profile (never system folders, never the profile itself)."""
+    home = os.path.normcase(os.path.realpath(os.path.expanduser("~")))
+    full = os.path.normcase(os.path.realpath(path))
+    return full.startswith(home + os.sep) and full != home
+
+
+@command("rename_item", "Rename the folder ULTRON just created. Asks for the name when none is given.",
+         group=_APPS, title="rename it to {name}", priority=57, raw=True,
+         params=[Param("name", "str", "the new name", required=False, cues=("rename it to", "rename to", "call it", "named"))],
+         rules=[r"rename (?:it|that|this|the (?:new )?folder|the folder (?:you|i) (?:just )?(?:created|made))(?: (?:to|as))? (?P<name>.+?)[.!?]?",
+                r"rename (?:it|that|this|the (?:new )?folder|the folder (?:you|i) (?:just )?(?:created|made))[.!?]?"],
+         examples=["rename it", "rename it to invoices", "rename the new folder to photos", "rename that folder"],
+         not_examples=["rename my files in downloads", "rename the git branch"])
+def rename_item(name: str | None = None) -> str:
+    from commands import context
+    path = context.created_folder
+    if not path or not os.path.exists(path):
+        return "I haven't created anything to rename. Name the folder you mean."
+    if not inside_user_folders(path):
+        return "That is outside your own folders. I won't rename it."
+    if not name:
+        context.pending = "rename_name"
+        return "What should I call it?"
+    new = re.sub(r'[<>:"/\|?*]', "", name).strip().rstrip(".")
+    if not new:
+        return "That isn't a usable name."
+    target = os.path.join(os.path.dirname(path), new)
+    if os.path.exists(target):
+        return f"Something called {new} already exists there."
+    os.rename(path, target)
+    context.note_folder(target)
+    return f"Renamed it to {new}."
 
 
 # ---- power and status ----

@@ -96,6 +96,8 @@ def _takes_time(cmd: Command) -> bool:
 YES_WORDS = {"yes", "yeah", "yep", "yup", "correct", "right", "do it", "sure", "yes please", "go ahead",
              "affirmative", "that s right", "yes do it", "confirm"}
 
+NO_WORDS = {"no", "nope", "nah", "no thanks", "never mind", "nevermind", "cancel", "stop", "don t", "dont", "wrong", "negative"}
+
 _REQUEST = re.compile(
     r"^(?:(?:can|could|would|will) you(?: please)?|please|kindly|just|so|now|hey|ok|okay|"
     r"i want you to|i need you to|i d like you to|i would like you to|go ahead and|i said|"
@@ -120,8 +122,9 @@ class Interaction:
         """Speak prompt; True only if the user said "confirm"."""
         return False
 
-    def ask_yes_no(self, prompt: str) -> bool:
-        """Speak prompt; True only for a yes."""
+    def ask_yes_no(self, prompt: str) -> bool | str:
+        """Speak prompt. True for a yes, False for a no or silence, or the answer's own words when it
+        was neither ("maximize everything"): the router then treats those words as a new sentence."""
         return False
 
     def announce(self, text: str) -> bool | None:
@@ -154,6 +157,14 @@ class Outcome:
 _announce_seconds = [0.0]  # time spent speaking announcements during this route() call
 
 
+class Reroute(Exception):
+    """The answer to "Did you mean ...?" was a new sentence; route() (or the caller) routes it."""
+
+    def __init__(self, text: str):
+        super().__init__(text)
+        self.text = text
+
+
 # ---- safety and running, shared by every stage ----
 def execute(cmd: Command, args: dict, io: Interaction, sure: bool = True) -> str | None:
     """Run a chosen command with its safety rules. None means "not mine" (routing goes on)."""
@@ -164,7 +175,10 @@ def execute(cmd: Command, args: dict, io: Interaction, sure: bool = True) -> str
         if not io.confirm(persona.pick(persona.CONFIRM_PROMPTS, action=cmd.confirm_text)):
             return persona.pick(persona.CANCELLED_REPLIES)
     elif not sure:
-        if not io.ask_yes_no(f"Did you mean: {cmd.describe(args)}?"):
+        answer = io.ask_yes_no(f"Did you mean: {cmd.describe(args)}?")
+        if isinstance(answer, str) and answer.strip():
+            raise Reroute(answer)  # not a yes or no: the answer is the next request
+        if not answer:
             return persona.pick(persona.CANCELLED_REPLIES)
     announced = False
     if cmd.doing:
@@ -227,7 +241,7 @@ def _apps_resolve(cmd: Command, args: dict) -> bool:
     from commands import apps
     for p in cmd.params:
         if p.type == "app" and p.name in args:
-            name = apps.resolve_name(args[p.name], sound_alike=cmd.name == "open_app")
+            name = apps.resolve_name(args[p.name], sound_alike=cmd.name == "open_app" or cmd.group == "Windows and apps")
             if name is None:
                 return False
             args[p.name] = apps.canonical(name)
@@ -280,10 +294,30 @@ def _stage_match(n: str, io: Interaction, timings: dict) -> tuple[Outcome | None
     return None, ranked
 
 
-def route(text: str, io: Interaction | None = None, use_matcher: bool = True) -> Outcome:
-    """Stages a and b. Route "llm" means: ask the LLM, offering outcome.candidates as tools."""
+def route(text: str, io: Interaction | None = None, use_matcher: bool = True, _rerouted: bool = False) -> Outcome:
+    """Stages a and b. Route "llm" means: ask the LLM, offering outcome.candidates as tools.
+
+    If the answer to a "Did you mean" question was a new sentence, that sentence is routed instead
+    (once: it cannot start another chain of questions).
+    """
+    try:
+        return _route(text, io, use_matcher)
+    except Reroute as again:
+        if _rerouted:
+            return Outcome("", "rule")
+        from logger import logger
+        logger.info(f"Did-you-mean answer {again.text!r} is a new request")
+        return route(again.text, io, use_matcher, _rerouted=True)
+
+
+def _route(text: str, io: Interaction | None, use_matcher: bool) -> Outcome:
     io = io or Interaction()
     timings: dict = {}
+    from commands import context
+    if context.pending == "rename_name":  # "What should I call it?" was asked: the answer is the name
+        context.pending = None
+        if normalize(text) not in NO_WORDS:
+            text = f"rename it to {text.strip(' .')}"
     n = clean(text)
     _announce_seconds[0] = 0.0
     start = time.perf_counter()
@@ -396,7 +430,10 @@ def run_tool_call(name: str, arguments: dict | None, offered: list[str], io: Int
                 return Outcome(persona.pick(persona.CANT_DO_REPLIES), "refused", None, {}, scores.get(name))
             return None
         sure = verdict == "run"
-    reply = execute(cmd, args, io or Interaction(), sure=sure)
+    try:
+        reply = execute(cmd, args, io or Interaction(), sure=sure)
+    except Reroute as again:
+        return Outcome(None, "reroute", sentence=again.text)
     if reply is None:
         return None
     return Outcome(reply, "tool", cmd.name, args)
@@ -411,6 +448,13 @@ _COMPLAINT = re.compile(
 
 
 def repair(text: str, io: Interaction | None = None) -> Outcome | None:
+    try:
+        return _repair(text, io)
+    except Reroute as again:
+        return Outcome(None, "reroute", sentence=again.text)
+
+
+def _repair(text: str, io: Interaction | None = None) -> Outcome | None:
     """Treat a correction or complaint as being about the last command, never as a new one.
 
     "not base, best" re-runs the last command with that word swapped in its text parameter;
@@ -427,7 +471,10 @@ def repair(text: str, io: Interaction | None = None) -> Outcome | None:
     io = io or Interaction()
     if _COMPLAINT.match(n):
         done = last.reply.rstrip(". ") or cmd.describe(last.args)
-        if io.ask_yes_no(f"Last I did: {done}. {persona.RETRY_OFFER}"):
+        answer = io.ask_yes_no(f"Last I did: {done}. {persona.RETRY_OFFER}")
+        if isinstance(answer, str) and answer.strip():
+            raise Reroute(answer)  # neither yes nor no: a new request
+        if answer:
             reply = execute(cmd, dict(last.args), io)
             return Outcome(reply if reply is not None else "", "repair", cmd.name, last.args)
         return Outcome("", "repair", cmd.name, last.args)

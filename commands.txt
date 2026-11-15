@@ -117,6 +117,12 @@ tools/stt_benchmark.py records your voice and suggests entries.
     "new folder on my desktop", "create a folder in documents named taxes", "make a new
     folder and call it photos"
   * Name: create_folder
+- Rename it to <name>
+  * What it does: Rename the folder ULTRON just created. Asks for the name when none is given.
+  * You fill in: name (optional)
+  * Say for example: "rename it", "rename it to invoices", "rename the new folder to
+    photos", "rename that folder"
+  * Name: rename_item
 
 --------------------------------------------------------------------------------
 2. MEDIA AND VOLUME

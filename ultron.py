@@ -9,7 +9,7 @@ import activity
 import memory
 from commands import intent
 from commands import context
-from commands.router import YES_WORDS, Interaction, repair, route, run_tool_call, tool_schemas
+from commands.router import NO_WORDS, YES_WORDS, Interaction, repair, route, run_tool_call, tool_schemas
 from commands.text import is_noise
 from commands.text import normalize, is_stop_phrase
 from commands.followups import resolve as resolve_followup
@@ -91,13 +91,20 @@ class VoiceInteraction(Interaction):
     def confirm(self, prompt: str) -> bool:
         return ask_confirmation(prompt, self.whisper_model)
 
-    def ask_yes_no(self, prompt: str) -> bool:
+    def ask_yes_no(self, prompt: str) -> bool | str:
+        """Yes, no (or silence), or the words themselves when the answer is a new request."""
         speak(prompt)
         wait_speaking()
         reply = transcribe(self.whisper_model, audio_handler.record_phrase(max_seconds=CONFIRM_LISTEN_SECONDS))
-        yes = normalize(reply) in YES_WORDS
-        logger.info(f"Did-you-mean reply: {reply!r} -> {'yes' if yes else 'cancelled'}")
-        return yes
+        n = normalize(reply)
+        if n in YES_WORDS:
+            answer = True
+        elif not n or n in NO_WORDS or is_noise(reply):
+            answer = False
+        else:
+            answer = reply  # a command or a correction: routed as a new sentence
+        logger.info(f"Did-you-mean reply: {reply!r} -> {'yes' if answer is True else 'cancelled' if answer is False else 'new request'}")
+        return answer
 
     def announce(self, text: str) -> bool:
         """Say what is about to happen; talking over it cancels the action."""
@@ -136,6 +143,13 @@ def answer_with_ai(transcription: str, candidates: list[str], io: VoiceInteracti
         reply.join()
         name, arguments = reply.tool_call
         outcome = run_tool_call(name, arguments, candidates, io, scores=scores, sentence=sentence)
+        if outcome is not None and outcome.route == "reroute":  # the did-you-mean answer was a new request
+            new = route(outcome.sentence, io)
+            if new.reply is None:
+                return answer_with_ai(outcome.sentence, new.candidates, io, detector, timing, new.scores, new.sentence)
+            logger.info(f"Command {new.command} ({new.route}, {new.args}) said: {new.reply!r}")
+            note_command(outcome.sentence, new.reply, new.command, new.args)
+            return bool(new.reply) and speak_and_interruptible(persona.maybe_quip(new.reply), detector)
         if outcome is not None:
             logger.info(f"Command {outcome.command or name} ({outcome.route}, {outcome.args}) said: {outcome.reply!r}")
             timing["route"], timing["cmd"] = outcome.route, outcome.command or name
@@ -225,6 +239,8 @@ def speak_and_interruptible(text: str | None, detector: WakeWordDetector, stream
     return interrupted
 
 def main():
+    from commands import apps as _apps
+    _apps.warm()  # build the installed-app index now, not on the first "open <app>"
     if sys.prefix == sys.base_prefix:
         logger.warning(
             "Not running inside the project's venv, so libraries or model files may be missing. "
@@ -363,7 +379,11 @@ def main():
             if followup:
                 logger.info(f"Follow-up {transcription!r} -> {followup!r}")
             # Stages a (rules) and b (meaning matcher); stage c is the LLM's tool call (D30)
-            outcome = repair(transcription, io) or route(followup or transcription, io)
+            outcome = repair(transcription, io)
+            if outcome is not None and outcome.route == "reroute":
+                outcome = route(outcome.sentence, io)
+            elif outcome is None:
+                outcome = route(followup or transcription, io)
             timing.update(outcome.timings)  # rule_ms, match_ms
             timing["route"] = outcome.route
             if outcome.command:

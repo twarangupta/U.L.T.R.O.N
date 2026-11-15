@@ -41,6 +41,24 @@ heard:
   - {text: "open the cast folder", command: open_folder}
   - {text: "it isn't open", command: null}
   - {text: "Can you turn on Bluetooth?", command: null}
+  # live run 2026-11-15 15:00 to 15:06 (qwen2.5:3b)
+  - {text: "minimize all the windows", command: minimize_windows}
+  - {text: "work mode", command: meeting_mode}
+  - {text: "minimize via scroll", command: minimize_windows}
+  - {text: "Maximize Ability", command: maximize_window}
+  - {text: "Maximize view is good", command: maximize_window}
+  - {text: "open clod", command: open_app}
+  - {text: "open microsoft edge", command: open_app}
+  - {text: "close it", command: close_app}
+  - {text: "create a new folder on desktop", command: create_folder}
+  - {text: "rename it", command: rename_item}
+  - {text: "call mute mute mute", command: mute}
+  - {text: "open the folder you just created.", command: open_folder}
+  - {text: "I can't see the folder", command: null}
+  - {text: "search for whey protein powders", command: web_search}
+  - {text: "close Google", command: close_app}
+  - {text: "Thank you Lord", command: null}
+  - {text: ". . . . . . . . . . . . .", command: null}
   # live run 2026-11-15 13:10 to 13:16
   - {text: "open google go", command: open_app}
   - {text: "close it", command: close_app}
@@ -78,7 +96,7 @@ heard:
   - {text: "Can you tell me my specifications of my laptop?", command: null}
   - {text: "What are my laptop specs?", command: null}
   - {text: "check how much time is being used", command: null}
-  - {text: "close, clod", command: null}
+  - {text: "close, clod", command: close_app}  # sound-alike for Claude, now accepted for window commands
   - {text: "Go make me a sandwich", command: null}
   - {text: "Hello.", command: null}
   - {text: "How are you today?", command: null}
