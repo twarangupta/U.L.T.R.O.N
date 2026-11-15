@@ -48,6 +48,17 @@ tools/stt_benchmark.py records your voice and suggests entries.
   * Say for example: "type hello world", "type restart later", "write see you tomorrow",
     "insert my email signature"
   * Name: type_text
+- Type  [EXACT WORDING]
+  * What it does: Start dictation when no words were given: asks what to type, then types the next thing said.
+  * Say for example: "type", "type something", "start typing"
+  * Name: start_typing
+- Undo typing
+  * What it does: Delete the words ULTRON last typed, by sending that many backspaces to the same window.
+  * You fill in: app (optional)
+  * Say for example: "undo typing", "delete that", "delete what you typed", "delete the
+    text", "undo whatever you typed in claude", "erase what you just typed", "undo the
+    typing"
+  * Name: undo_typing
 
 --------------------------------------------------------------------------------
 1. WINDOWS AND APPS
@@ -104,6 +115,12 @@ tools/stt_benchmark.py records your voice and suggests entries.
     "open the calculator", "fire up notepad", "open docker desktop", "run obsidian", "can
     you open file explorer", "open the paint app"
   * Name: open_app
+- Open a new <app> window
+  * What it does: Open a NEW window or another copy of an app, even if it is already open.
+  * You fill in: app
+  * Say for example: "open a new chrome window", "open another vs code window", "launch a
+    new window of notepad", "open chrome in a new window", "start another spotify"
+  * Name: open_new_window
 - Open the <folder> folder
   * What it does: Open a folder in File Explorer by name, or the one just created.
   * You fill in: folder
