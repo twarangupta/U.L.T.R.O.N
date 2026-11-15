@@ -65,7 +65,7 @@ def test_other_answer_is_rerouted_as_a_new_sentence():
 def test_route_routes_the_answer_once(monkeypatch):
     seen = []
 
-    def fake(text, io, use_matcher):
+    def fake(text, io, use_matcher, single=False):
         seen.append(text)
         if text == "maximize vs code":
             return Outcome("done", "rule", "maximize_window")
@@ -75,7 +75,7 @@ def test_route_routes_the_answer_once(monkeypatch):
     out = route("maximise ability")
     assert out.reply == "done" and seen == ["maximise ability", "maximize vs code"]
     # an answer that asks yet another question is dropped, not chained
-    monkeypatch.setattr(router, "_route", lambda t, i, u: (_ for _ in ()).throw(Reroute("again")))
+    monkeypatch.setattr(router, "_route", lambda t, i, u, s=False: (_ for _ in ()).throw(Reroute("again")))
     assert route("x").reply == ""
 
 

@@ -80,8 +80,8 @@ def tool(said, name, args=None, io=None):
 
 
 def test_off_registry_request_is_refused_honestly():
-    """The model called volume_up for Bluetooth: no command fits, so say so."""
-    res, _ = tool("Can you turn on Bluetooth?", "volume_up")
+    """The model called volume_up for a hotspot: no command fits, so say so."""
+    res, _ = tool("Can you turn on the wifi hotspot?", "volume_up")
     assert res is not None and res.route == "refused" and res.command is None
     assert "yet" in res.reply.lower()
 

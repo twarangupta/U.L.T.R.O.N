@@ -313,6 +313,11 @@ Decision: code in `src/ultron/` (audio, stt, voice, commands, and top-level modu
 
 ---
 
+### D33. Live-run 2 command fixes: leave focus mode, "it", sites, two requests, Bluetooth
+Context: the owner's live test of dev (5a85230). Principle: every command works both as a direct command and in plain English, so each needs generous rules plus matcher examples.
+Decision: (1) `meeting_mode_off` (quit, exit, stop, end, turn off focus or meeting mode, back to normal, "I'm done with my meeting"; "Asset close, focus mode" works because the rules accept a leading "asset" or "assets"); `meeting_mode` got these as not_examples so the matcher stops offering it for "Quit Focus Mode". It unmutes and restores all windows. (2) The folder ULTRON just created is kept in the command context: "open it" and "open that folder" open it, and the new `folder_location` answers "where is it" with the full path; with nothing created both return None, so the sentence goes on to the AI. (3) SITES grew from 10 to 27 (prime video, hotstar, whatsapp web, flipkart, wikipedia and others). "open X and Y" runs both when each half is a rule-matched, safe command on its own, checked first in dry run; only sentences that start with open, launch, start, close, quit or exit are considered. (4) `bluetooth_on`, `bluetooth_off` and `bluetooth_toggle` use the Windows Runtime radio API (winrt packages, about 1 MB in total, pinned in pyproject.toml); no radio gives an honest reply. (5) `normalize` removes thousands commas between digits, so "50,000" stays 50000. (6) "maximize everything" now says "Everything's back on screen."
+Tradeoffs: the splitter uses rules only, so "open netflix and chrome" splits but a half that only the matcher understands does not (it falls back to today's behaviour). False splits ("search for salt and pepper", "open the salt and pepper folder") are guarded by the verb check and by requiring both halves to resolve to a real app, site or folder. Decimals like "3.5" still become "3 5" (not in scope). Better ideas: let the matcher judge the halves too once its confidence is calibrated for short phrases; a generic "undo the last mode" command.
+
 ## 7. Tech stack: now and target
 
 | Layer | Now | Target (P1 to P2) | Why | License |
@@ -714,6 +719,9 @@ All entries are from 2026-11-15, grouped by phase. Measurements are from the own
 ### Workflow and repository cleanup (chore/cleanup)
 - PR #4 (p1-fixes into main) and PR #5 merged; `dev` became the integration branch; the revert tag `pre-cleanup` marks main.
 - Cleanup (D32): src/ultron layout, paths.py, pyproject.toml, CI, self-test, dead code removed (see CHANGELOG), docs rewritten. Checks before and after: 173 tests (now 215 with the smoke tests), intent_eval identical on all 1952 cases, command list identical, ruff clean.
+
+### Live-run 2 command fixes (fix/commands-live2)
+- Six fixes from the owner's live test, see D33. Checks before -> after: 215 -> 267 tests, intent_eval weighted 83.0 -> 83.2 percent (heard 60 of 68 -> 64 of 72 run at once; negatives passing 94 of 104 -> 93 of 103, the same 10 wrong), ruff clean, self-test passes, 96 commands. Dry-run only; Bluetooth was checked read-only against the real radio list, never toggled.
 
 <!-- New entries go above this line, newest last, per phase:
 ### Short title (branch)

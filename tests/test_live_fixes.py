@@ -94,7 +94,7 @@ def test_maximise_it_means_the_window_just_minimised():
 
 def test_maximise_everything_restores_all():
     api = FakeWindows([EDGE, TERM])
-    assert windows.handle("Maximize everything", api) == "Windows restored."
+    assert windows.handle("Maximize everything", api) == "Everything's back on screen."
     assert api.calls == [("restore_all", None)]
 
 
