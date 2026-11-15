@@ -63,3 +63,8 @@ class BargeInDetector:
 
     def preroll(self) -> list[np.ndarray]:
         return list(self.recent)
+
+
+def speech_level(voiced_rms: list[float]) -> float:
+    """The typical loudness (median RMS, 16-bit units) of the chunks that counted as speech."""
+    return float(np.median(voiced_rms)) if voiced_rms else 0.0

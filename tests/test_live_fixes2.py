@@ -91,6 +91,7 @@ def test_vague_remark_runs_nothing():
     assert res is None or res.command is None
 
 
+@pytest.mark.needs_model
 def test_gate_keeps_a_fitting_tool_call():
     res, out = tool("i can't hear anything, bump it up", "volume_up")
     assert res is not None and res.command == "volume_up", (res, out.scores)
@@ -216,8 +217,7 @@ def test_words_are_not_noise(text):
 # ---- 8. barge-in ----
 def test_barge_in_floor_and_speech_level():
     from ultron import config
-    from ultron.audio.capture import speech_level
-    from ultron.audio.bargein import BargeInDetector
+    from ultron.audio.bargein import BargeInDetector, speech_level
     assert config.BARGE_IN_MIN_RMS == 200
     assert speech_level([100, 300, 200]) == 200 and speech_level([]) == 0.0
     det = BargeInDetector(factor=3.0, min_rms=200, needed=4)

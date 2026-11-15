@@ -27,6 +27,7 @@ def fresh_context():
 
 # ---- 9. optional slots are filled only from their own clause ----
 @pytest.mark.parametrize("said", ["minimize all the windows", "minimise everything", "hide all my windows"])
+@pytest.mark.needs_model
 def test_minimise_everything_keeps_nothing(said):
     out = route(said)
     assert out.command == "minimize_windows" and "keep" not in out.args, out

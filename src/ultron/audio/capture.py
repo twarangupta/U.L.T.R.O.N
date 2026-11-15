@@ -2,6 +2,7 @@ import pyaudio
 import numpy as np
 import sys
 import select
+from ultron.audio.bargein import speech_level
 from ultron.config import SAMPLE_RATE, CHUNK_SIZE
 from ultron.logger import logger
 
@@ -166,8 +167,3 @@ class AudioHandler:
 
 # Global audio handler instance
 audio_handler = AudioHandler()
-
-
-def speech_level(voiced_rms: list[float]) -> float:
-    """The typical loudness (median RMS, 16-bit units) of the chunks that counted as speech."""
-    return float(np.median(voiced_rms)) if voiced_rms else 0.0

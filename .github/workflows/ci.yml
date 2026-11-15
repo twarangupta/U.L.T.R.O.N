@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: tests/requirements-ci.txt
+
+      - name: Install test dependencies (no audio, speech or GPU libraries)
+        run: python -m pip install -r tests/requirements-ci.txt
+
+      - name: Lint (ruff)
+        run: python -m ruff check .
+
+      - name: Cache the meaning-matcher model (30 MB, runs on the CPU)
+        uses: actions/cache@v4
+        with:
+          path: models/potion-base-8M
+          key: potion-base-8M-v1
+
+      - name: Download the meaning-matcher model if not cached
+        run: python -c "from ultron.commands.intent import download_model; download_model()"
+        env:
+          PYTHONPATH: src
+
+      - name: Tests (dry run: nothing is executed, no devices are used)
+        run: python -m pytest -q
+
+      - name: Self-test (config, command registry, hardware profile)
+        run: python -m ultron --self-test
+        env:
+          PYTHONPATH: src
+
+      - name: docs/COMMANDS.md is up to date
+        run: python tools/gen_commands_txt.py --check
