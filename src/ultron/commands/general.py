@@ -49,38 +49,102 @@ def type_text(text: str) -> str:
     import pyautogui
     import pyperclip
     pyautogui.FAILSAFE = False
+    target = _front_window()
     pyperclip.copy(text)
     time.sleep(0.1)
     pyautogui.hotkey("ctrl", "v")
+    _typed.update(chars=len(text), hwnd=target.hwnd if target else None,
+                  process=target.process if target else "", title=target.title if target else "")
     return ""
 
 
-# ---- screen and writing ----
-@command("read_screen", "Read the text on the screen (OCR) and copy it to the clipboard.", group=_UTIL,
-         title="read my screen", priority=50,
-         rules=[r"(?:read|scan|ocr)(?: my| the)? screen(?: text)?|scan screen text"],
-         examples=["read my screen", "scan the screen text", "copy the text on my screen",
-                   "what does my screen say, copy it"])
-def read_screen() -> str:
-    import pyautogui
-    import pyperclip
+# What ULTRON last typed and where, so "undo typing" can delete exactly that (D39). Not Ctrl+Z: that
+# would undo whatever the app thinks the last edit was.
+_typed: dict = {"chars": 0, "hwnd": None, "process": "", "title": ""}
+PENDING_SECONDS = 30  # how long "Type what?" waits for the words
+
+
+def _front_window():
+    """The window in front, or None when it cannot be found (not Windows, no pywin32)."""
     try:
-        import pytesseract
-    except ImportError:
-        return "Screen reading needs pytesseract and Tesseract OCR, which are not installed."
-    path = "temp_ocr_capture.png"
-    pyautogui.screenshot().save(path)
-    try:
-        text = pytesseract.image_to_string(path).strip()
+        from ultron.commands import windows
+        return windows._win32().foreground()
     except Exception:
-        return "Tesseract was not found. Install it and add it to PATH."
-    finally:
-        if os.path.exists(path):
-            os.remove(path)
+        return None
+
+
+@command("start_typing", "Start dictation when no words were given: asks what to type, then types the next thing said.",
+         group="Typing", title="type", stages=("rule",), priority=101,
+         rules=[r"(?:start )?(?:typing|dictation|dictating)", r"type(?: something| out something| for me)?",
+                r"(?:let s |let us )?(?:start|begin) (?:to )?(?:type|dictate)(?: something)?"],
+         examples=["type", "type something", "start typing"])
+def start_typing() -> str:
+    from ultron.commands import context
+    context.set_pending("type_text")
+    return "Type what?"
+
+
+@command("undo_typing", "Delete the words ULTRON last typed, by sending that many backspaces to the same window.",
+         group="Typing", title="undo typing", priority=100,
+         params=[Param("app", "str", "the app it was typed in, if the user named one", required=False)],
+         rules=[r"(?:undo|remove|delete|erase|clear) (?:the |my )?(?:typing|text|that|what you (?:just )?typed|whatever you (?:just )?typed"
+                r"|the (?:last )?(?:thing|words?) you typed|what you wrote)(?: (?:in|from|on) (?P<app>.+))?",
+                r"(?:undo|delete|erase) (?:the )?(?:last )?(?:typing|dictation)",
+                r"(?:undo|delete|erase) (?:what|whatever) you (?:just )?(?:typed|wrote)(?: (?:in|from|on) (?P<app>.+))?",
+                r"(?:take back|scratch) (?:that|what you typed)"],
+         examples=["undo typing", "delete that", "delete what you typed", "delete the text",
+                   "undo whatever you typed in claude", "erase what you just typed", "undo the typing"],
+         not_examples=["delete the file", "undo", "delete my last email", "delete the routine"])
+def undo_typing(app: str | None = None) -> str:
+    chars = _typed["chars"]
+    if not chars:
+        return "I haven't typed anything lately, so there is nothing to undo."
+    front = _front_window()
+    if front is None or front.hwnd != _typed["hwnd"]:
+        where = (_typed["title"].split(" - ")[-1] or _typed["process"] or "that window")
+        return f"I typed that in {where}, and it isn't in front now. Switch back to it and ask again. I won't guess."
+    if app:
+        from ultron.commands import apps, windows
+        if not windows.matches(front, apps.canonical(app)):
+            return f"The window in front isn't {app}. I typed in {_typed['title'] or _typed['process']}. Nothing deleted."
+    import pyautogui
+    pyautogui.FAILSAFE = False
+    pyautogui.press("backspace", presses=chars, interval=0)
+    _typed["chars"] = 0
+    return f"Deleted the {chars} characters I typed."
+
+
+# ---- screen and writing ----
+def _first_line(text: str, limit: int = 90) -> str:
+    line = next((ln.strip() for ln in text.splitlines() if len(ln.strip()) > 2), text.strip())
+    return line if len(line) <= limit else line[:limit].rsplit(" ", 1)[0] + "..."
+
+
+@command("read_screen", "Read the text on the screen or the front window (OCR) and copy it to the clipboard.",
+         group=_UTIL, title="read my {where}", priority=50,
+         params=[Param("where", "choice", "what to read: the whole screen or just the front window",
+                       required=False, choices=("screen", "window"))],
+         rules=[r"(?:read|scan|ocr)(?: my| the| this)? (?P<where>screen|window)(?: text)?",
+                r"scan (?:the )?(?P<where>screen) text"],
+         examples=["read my screen", "scan the screen text", "copy the text on my screen",
+                   "what does my screen say, copy it", "read this window", "ocr the window in front"],
+         not_examples=["take a screen grab", "grab my screen", "take a screenshot"])
+def read_screen(where: str = "screen") -> str:
+    """Windows' own OCR (ultron.ocr), all in memory: nothing is saved to disk."""
+    import pyperclip
+    from ultron import ocr
+    image = ocr.grab_active_window() if where == "window" else None
+    image = image or ocr.grab_screen()
+    try:
+        text = ocr.read_text(image)
+    except ocr.OcrUnavailable as e:
+        return f"I can't read the screen: {e}"
     if not text:
-        return "I scanned the screen but found no readable text."
+        return f"I looked at the {where} but found no readable text."
     pyperclip.copy(text)
-    return "The text on your screen is on your clipboard."
+    lines = len([ln for ln in text.splitlines() if ln.strip()])
+    return (f"Read {lines} line{'s' if lines != 1 else ''}, copied to your clipboard. "
+            f"It starts: {_first_line(text)}")
 
 
 @command("draft_message", "Draft an email or message with the LLM and copy it to the clipboard.", group=_UTIL,

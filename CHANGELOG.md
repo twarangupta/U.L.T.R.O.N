@@ -15,6 +15,7 @@ Notable changes to ULTRON (formerly J.A.R.V.I.S.). Day-by-day detail is in [docs
 - Removed dead code, the old `examples/` folder, the SAPI voice unlock scripts and the unused speech libraries.
 
 ### Added
+- Voice effect chain (`VOICE_PRESET`, `VOICE_PITCH`, `VOICE_METAL`, `VOICE_REVERB`, `VOICE_DOUBLE`), `VOICE_MODEL`, candidate voices via `tools/download_voice.py`, `tools/voice_samples.py`. `VOICE_SPEED` now defaults to 0.9.
 - `python -m ultron --self-test` (no microphone, speaker or models needed).
 - Command registry with three-stage understanding (rules, meaning matcher, LLM tool calls); default LLM `qwen2.5:3b` on 4 GB GPUs.
 - Hardware profiles, window control, voice interruption (barge-in), conversation memory, the activity log, streamed and honest AI answers.

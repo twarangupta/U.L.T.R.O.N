@@ -27,30 +27,20 @@ import sounddevice as sd
 from piper import PiperVoice
 from piper.config import SynthesisConfig
 
-from ultron import paths
 from ultron.config import VOICE_SPEED
+from ultron.voice.voice_files import model_paths, pick_model
+from ultron.voice.effects import EffectChain, EffectSettings, render_chunks
 from ultron.logger import logger
 from ultron.voice.tts_text import prepare_for_speech
 
-MODEL_PATHS = [
-    os.getenv("VOICE_MODEL_PATH", os.path.join(paths.MODELS_DIR, "ultron-voice.onnx")),
-    os.path.join(paths.MODELS_DIR, "jarvis-high.onnx"),  # name used by older installs
-]
+
+
+MODEL_PATHS = model_paths()
 BLOCK_SAMPLES = 1024           # about 46 ms at 22 kHz; stop reacts within one block
 CACHE_MAX_CHARS = 120          # only short, repeated lines are worth caching
 CACHE_MAX_ITEMS = 300
 SENTENCE_PAUSE_SECONDS = float(os.getenv("VOICE_SENTENCE_PAUSE", "0.13"))
-SILENCE_LEVEL = 300            # int16 samples quieter than this at the edges count as silence
 AHEAD_SENTENCES = 6            # how many synthesized sentences may wait for playback
-
-
-def trim_and_pause(pcm: np.ndarray, rate: int, pause_seconds: float = SENTENCE_PAUSE_SECONDS) -> np.ndarray:
-    """Cut near-silence from both ends (keeping 20 ms) and append a fixed pause."""
-    loud = np.flatnonzero(np.abs(pcm.astype(np.int32)) > SILENCE_LEVEL)
-    margin = int(0.02 * rate)
-    if len(loud):
-        pcm = pcm[max(loud[0] - margin, 0):loud[-1] + margin + 1]
-    return np.concatenate([pcm, np.zeros(int(pause_seconds * rate), dtype=np.int16)])
 
 
 class Speaker:
@@ -68,14 +58,17 @@ class Speaker:
         self._pending = 0                     # texts queued but not finished playing
         self.first_sound_at: float | None = None  # perf_counter of the first audio since the last speak()
 
-        path = next((p for p in MODEL_PATHS if os.path.exists(p)), None)
+        path = pick_model(MODEL_PATHS)
         if path is None:
-            logger.error("Voice model not found. Run 'python download_voice.py' first.")
+            logger.error("No voice model found. Run: python tools/download_voice.py joe")
             return
         try:
             logger.info("Loading ULTRON voice model...")
             self.voice = PiperVoice.load(path)
-            self.syn_config = SynthesisConfig(length_scale=1.0 / VOICE_SPEED)
+            self.effects = EffectChain(EffectSettings.from_env(), self.voice.config.sample_rate)
+            # the pitch shift stretches audio, so ask Piper for a matching faster delivery
+            self.syn_config = SynthesisConfig(
+                length_scale=self.effects.length_scale_factor / VOICE_SPEED)
             self.stream = sd.OutputStream(
                 samplerate=self.voice.config.sample_rate, channels=1, dtype="int16", latency="low"
             )
@@ -183,11 +176,9 @@ class Speaker:
             return
         parts = []
         with self._synth_lock:
-            for chunk in self.voice.synthesize(spoken, self.syn_config):
+            for pcm in render_chunks(self.voice, self.syn_config, self.effects, spoken, SENTENCE_PAUSE_SECONDS):
                 if self._cancelled(generation):
                     return
-                pcm = trim_and_pause(np.frombuffer(chunk.audio_int16_bytes, dtype=np.int16),
-                                     self.voice.config.sample_rate)
                 parts.append(pcm)
                 yield pcm
         self._remember(spoken, parts)
@@ -197,9 +188,7 @@ class Speaker:
         if spoken in self._cache:
             return
         with self._synth_lock:
-            parts = [trim_and_pause(np.frombuffer(c.audio_int16_bytes, dtype=np.int16),
-                                    self.voice.config.sample_rate)
-                     for c in self.voice.synthesize(spoken, self.syn_config)]
+            parts = list(render_chunks(self.voice, self.syn_config, self.effects, spoken, SENTENCE_PAUSE_SECONDS))
         self._remember(spoken, parts)
 
     def _remember(self, spoken: str, parts: list[np.ndarray]):

@@ -48,6 +48,17 @@ tools/stt_benchmark.py records your voice and suggests entries.
   * Say for example: "type hello world", "type restart later", "write see you tomorrow",
     "insert my email signature"
   * Name: type_text
+- Type  [EXACT WORDING]
+  * What it does: Start dictation when no words were given: asks what to type, then types the next thing said.
+  * Say for example: "type", "type something", "start typing"
+  * Name: start_typing
+- Undo typing
+  * What it does: Delete the words ULTRON last typed, by sending that many backspaces to the same window.
+  * You fill in: app (optional)
+  * Say for example: "undo typing", "delete that", "delete what you typed", "delete the
+    text", "undo whatever you typed in claude", "erase what you just typed", "undo the
+    typing"
+  * Name: undo_typing
 
 --------------------------------------------------------------------------------
 1. WINDOWS AND APPS
@@ -104,6 +115,12 @@ tools/stt_benchmark.py records your voice and suggests entries.
     "open the calculator", "fire up notepad", "open docker desktop", "run obsidian", "can
     you open file explorer", "open the paint app"
   * Name: open_app
+- Open a new <app> window
+  * What it does: Open a NEW window or another copy of an app, even if it is already open.
+  * You fill in: app
+  * Say for example: "open a new chrome window", "open another vs code window", "launch a
+    new window of notepad", "open chrome in a new window", "start another spotify"
+  * Name: open_new_window
 - Open the <folder> folder
   * What it does: Open a folder in File Explorer by name, or the one just created.
   * You fill in: folder
@@ -504,10 +521,11 @@ tools/stt_benchmark.py records your voice and suggests entries.
 --------------------------------------------------------------------------------
 10. UTILITIES
 --------------------------------------------------------------------------------
-- Read my screen
-  * What it does: Read the text on the screen (OCR) and copy it to the clipboard.
+- Read my <where>
+  * What it does: Read the text on the screen or the front window (OCR) and copy it to the clipboard.
+  * You fill in: where (optional)
   * Say for example: "read my screen", "scan the screen text", "copy the text on my screen",
-    "what does my screen say, copy it"
+    "what does my screen say, copy it", "read this window", "ocr the window in front"
   * Name: read_screen
 - Draft a message
   * What it does: Draft an email or message with the LLM and copy it to the clipboard.
@@ -619,3 +637,69 @@ tools/stt_benchmark.py records your voice and suggests entries.
   * Say for example: "what's the weather", "weather", "how's the weather today", "is it cold
     outside", "do i need a jacket today", "what's the temperature outside"
   * Name: weather
+
+--------------------------------------------------------------------------------
+12. SELECTION
+--------------------------------------------------------------------------------
+- Explain the selected text
+  * What it does: Explain the text the user has highlighted, in plain words.
+  * Say for example: "explain this", "what does this mean", "explain the selected text",
+    "can you explain what i highlighted", "i don't understand this", "what does this say",
+    "break this down for me", "what is this saying", "help me understand this"
+  * Name: explain_selection
+- Summarise the selected text
+  * What it does: Summarise the text the user has highlighted in a sentence or two.
+  * Say for example: "summarise this", "summarize the selected text", "tldr this", "give me
+    the gist of this", "sum this up", "give me a summary of what i highlighted", "what's the
+    short version of this"
+  * Name: summarise_selection
+- Translate the selected text to <language>
+  * What it does: Translate the text the user has highlighted into a language.
+  * You fill in: language
+  * Say for example: "translate this to hindi", "translate the selected text into french",
+    "translate this into spanish", "say this in german", "what is this in japanese", "can
+    you translate what i highlighted to tamil", "convert this to bengali"
+  * Name: translate_selection
+- Rewrite the selected text <instruction>
+  * What it does: Rewrite the highlighted text as asked and paste it after a spoken confirm.
+  * You fill in: instruction
+  * Say for example: "make this more polite", "rewrite this more formally", "make the
+    selected text shorter", "proofread this", "fix the grammar in this", "make this sound
+    friendlier", "rephrase this", "polish this up", "turn this into bullet points", "make
+    this a bit more professional"
+  * Name: rewrite_selection
+- Reply to the selected message
+  * What it does: Draft a reply to the highlighted message and paste it after a spoken confirm.
+  * You fill in: instruction (optional)
+  * Say for example: "reply to this", "write a response to the selected message", "reply to
+    this saying i will be late", "answer this for me", "respond to this email politely"
+  * Name: reply_to_selection
+
+--------------------------------------------------------------------------------
+13. ROUTINES
+--------------------------------------------------------------------------------
+- Run the <name> routine
+  * What it does: Run a saved routine: a named list of commands (work mode, morning routine).
+  * You fill in: name
+  * Say for example: "run study mode", "start my morning routine", "run the gym routine",
+    "activate coding mode", "launch my evening routine", "kick off my reading routine",
+    "trigger the cleanup macro"
+  * Name: run_routine
+- Remember the last <count> commands as <name>
+  * What it does: Save the last few commands the user gave as a named routine.
+  * You fill in: name, count (optional)
+  * Say for example: "remember this as study mode", "save that as my morning routine",
+    "remember the last 4 commands as study mode", "record what i just did as the gym
+    routine", "save this as a macro called setup", "remember those as coding mode"
+  * Name: remember_routine
+- List my routines
+  * What it does: Say the names of the saved routines.
+  * Say for example: "list my routines", "what routines do i have", "show my macros", "which
+    routines are saved", "tell me my routines", "do i have any routines"
+  * Name: list_routines
+- Delete the <name> routine  [CONFIRM]
+  * What it does: Delete a saved routine.
+  * You fill in: name
+  * Say for example: "delete the study mode routine", "remove my morning routine", "forget
+    the gym routine", "get rid of the study macro", "erase my evening routine"
+  * Name: delete_routine

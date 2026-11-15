@@ -12,6 +12,7 @@ import ollama
 
 from ultron import activity
 from ultron import memory
+from ultron import honesty
 from ultron.config import LLM_KEEP_ALIVE, LLM_MAX_TOKENS, OLLAMA_SYSTEM_PROMPT
 from ultron.hardware import get_profile
 from ultron.logger import logger
@@ -57,8 +58,8 @@ class Brain:
 
         The model has no clock, so it gets the time on every call (never stored).
         """
-        parts = (self.system_prompt, current_time_note(), memory.facts.prompt_note(),
-                 activity.prompt_note(activity.get_log()))
+        parts = (self.system_prompt, current_time_note(), memory.conversation.actions_note(),
+                 memory.facts.prompt_note(), activity.prompt_note(activity.get_log()))
         system = "\n\n".join(part for part in parts if part)
         return ([{"role": "system", "content": system}] + memory.conversation.recent()
                 + [{"role": "user", "content": question}])
@@ -71,6 +72,7 @@ class Brain:
             reply = response.get("message", {}).get("content", "")
             if not reply:
                 reply = "I apologize, but I received empty telemetry from my brain core."
+            reply = honesty.guard_text(reply) or honesty.honest_line()
             memory.conversation.add_exchange(question, reply)
             return reply
         except Exception as e:
@@ -198,6 +200,8 @@ class StreamingReply:
         self.tools = tools or None
         self.remember = remember
         self.text = ""
+        self.said = ""  # what was really handed on: claimed actions replaced (D39)
+        self._honest = False
         self.tool_call: tuple[str, dict] | None = None
         self.first_token_s: float | None = None
         self.error: str | None = None
@@ -207,6 +211,19 @@ class StreamingReply:
         self._cancel = threading.Event()
         self._thread = threading.Thread(target=self._run, args=(brain_,), daemon=True, name="llm-stream")
         self._thread.start()
+
+    def _say(self, sentence: str):
+        """Hand one sentence on, unless it claims an action: no command ran, so that would be a lie (D39)."""
+        clean = honesty.guard_sentence(sentence)
+        if clean is None:
+            if honesty.strip_leaks(sentence).strip() and not self._honest:
+                self._honest = True
+                logger.info(f"Honesty guard: dropped a claimed action: {sentence!r}")
+                clean = honesty.honest_line()
+            else:
+                return
+        self.said = f"{self.said} {clean}".strip()
+        self.on_sentence(clean)
 
     def _run(self, brain_):
         spoken = 0  # how much of self.text has been handed to on_sentence
@@ -240,7 +257,7 @@ class StreamingReply:
                         continue
                 sentences, rest = split_sentences(self.text[spoken:], first=not self._decided.is_set())
                 for sentence in sentences:
-                    self.on_sentence(sentence)
+                    self._say(sentence)
                     self._decided.set()
                 spoken = len(self.text) - len(rest)
         except Exception as e:
@@ -255,9 +272,9 @@ class StreamingReply:
             if self.tool_call is None and not self._held and not self._cancel.is_set():
                 rest = self.text[spoken:].strip()
                 if rest:
-                    self.on_sentence(rest)
-            if self.remember and self.text and self.tool_call is None and not self.error:
-                memory.conversation.add_exchange(self.question, self.text)
+                    self._say(rest)
+            if self.remember and self.said and self.tool_call is None and not self.error:
+                memory.conversation.add_exchange(self.question, self.said)
             self._decided.set()
     def wait_until_decided(self, timeout: float | None = None):
         self._decided.wait(timeout)
@@ -272,11 +289,11 @@ class StreamingReply:
         self._cancel.set()
 
 
-def ask_once(prompt: str) -> str:
+def ask_once(prompt: str, max_tokens: int = 200) -> str:
     """One standalone question (no persona, no conversation), e.g. for summaries."""
     try:
         response = ollama.chat(model=brain.model, messages=[{"role": "user", "content": prompt}],
-                               keep_alive=_keep_alive(), options={"num_predict": 200})
+                               keep_alive=_keep_alive(), options={"num_predict": max_tokens})
         return response.get("message", {}).get("content", "").strip()
     except Exception as e:
         logger.debug(f"ask_once failed: {e}")

@@ -16,9 +16,9 @@ from ultron.selftest import run_self_test
 
 SRC = os.path.dirname(os.path.dirname(os.path.abspath(ultron.__file__)))
 
-# These create the audio devices or load the Piper voice the moment they are imported
-# (a module-level AudioHandler, Speaker), and app imports them. Check they compile instead.
-IMPORT_HAS_SIDE_EFFECTS = {"ultron.audio.capture", "ultron.voice.speaker", "ultron.app"}
+# These load the Piper voice (and open the speaker) the moment they are imported, and app imports
+# them. Check they compile instead. audio/capture.py opens nothing at import, so it is imported.
+IMPORT_HAS_SIDE_EFFECTS = {"ultron.voice.speaker", "ultron.app"}
 
 
 def _module_names() -> list[str]:

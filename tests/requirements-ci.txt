@@ -12,6 +12,13 @@ model2vec==0.10.0
 rapidfuzz==3.14.6
 pyautogui==0.9.54
 pyperclip==1.11.0
-pytesseract==0.3.13
+pillow==13.0.0
 pycaw==20260927
 comtypes==1.5.0
+winrt-runtime==4.1.0
+winrt-Windows.Foundation==4!10.0.28000.2957
+winrt-Windows.Foundation.Collections==4!10.0.28000.2957
+winrt-Windows.Media.Ocr==4!10.0.28000.2957
+winrt-Windows.Graphics.Imaging==4!10.0.28000.2957
+winrt-Windows.Storage.Streams==4!10.0.28000.2957
+winrt-Windows.Globalization==4!10.0.28000.2957

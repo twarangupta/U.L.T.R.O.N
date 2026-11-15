@@ -37,7 +37,11 @@ OLLAMA_SYSTEM_PROMPT = (
     "connection or log in.\n\n"
     "TOOLS: when tools are offered, call one only if the user is clearly asking you to do that action now. "
     "For questions, chat, advice, or anything the tools do not do, answer in words and call no tool. "
-    "Never describe a tool call in text."
+    "Never describe a tool call in text. "
+    "A reply in words never opens, closes, types, clears, switches, deletes, undoes or changes anything. "
+    "So never write things like 'Opening Chrome', 'Closed it', 'Switched to VS Code', 'Typing now', "
+    "'Trying again' or 'Done' unless you called a tool. If the user wants an action and no tool fits, say "
+    "'I can't do that yet.' Notes about commands the PC ran earlier are the PC's work, not yours."
 )
 
 # LLM speed: stay loaded forever (D3) and cap the length of spoken answers.
@@ -45,10 +49,18 @@ LLM_KEEP_ALIVE = os.getenv("LLM_KEEP_ALIVE", "-1")   # -1 = never unload; or "30
 LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "120"))
 
 # How long a pause ends your sentence (seconds). Lower is snappier, too low cuts you off.
+# END_SILENCE_SECONDS is for the fallback (loudness check, used only when the VAD model is missing);
+# VAD_END_SILENCE_SECONDS is for Silero VAD, which tells speech from noise and so can wait less.
 END_SILENCE_SECONDS = float(os.getenv("END_SILENCE_SECONDS", "0.6"))
+VAD_END_SILENCE_SECONDS = float(os.getenv("VAD_END_SILENCE_SECONDS", "0.35"))
+VAD_THRESHOLD = float(os.getenv("VAD_THRESHOLD", "0.5"))   # speech probability from 0 to 1; higher = stricter
+VAD_BARGE_IN = os.getenv("VAD_BARGE_IN", "1").lower() in ("1", "true", "yes", "on")  # barge-in also needs speech, not just loudness
 
 # After this many seconds in a conversation with no recognised speech, ULTRON says a line and
 # goes back to waiting for the wake word. 0 turns it off.
+# How long ULTRON listens for the answer to "Did you mean ...?" or "Say confirm" (seconds). Short: it is one word.
+CONFIRM_LISTEN_SECONDS = float(os.getenv("CONFIRM_LISTEN_SECONDS", "5"))
+
 CONVERSATION_IDLE_SECONDS = float(os.getenv("CONVERSATION_IDLE_SECONDS", "45"))
 
 # Barge-in: talk over ULTRON to stop it (bargein.py explains the tuning).
@@ -102,9 +114,17 @@ WHISPER_HOTWORDS = os.getenv(
     "Ultron, stop, cancel, confirm, open, close, type, send, git, volume, mute, screenshot",
 )
 
-# Voice (Piper). 1.0 is normal pace, 1.2 is 20 percent faster, 0.9 slower.
-# The voice model's own default was 1.15 times slower than normal, which dragged words out.
-VOICE_SPEED = float(os.getenv("VOICE_SPEED", "1.0"))
+# Voice (Piper). VOICE_SPEED is the final pace: 1.0 normal, 1.2 faster, 0.9 slower and
+# more deliberate. The effect chain's pitch shift is compensated, so this stays true.
+VOICE_SPEED = float(os.getenv("VOICE_SPEED", "0.9"))
+# Which voice to use: a name from models/voices/, or a path to an .onnx file. The default is
+# en_US-joe-medium (CC0, the voice the installer ships; get it with
+# `python tools/download_voice.py joe`). Empty or "jarvis" selects the old models/ultron-voice.onnx.
+VOICE_MODEL = os.getenv("VOICE_MODEL", "en_US-joe-medium").strip()
+# Effects on top of the voice: VOICE_PRESET = none, subtle, ultron (default), heavy, silk, cold,
+# calm or deep, with optional
+# VOICE_PITCH (semitones down), VOICE_METAL, VOICE_REVERB, VOICE_DOUBLE, VOICE_BASS (0 to 1).
+# They are read by ultron.voice.effects.EffectSettings.from_env().
 
 # Audio Settings
 SAMPLE_RATE = int(os.getenv("SAMPLE_RATE", "16000")) # Required by OpenWakeWord and Whisper

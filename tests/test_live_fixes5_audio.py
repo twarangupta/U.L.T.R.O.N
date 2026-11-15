@@ -1,51 +1,17 @@
-"""Fixes from the live run at 20:25 on 2026-11-15 (D34) that need app.py and the mic module.
-Nothing real runs: no mic, no model. Skipped where PyAudio is not installed (CI): app.py and
-audio/capture.py create their device objects at import (the known caveat in CLAUDE.md)."""
+"""Fixes from the live run at 20:25 on 2026-11-15 (D34) that need app.py.
+Nothing real runs: no mic, no model. Skipped where Piper is not installed (CI): voice/speaker.py
+loads the voice at import (the known caveat in CLAUDE.md). The mic tests moved to test_capture.py,
+which runs everywhere since audio/capture.py opens nothing at import."""
 import types
 
 import numpy as np
 import pytest
 
-pytest.importorskip("pyaudio")
+pytest.importorskip("piper")
 
 from ultron import app, persona  # noqa: E402
-from ultron.audio import capture  # noqa: E402
 
-# ---- 1. silence never reaches Whisper; idle conversations end ----
-class _FakeStream:
-    def __init__(self, loudness):
-        self.loudness = loudness
-
-    def read(self, n, exception_on_overflow=False):
-        return (np.full(n, self.loudness, dtype=np.int16)).tobytes()
-
-    def is_active(self):
-        return True
-
-
-def _handler(loudness):
-    h = capture.AudioHandler.__new__(capture.AudioHandler)
-    h.stream = _FakeStream(loudness)
-    h.start_stream = lambda: True
-    h.stop_stream = lambda: None
-    return h
-
-
-def test_record_phrase_returns_empty_when_nobody_spoke():
-    audio = _handler(0).record_phrase(max_seconds=0.5)
-    assert len(audio) == 0
-
-
-def test_record_phrase_keeps_speech():
-    audio = _handler(3000).record_phrase(max_seconds=0.5)
-    assert len(audio) > 0
-
-
-def test_record_phrase_with_preroll_counts_as_speech():
-    pre = [np.full(1280, 3000, dtype=np.int16)]
-    assert len(_handler(0).record_phrase(max_seconds=0.3, silence_timeout_seconds=0.2, preroll=pre)) > 0
-
-
+# ---- 1. silence never reaches Whisper (the recorder side is in test_capture.py); idle conversations end ----
 def test_transcribe_skips_empty_audio():
     class Boom:
         def transcribe(self, audio):
