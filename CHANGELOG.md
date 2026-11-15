@@ -4,6 +4,12 @@ Notable changes to ULTRON (formerly J.A.R.V.I.S.). Day-by-day detail is in [docs
 
 ## [Unreleased]
 
+### Fixed
+- Silence is no longer sent to Whisper; a conversation with no speech for 45 s (`CONVERSATION_IDLE_SECONDS`) goes back to the wake word.
+- Closing an app is announced only when it may hold unsaved work, and never says both "Closing" and "Closed".
+- Whisper retries are off by default (`WHISPER_TEMPERATURE_FALLBACK`); low-confidence transcriptions, AI replies and tool calls are logged.
+- Opening a browser or app waits until the reply is audible, so the voice is not delayed.
+
 ### Changed
 - Repository cleanup with no change in behaviour: code moved to `src/ultron/` (start with `run_ultron.bat` or `python -m ultron`), editable data in `config/`, dependencies pinned in `pyproject.toml`, `commands.txt` became `docs/COMMANDS.md`, new README and architecture notes, CI on GitHub Actions.
 - Removed dead code, the old `examples/` folder, the SAPI voice unlock scripts and the unused speech libraries.
