@@ -885,6 +885,13 @@ Open questions:
 - ai_routing: every command needs a key word (tests for "Assets stop", "wave protein", unrelated questions). corrections.json: wave/way protein -> whey protein.
 - Tests: 84 pass. Not yet verified live on the laptop speakers.
 
+### 2026-11-15: Understand any phrasing, part 1 (feat/understand-phrasing)
+- D30. commands/registry.py (declarations, schema, validation, dry run), commands/router.py (stages and safety), commands/intent.py (model2vec matcher with a null class), commands/slots.py (numbers, apps, choices, cue text), commands/apps.py (alias table, fuzzy names, Start Menu index so "open <any installed app>" works). All handler modules migrated: 89 commands. commands.txt is generated (tools/gen_commands_txt.py) and tested. ai_routing.py and the [COMMAND] prompt section are gone; brain.py streams native Ollama tool calls (and catches a call written out as JSON text).
+- Behaviour changes: kill port is now a confirm command; git commit, git push, close app and organize downloads are announced; the LLM-backed helpers (debug, review, translate, drafts) use ask_once so they no longer enter the conversation; non-Windows branches removed.
+- Measured (laptop, silent): rules 0.03 to 0.3 ms; matcher 1.3 ms per sentence, 0.5 s model load plus 1 s index build at startup. "crank it up a bit" -> volume_up (0.88), "what were my last few commits" -> git_log (0.94), "get rid of chrome" -> asks "Did you mean: close Chrome?" (0.69); "I meant on the wave protein" (0.26), "restart the dev server" and "remind me to go to sleep at 11" reach no command.
+- Tests: 87 pass (tests/test_router.py added: confirm in every stage, announce and barge-in, did-you-mean, tool-call schema checks, blocked, negatives, stage timing).
+- Not done yet (part 2): tests/intents.yaml paraphrase set, tests/test_intents.py, tools/intent_eval.py, before and after accuracy, LLM comparison and the GPU-4GB default. Thresholds in router.py are the starting values from D30, not yet tuned.
+
 <!-- New entries go above this line, newest last. Format:
 ### YYYY-MM-DD: Short title
 - What changed (branch)
