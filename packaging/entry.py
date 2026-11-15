@@ -9,8 +9,9 @@ import sys
 
 HEAVY_MODULES = [
     "faster_whisper", "ctranslate2", "onnxruntime", "openwakeword", "piper", "model2vec", "tokenizers",
-    "av", "numpy", "scipy", "psutil", "ollama", "sounddevice", "pyaudio", "pyautogui", "pyperclip",
+    "av", "numpy", "scipy", "psutil", "ollama", "sounddevice", "yaml", "pyautogui", "pyperclip",
     "pycaw.pycaw", "comtypes", "comtypes.client", "winrt.windows.devices.radios", "winrt.windows.foundation",
+    "winrt.windows.media.ocr", "winrt.windows.graphics.imaging", "winrt.windows.storage.streams",
 ]
 
 

@@ -25,8 +25,8 @@ for pkg in ("faster_whisper", "ctranslate2", "onnxruntime", "openwakeword", "pip
 # Windows COM and WinRT. comtypes builds wrappers in comtypes.gen at run time; pycaw and winrt import lazily.
 for pkg in ("comtypes", "pycaw", "winrt", "pythoncom", "win32com"):
     hiddenimports += collect_submodules(pkg)
-datas += collect_data_files("pyaudio") + collect_data_files("sounddevice")
-hiddenimports += ["win32com.client", "sounddevice", "pyaudio"]
+datas += collect_data_files("sounddevice")
+hiddenimports += ["win32com.client", "sounddevice"]
 
 # The command modules are imported by name from ultron/commands/__init__.py; list the whole package.
 hiddenimports += collect_submodules("ultron")
