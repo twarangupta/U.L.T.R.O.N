@@ -56,31 +56,36 @@ def type_text(text: str) -> str:
 
 
 # ---- screen and writing ----
-@command("read_screen", "Read the text on the screen (OCR) and copy it to the clipboard.", group=_UTIL,
-         title="read my screen", priority=50,
-         rules=[r"(?:read|scan|ocr)(?: my| the)? screen(?: text)?|scan screen text"],
+def _first_line(text: str, limit: int = 90) -> str:
+    line = next((ln.strip() for ln in text.splitlines() if len(ln.strip()) > 2), text.strip())
+    return line if len(line) <= limit else line[:limit].rsplit(" ", 1)[0] + "..."
+
+
+@command("read_screen", "Read the text on the screen or the front window (OCR) and copy it to the clipboard.",
+         group=_UTIL, title="read my {where}", priority=50,
+         params=[Param("where", "choice", "what to read: the whole screen or just the front window",
+                       required=False, choices=("screen", "window"))],
+         rules=[r"(?:read|scan|ocr)(?: my| the| this)? (?P<where>screen|window)(?: text)?",
+                r"scan (?:the )?(?P<where>screen) text"],
          examples=["read my screen", "scan the screen text", "copy the text on my screen",
-                   "what does my screen say, copy it"])
-def read_screen() -> str:
-    import pyautogui
+                   "what does my screen say, copy it", "read this window", "ocr the window in front"],
+         not_examples=["take a screen grab", "grab my screen", "take a screenshot"])
+def read_screen(where: str = "screen") -> str:
+    """Windows' own OCR (ultron.ocr), all in memory: nothing is saved to disk."""
     import pyperclip
+    from ultron import ocr
+    image = ocr.grab_active_window() if where == "window" else None
+    image = image or ocr.grab_screen()
     try:
-        import pytesseract
-    except ImportError:
-        return "Screen reading needs pytesseract and Tesseract OCR, which are not installed."
-    path = "temp_ocr_capture.png"
-    pyautogui.screenshot().save(path)
-    try:
-        text = pytesseract.image_to_string(path).strip()
-    except Exception:
-        return "Tesseract was not found. Install it and add it to PATH."
-    finally:
-        if os.path.exists(path):
-            os.remove(path)
+        text = ocr.read_text(image)
+    except ocr.OcrUnavailable as e:
+        return f"I can't read the screen: {e}"
     if not text:
-        return "I scanned the screen but found no readable text."
+        return f"I looked at the {where} but found no readable text."
     pyperclip.copy(text)
-    return "The text on your screen is on your clipboard."
+    lines = len([ln for ln in text.splitlines() if ln.strip()])
+    return (f"Read {lines} line{'s' if lines != 1 else ''}, copied to your clipboard. "
+            f"It starts: {_first_line(text)}")
 
 
 @command("draft_message", "Draft an email or message with the LLM and copy it to the clipboard.", group=_UTIL,
