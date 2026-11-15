@@ -47,6 +47,9 @@ gpu = ["nvidia-cublas-cu12==12.9.2.10; sys_platform == 'win32' or sys_platform =
 # For working on ULTRON: tests, lint, dead-code check, and the tools in tools/.
 dev = ["pytest==9.2.0", "ruff==0.17.5", "vulture==2.16", "soundfile==0.14.0"]
 
+# For building the Windows program: packaging/build.ps1.
+build = ["pyinstaller==6.22.3"]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
