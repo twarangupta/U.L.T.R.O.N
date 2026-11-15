@@ -42,3 +42,7 @@ finances.csv
 # Other local notes written by developer commands
 debug_report.md
 code_review.md
+
+# PyInstaller output (packaging/build.ps1)
+build/
+dist/

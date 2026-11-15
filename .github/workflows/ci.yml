@@ -45,3 +45,32 @@ jobs:
 
       - name: docs/COMMANDS.md is up to date
         run: python tools/gen_commands_txt.py --check
+
+  # Builds the Windows program and runs it, so packaging problems show up on the pull request and not at
+  # release time. Waits for the tests, so it never slows the main job. Takes about 5 to 8 minutes.
+  package:
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install ULTRON with its real dependencies (no GPU pack) and PyInstaller
+        run: python -m pip install -e ".[build]"
+
+      - name: Build dist/ULTRON, then run its --self-test and --import-check
+        run: powershell -ExecutionPolicy Bypass -File packaging/build.ps1
+
+      - name: Zip the build
+        run: Compress-Archive -Path dist/ULTRON -DestinationPath ULTRON-windows.zip -CompressionLevel Fastest
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ULTRON-windows
+          path: ULTRON-windows.zip
+          retention-days: 7
