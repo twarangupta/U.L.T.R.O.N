@@ -900,6 +900,21 @@ Open questions:
 - Tests: 87 pass (tests/test_router.py added: confirm in every stage, announce and barge-in, did-you-mean, tool-call schema checks, blocked, negatives, stage timing).
 - Not done yet (part 2): tests/intents.yaml paraphrase set, tests/test_intents.py, tools/intent_eval.py, before and after accuracy, LLM comparison and the GPU-4GB default. Thresholds in router.py are the starting values from D30, not yet tuned.
 
+### 2026-11-15: Understand any phrasing, part 2a: phrase set and accuracy (feat/understand-phrasing)
+- tests/intents.yaml: 1780 paraphrases (20 per command, written by the coding model, reviewed, not copies of registry examples), 66 near-miss negatives, 48 real Heard lines (20 commands, 28 not commands). tools/intent_eval.py, tests/test_intents.py (accuracy floors, negatives never run).
+- Accuracy, rules and matcher only (no LLM), same set. Weighted: heard 3, negatives 2, paraphrases 1. "Asked" = right command after "Did you mean".
+
+| Router | Heard commands right (of 20) | Paraphrases ran right | asked right | wrong | left to LLM | Negatives clean (of 94) | Weighted |
+|---|---|---|---|---|---|---|---|
+| old (p1-fixes rules) | 13 | 572 | 0 | 100 | 1108 | 83 | 38.3 % |
+| new (rules + matcher) | 18 (17 ran, 1 asked) | 1037 | 405 | 90 | 248 | 84 | 82.1 % |
+
+- New: of all wrong answers, only 8 of 1894 ran the wrong command at once; the rest only asked "Did you mean" (a "no" cancels). Of the 248 left to the LLM, 214 have the right command in the tool shortlist. Rules plus matcher take about 1.6 ms per sentence.
+- Guards added after reading the failures (general, not per phrase): questions about a thing ("what does git push do") do not run through the matcher; content words a command's examples never use ("restart nginx") make it ask, and stop confirm commands entirely; rules with an app parameter only claim the sentence when the app is known or installed; "write" is dictation only when no thing to compose follows; one rule for date and time in any order; Start Menu matching uses whole names.
+- Known gaps: "search a file in my PC" opens a web search (no file search command yet); laptop specs have no command (next steps item B).
+- Incident: an unmarked test (test_stages_are_fast) routed 200 sentences outside dry-run, so real commands ran on the laptop (window closes and minimises, focus mode mute, a screenshot on the Desktop, a pasted "hello world", a fact in the dev folder's memory.json). Fixed the test, and tests/conftest.py now forces dry-run for every test unless it is marked real_handlers.
+- Next (part 2b): LLM tool stage per model, shortlist versus full tool list, the GPU-4GB default.
+
 <!-- New entries go above this line, newest last. Format:
 ### YYYY-MM-DD: Short title
 - What changed (branch)

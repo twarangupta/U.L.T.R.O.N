@@ -26,6 +26,9 @@ notes.md
 # Your voice recordings for tools/stt_benchmark.py
 recordings/
 
+# Reports from tools/intent_eval.py and other measurement tools
+results/
+
 # Personal memory (facts you asked ULTRON to remember)
 memory.json
 memory.json.tmp
