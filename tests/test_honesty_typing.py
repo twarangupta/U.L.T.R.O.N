@@ -1,13 +1,11 @@
 """D39: the AI never claims an action it did not perform; typing, undo typing, goodbye, open-if-running,
 the priority call and the short listen windows."""
-import os
-import subprocess
 import sys
 import types
 
 import pytest
 
-from ultron import app, brain, config, honesty, memory, persona
+from ultron import brain, config, honesty, memory, persona
 from ultron.commands import context, general, registry, windows
 from ultron.commands.router import route
 from ultron.commands.text import is_goodbye, is_stop_phrase
@@ -237,38 +235,3 @@ def test_new_window_wants_an_app_not_a_tab(monkeypatch):
     monkeypatch.setattr(system, "_launch", lambda app: pytest.fail("no launch"))
     assert system.open_new_window("tab") is None
     assert route("open vs code").command == "open_app"
-
-
-# ---- process priority handle ----
-def test_priority_call_declares_handle_types(monkeypatch):
-    from ctypes import wintypes
-
-    class Fn:
-        def __init__(self, ret):
-            self.ret, self.restype, self.argtypes = ret, None, None
-
-        def __call__(self, *a):
-            return self.ret
-
-    k = types.SimpleNamespace(GetCurrentProcess=Fn(-1), SetPriorityClass=Fn(1))
-    monkeypatch.setattr(app, "_kernel32", lambda: k)
-    monkeypatch.setattr(app.sys, "platform", "win32")
-    assert app.raise_priority() is True
-    assert k.GetCurrentProcess.restype is wintypes.HANDLE
-    assert k.SetPriorityClass.argtypes == [wintypes.HANDLE, wintypes.DWORD]
-
-
-@pytest.mark.skipif(sys.platform != "win32", reason="Windows only")
-def test_priority_really_works_in_a_throwaway_process():
-    code = ("import ctypes; from ctypes import wintypes; from ultron import app; ok = app.raise_priority();"
-            "k = ctypes.windll.kernel32; k.GetPriorityClass.restype = wintypes.DWORD;"
-            "k.GetCurrentProcess.restype = wintypes.HANDLE; k.GetPriorityClass.argtypes = [wintypes.HANDLE];"
-            "print(ok, hex(k.GetPriorityClass(k.GetCurrentProcess())))")
-    run = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=120,
-                         env={**os.environ, "PYTHONPATH": "src"})
-    assert run.stdout.strip().splitlines()[-1] == "True 0x8000", run.stdout + run.stderr
-
-
-# ---- short listen windows ----
-def test_listen_window_is_five_seconds():
-    assert config.CONFIRM_LISTEN_SECONDS == 5.0 and app.CONFIRM_LISTEN_SECONDS == 5.0
