@@ -94,7 +94,8 @@ tools/stt_benchmark.py records your voice and suggests entries.
   * What it does: Open a well-known website in the browser.
   * You fill in: site
   * Say for example: "open youtube", "go to gmail", "open github", "launch reddit", "pull up
-    stackoverflow", "take me to youtube", "open my gmail", "show me linkedin"
+    stackoverflow", "open my gmail", "show me linkedin", "open netflix", "watch something on
+    prime video", "open whatsapp web", "go to flipkart", "pull up wikipedia"
   * Name: open_website
 - Open <app>
   * What it does: Open (launch) an installed app.
@@ -108,8 +109,14 @@ tools/stt_benchmark.py records your voice and suggests entries.
   * You fill in: folder
   * Say for example: "open my downloads", "show me the documents folder", "open downloads
     folder", "go to my pictures", "open the desktop folder", "where are my downloads, open
-    them", "open the invoices folder", "open the new folder you just created"
+    them", "open the invoices folder", "open the new folder you just created", "open it",
+    "show me that folder"
   * Name: open_folder
+- Where is the new folder
+  * What it does: Say where the folder ULTRON just created is (its full path).
+  * Say for example: "where is it", "where is the new folder you just created", "where did
+    you put the folder", "where is that folder"
+  * Name: folder_location
 - Create a folder <name> in <location>
   * What it does: Create a new folder, on the Desktop unless another folder is named.
   * You fill in: name (optional), location (optional)
@@ -177,10 +184,31 @@ tools/stt_benchmark.py records your voice and suggests entries.
   * Say for example: "meeting mode", "focus mode", "start focus mode", "i have a meeting,
     get things quiet", "activate meeting mode"
   * Name: meeting_mode
+- Leave meeting mode
+  * What it does: Leave meeting or focus mode: unmute the speakers and bring every window back.
+  * Say for example: "quit focus mode", "exit meeting mode", "stop focus mode", "turn off
+    focus mode", "end the meeting", "back to normal", "normal mode", "i'm done with my
+    meeting", "the call is over, unmute everything", "leave meeting mode", "i'm out of the
+    meeting"
+  * Name: meeting_mode_off
 
 --------------------------------------------------------------------------------
 3. PC STATUS
 --------------------------------------------------------------------------------
+- Turn Bluetooth on
+  * What it does: Turn Bluetooth on.
+  * Say for example: "turn on bluetooth", "enable bluetooth", "switch bluetooth on",
+    "bluetooth on", "i need bluetooth, switch it on", "activate the bluetooth"
+  * Name: bluetooth_on
+- Turn Bluetooth off
+  * What it does: Turn Bluetooth off.
+  * Say for example: "turn off bluetooth", "disable bluetooth", "switch bluetooth off",
+    "bluetooth off", "kill the bluetooth", "shut bluetooth down"
+  * Name: bluetooth_off
+- Toggle Bluetooth
+  * What it does: Flip Bluetooth: off if it is on, on if it is off.
+  * Say for example: "toggle bluetooth", "flip bluetooth", "toggle the bluetooth radio"
+  * Name: bluetooth_toggle
 - Lock the computer
   * What it does: Lock the computer (show the sign-in screen).
   * Say for example: "lock pc", "lock my computer", "lock the screen", "lock the laptop",

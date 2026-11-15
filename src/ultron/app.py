@@ -3,7 +3,7 @@
 Started by `python -m ultron` (run_ultron.bat). Voice interruption (barge-in), the
 sleep and stop phrases, yes/no confirmation by voice and the timing log live here."""
 
-from ultron.config import BARGE_IN, END_SILENCE_SECONDS, SLEEP_WORD, WAKE_PHRASE
+from ultron.config import BARGE_IN, CONVERSATION_IDLE_SECONDS, END_SILENCE_SECONDS, SLEEP_WORD, WAKE_PHRASE
 from ultron.audio.bargein import BargeInDetector
 import sys
 import time
@@ -65,12 +65,43 @@ CONFIRM_LISTEN_SECONDS = 6.0
 
 
 def transcribe(whisper_model, audio_data) -> str:
-    """Speech to text. Returns "" on silence or error."""
+    """Speech to text. Returns "" on silence or error. Empty audio never reaches Whisper."""
+    if audio_data is None or len(audio_data) == 0:
+        return ""
     return whisper_model.transcribe(audio_data)
+
+
+ABOVE_NORMAL_PRIORITY_CLASS = 0x00008000
+
+
+def _kernel32():
+    import ctypes
+    return ctypes.windll.kernel32
+
+
+def raise_priority() -> bool:
+    """Run ULTRON at above-normal priority (Windows only), so a browser or app that is starting
+    cannot starve the voice synthesis. Logged once; returns whether it worked."""
+    if sys.platform != "win32":
+        return False
+    try:
+        k = _kernel32()
+        ok = bool(k.SetPriorityClass(k.GetCurrentProcess(), ABOVE_NORMAL_PRIORITY_CLASS))
+    except Exception as e:
+        logger.warning(f"Could not raise the process priority: {e}")
+        return False
+    logger.info("Process priority raised to above normal" if ok else "Could not raise the process priority")
+    return ok
+
+
+def idle_expired(last_activity: float, now: float, limit: float = CONVERSATION_IDLE_SECONDS) -> bool:
+    """True when a conversation has had no recognised speech for `limit` seconds (0 turns it off)."""
+    return limit > 0 and now - last_activity >= limit
 
 
 def ask_confirmation(prompt: str, whisper_model) -> bool:
     """Speak the prompt, listen once, and return True only for "confirm"."""
+    logger.info(f"Confirm question: {prompt!r}")
     speak(prompt)
     wait_speaking()
     reply = transcribe(whisper_model, audio_handler.record_phrase(max_seconds=CONFIRM_LISTEN_SECONDS))
@@ -98,6 +129,7 @@ class VoiceInteraction(Interaction):
 
     def ask_yes_no(self, prompt: str) -> bool | str:
         """Yes, no (or silence), or the words themselves when the answer is a new request."""
+        logger.info(f"Did-you-mean question: {prompt!r}")
         speak(prompt)
         wait_speaking()
         reply = transcribe(self.whisper_model, audio_handler.record_phrase(max_seconds=CONFIRM_LISTEN_SECONDS))
@@ -147,6 +179,7 @@ def answer_with_ai(transcription: str, candidates: list[str], io: VoiceInteracti
     if reply.tool_call is not None:
         reply.join()
         name, arguments = reply.tool_call
+        logger.info(f"AI tool: {name}({arguments})")
         outcome = run_tool_call(name, arguments, candidates, io, scores=scores, sentence=sentence)
         if outcome is not None and outcome.route == "reroute":  # the did-you-mean answer was a new request
             new = route(outcome.sentence, io)
@@ -169,7 +202,12 @@ def answer_with_ai(transcription: str, candidates: list[str], io: VoiceInteracti
         return speak_and_interruptible(
             "I am having trouble reaching my local model. Check that Ollama is running.", detector)
     timing["route"] = "llm"
-    return speak_and_interruptible(None, detector, stream=reply)
+    interrupted = speak_and_interruptible(None, detector, stream=reply)
+    reply.join()
+    logger.info(f"AI said: {reply.text!r}{' (interrupted)' if interrupted else ''}")
+    return interrupted
+
+
 def log_timing(timing: dict):
     """One line per request: where the time went, measured from the end of speech."""
     parts = [f"{key}={value:.2f}" for key, value in timing.items() if isinstance(value, float)]
@@ -244,6 +282,7 @@ def speak_and_interruptible(text: str | None, detector: WakeWordDetector, stream
     return interrupted
 
 def main():
+    raise_priority()
     from ultron.commands import apps as _apps
     _apps.warm()  # build the installed-app index now, not on the first "open <app>"
     if sys.prefix == sys.base_prefix:
@@ -340,6 +379,7 @@ def main():
         interrupted = speak_and_interruptible(persona.pick(persona.WAKE_REPLIES), detector)
         
         # Conversation loop
+        last_activity = time.monotonic()  # last recognised speech; a long silence ends the conversation
         while True:
             if interrupted:
                 interrupted = False
@@ -350,12 +390,21 @@ def main():
             speech_end = time.perf_counter()  # END_SILENCE_SECONDS after you actually stopped
             timing = {"end_wait": END_SILENCE_SECONDS}
 
-            logger.info("Transcribing...")
-            transcription = transcribe(whisper_model, audio_data)
-            timing["stt"] = time.perf_counter() - speech_end
+            transcription = ""
+            if len(audio_data) > 0:  # nobody spoke: silence is never fed to Whisper
+                logger.info("Transcribing...")
+                transcription = transcribe(whisper_model, audio_data)
+                timing["stt"] = time.perf_counter() - speech_end
             if not transcription or is_noise(transcription):
-                logger.info(f"No speech recognized{f' (noise {transcription!r} ignored)' if transcription else ''}")
+                if len(audio_data) > 0:
+                    logger.info(f"No speech recognized{f' (noise {transcription!r} ignored)' if transcription else ''}")
+                if idle_expired(last_activity, time.monotonic()):
+                    logger.info(f"No speech for {CONVERSATION_IDLE_SECONDS:g} s. Going back to sleep.")
+                    speak(persona.pick(persona.IDLE_REPLIES))
+                    wait_speaking()
+                    break
                 continue
+            last_activity = time.monotonic()
                 
             print(f"You: {transcription}")
             logger.info(f"Heard: {transcription!r}")
@@ -411,6 +460,7 @@ def main():
                 timing["first_sound"] = heard_at - speech_end
                 timing["after_you_stopped"] = heard_at - speech_end + END_SILENCE_SECONDS
             log_timing(timing)
+            last_activity = time.monotonic()  # the time ULTRON spent talking does not count as silence
 
             if interrupted:
                 logger.info("Speech interrupted by user")

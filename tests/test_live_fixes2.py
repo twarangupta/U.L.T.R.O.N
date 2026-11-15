@@ -80,8 +80,8 @@ def tool(said, name, args=None, io=None):
 
 
 def test_off_registry_request_is_refused_honestly():
-    """The model called volume_up for Bluetooth: no command fits, so say so."""
-    res, _ = tool("Can you turn on Bluetooth?", "volume_up")
+    """The model called volume_up for a hotspot: no command fits, so say so."""
+    res, _ = tool("Can you turn on the wifi hotspot?", "volume_up")
     assert res is not None and res.route == "refused" and res.command is None
     assert "yet" in res.reply.lower()
 
@@ -197,7 +197,7 @@ def test_search_handler_cleans_the_query(monkeypatch):
 
 # ---- 6. closing apps: announcing is not routing time, and a result is always said ----
 def test_announcement_time_is_not_rule_time_and_result_is_said():
-    out = route("close Google Chrome", IO(announce_s=0.3))
+    out = route("close Notepad", IO(announce_s=0.3))
     assert out.command == "close_app"
     assert out.reply  # never ''
     assert out.timings["rule_ms"] < 100 and out.timings["announce_ms"] >= 290

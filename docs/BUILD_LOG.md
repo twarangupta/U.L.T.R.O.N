@@ -311,7 +311,17 @@ Decision: a tool call runs only if the sentence resembles that command's example
 Context: about 30 files in the root, dead code, ">=" dependencies, no CI (D22 asked for all of this).
 Decision: code in `src/ultron/` (audio, stt, voice, commands, and top-level modules), editable data in `config/`, every path from `paths.py` (private files keep their old places: memory.json, data/activity.db, ultron.log, profile.md), start with `run_ultron.bat` or `python -m ultron`, dependencies pinned in pyproject.toml (core, gpu and dev extras), commands.txt became docs/COMMANDS.md, `--self-test`, and a Windows CI workflow that needs no models, GPU or audio device. No behaviour changed: 173 tests, the 1952-case intent evaluation and the command list are identical before and after. Tradeoffs: `voice/speaker.py`, `audio/capture.py` and `app.py` still create their device objects at import (the smoke test compiles them instead of importing); a lazy start would make them importable anywhere, a later change.
 
+### D34. Live-run fixes 3: silence, announcements, Whisper retries, slow launches
+Context: the live run at 20:25 on 2026-11-15 showed `record_phrase` returning 10 s of silence that Whisper transcribed every 10 s (once as "Come on, come on." after 7 s of STT), "Closing Chrome." costing 1.9 to 2.2 s before the action and "Closed Chrome." right after it, STT spikes to 2.1 s on unclear speech, and first_sound 3.9 s on web searches although rule_ms was 44 ms.
+Decision: (1) the recorder returns an empty array when speech never started (preroll still counts as speech) and the app never calls Whisper on empty audio; after CONVERSATION_IDLE_SECONDS (45, env override, 0 = off) with no recognised speech ULTRON says an IDLE_REPLIES line and goes back to the wake word; the confirm and did-you-mean listens share the recorder, so they get the empty-audio rule too. (2) "doing" announcements for close_app are spoken only for apps that may hold unsaved work (editors, Office, IDEs, "this window"; list in router.py); an announced action is never followed by its "Closed X." line, an unannounced one says it afterwards; announce_ms is still logged. (3) Whisper runs at temperature 0 only; WHISPER_TEMPERATURE_FALLBACK=1 brings faster-whisper's retry ladder back; transcriptions under WHISPER_LOW_LOGPROB (-1.0) or over WHISPER_LOW_NO_SPEECH (0.6) are logged as low confidence. (4) The log now has `AI said:`, `AI tool:`, `Confirm question:` and `Did-you-mean question:` lines. (5) ULTRON raises its own process priority to ABOVE_NORMAL at startup (Windows only, logged once), so a browser or app that is starting cannot starve Piper; an earlier version that held back launches was dropped because swapping module globals is not thread-safe.
+Tradeoffs: temperature 0 can leave a hard sentence wrong where a retry might have fixed it (but a wrong sentence at 2 s is worse than a "say that again"); the idle sleep needs 45 s of quiet, so a slow thinker loses the conversation window (the conversation memory itself survives naps); skipping the announce for browsers means talking over "Closing Chrome." can no longer cancel it (closing a browser can still restore tabs). Above-normal priority also lets ULTRON win CPU contests against the user's other programs, though it stays below High and does not touch the system's own work; it does not help if the delay is disk or network rather than CPU. Better ideas: a real VAD (feat/silero-vad) would also stop silence earlier and make the idle check exact; if first_sound is still late after this, measure whether the launch itself (not CPU) is the cause and start it from a worker thread after the first sound.
+
 ---
+
+### D33. Live-run 2 command fixes: leave focus mode, "it", sites, two requests, Bluetooth
+Context: the owner's live test of dev (5a85230). Principle: every command works both as a direct command and in plain English, so each needs generous rules plus matcher examples.
+Decision: (1) `meeting_mode_off` (quit, exit, stop, end, turn off focus or meeting mode, back to normal, "I'm done with my meeting"; "Asset close, focus mode" works because the rules accept a leading "asset" or "assets"); `meeting_mode` got these as not_examples so the matcher stops offering it for "Quit Focus Mode". It unmutes and restores all windows. (2) The folder ULTRON just created is kept in the command context: "open it" and "open that folder" open it, and the new `folder_location` answers "where is it" with the full path; with nothing created both return None, so the sentence goes on to the AI. (3) SITES grew from 10 to 27 (prime video, hotstar, whatsapp web, flipkart, wikipedia and others). "open X and Y" runs both when each half is a rule-matched, safe command on its own, checked first in dry run; only sentences that start with open, launch, start, close, quit or exit are considered. (4) `bluetooth_on`, `bluetooth_off` and `bluetooth_toggle` use the Windows Runtime radio API (winrt packages, about 1 MB in total, pinned in pyproject.toml); no radio gives an honest reply. (5) `normalize` removes thousands commas between digits, so "50,000" stays 50000. (6) "maximize everything" now says "Everything's back on screen."
+Tradeoffs: the splitter uses rules only, so "open netflix and chrome" splits but a half that only the matcher understands does not (it falls back to today's behaviour). False splits ("search for salt and pepper", "open the salt and pepper folder") are guarded by the verb check and by requiring both halves to resolve to a real app, site or folder. Decimals like "3.5" still become "3 5" (not in scope). Better ideas: let the matcher judge the halves too once its confidence is calibrated for short phrases; a generic "undo the last mode" command.
 
 ## 7. Tech stack: now and target
 
@@ -715,6 +725,13 @@ All entries are from 2026-11-15, grouped by phase. Measurements are from the own
 - PR #4 (p1-fixes into main) and PR #5 merged; `dev` became the integration branch; the revert tag `pre-cleanup` marks main.
 - Cleanup (D32): src/ultron layout, paths.py, pyproject.toml, CI, self-test, dead code removed (see CHANGELOG), docs rewritten. Checks before and after: 173 tests (now 215 with the smoke tests), intent_eval identical on all 1952 cases, command list identical, ruff clean.
 
+### Live-run 2 command fixes (fix/commands-live2)
+- Six fixes from the owner's live test, see D33. Checks before -> after: 215 -> 267 tests, intent_eval weighted 83.0 -> 83.2 percent (heard 60 of 68 -> 64 of 72 run at once; negatives passing 94 of 104 -> 93 of 103, the same 10 wrong), ruff clean, self-test passes, 96 commands. Dry-run only; Bluetooth was checked read-only against the real radio list, never toggled.
+
+### Live-run fixes 3 (fix/app-live2)
+- Evidence from the 20:25 run (D34). Fixed: silence no longer reaches Whisper and an idle conversation ends after 45 s; close_app announces only for apps with possible unsaved work and never says both lines; Whisper temperature fallback off by default with low-confidence logging; `AI said`, `AI tool`, confirm and did-you-mean questions are logged; ULTRON runs at above-normal priority so launches cannot starve the voice.
+- Tests 283 passed, 0 skipped (with the meaning-matcher model, rebased on fix/commands-live2); ruff clean; self-test passes. The first_sound gain on web searches is still to be read from the live log.
+
 <!-- New entries go above this line, newest last, per phase:
 ### Short title (branch)
 - What changed; measured before -> after; decisions changed; next
@@ -750,9 +767,11 @@ All entries are from 2026-11-15, grouped by phase. Measurements are from the own
 | LLM_KEEP_ALIVE | -1 | how long Ollama keeps the model loaded (-1 forever) |
 | LLM_MAX_TOKENS | 120 | cap on spoken answer length |
 | END_SILENCE_SECONDS | 0.6 | pause that ends your sentence |
+| CONVERSATION_IDLE_SECONDS | 45 | silence that ends a conversation (0 = off) |
 | VOICE_SENTENCE_PAUSE | 0.13 | pause between spoken sentences |
 | WHISPER_LANGUAGE | en | fixed language to avoid noise hallucinations |
 | WHISPER_VAD_FILTER | True | Whisper's own VAD (off once Silero is in) |
+| WHISPER_TEMPERATURE_FALLBACK | 0 | 1 = let Whisper retry unclear audio (slower) |
 | SAMPLE_RATE | 16000 | required by wake word and Whisper |
 | CHUNK_SIZE | 1280 | 80 ms frames |
 

@@ -180,7 +180,8 @@ def execute(cmd: Command, args: dict, io: Interaction, sure: bool = True) -> str
             raise Reroute(answer)  # not a yes or no: the answer is the next request
         if not answer:
             return persona.pick(persona.CANCELLED_REPLIES)
-    if cmd.doing:
+    announced = False
+    if cmd.doing and _worth_announcing(cmd, args):
         text = cmd.doing.format(**{k: registry.pretty_value(v) for k, v in args.items()},
                                 **{p.name: "" for p in cmd.params if p.name not in args})
         began = time.perf_counter()
@@ -188,6 +189,7 @@ def execute(cmd: Command, args: dict, io: Interaction, sure: bool = True) -> str
         _announce_seconds[0] += time.perf_counter() - began
         if spoken:
             return ""  # the user talked over it: cancelled, and their words are the next request
+        announced = spoken is False  # None: nothing was spoken (no voice), so the result is still said
     try:
         reply = registry.call(cmd, args)
     except Exception as e:
@@ -196,7 +198,28 @@ def execute(cmd: Command, args: dict, io: Interaction, sure: bool = True) -> str
         return f"That failed: {e}"
     if reply is None:
         return None
-    return reply  # the result is always said ("Closed Chrome."), also after the announcement
+    if announced and isinstance(reply, registry.Done):
+        return ""  # "Closing Notepad." was said already: never "Closed Notepad." as well
+    return reply
+
+
+# Apps that may hold unsaved work: closing one is announced first so talking over it can stop it.
+# Closing anything else (a browser, a player) is quick and quiet, and says "Closed X." afterwards.
+UNSAVED_WORK_APPS = (
+    "notepad", "word", "excel", "powerpoint", "onenote", "outlook", "code", "visual studio", "cursor",
+    "pycharm", "intellij", "webstorm", "android studio", "eclipse", "sublime", "atom", "vim", "emacs",
+    "obsidian", "notion", "libreoffice", "writer", "calc", "paint", "gimp", "photoshop", "premiere",
+    "this",  # "close this window": we do not know what is in front
+)
+
+
+def _worth_announcing(cmd: Command, args: dict) -> bool:
+    """Speak the "doing" line first? Always, except when closing an app that cannot hold unsaved work."""
+    if cmd.name != "close_app":
+        return True
+    app = str(args.get("app", "")).lower()
+    words = set(re.findall(r"[a-z]+", app))
+    return any((a in words) if " " not in a else (a in app) for a in UNSAVED_WORK_APPS)
 
 
 # ---- stage a: rules ----
@@ -255,6 +278,43 @@ def run_rules(text: str, group: str | None = None, names: tuple[str, ...] | None
     return outcome.reply if outcome else None
 
 
+# ---- two requests in one sentence: "open netflix and google chrome" ----
+_OPEN_VERBS = ("open", "launch", "start", "close", "quit", "exit")
+_SPLIT = re.compile(r" (?:and then|and|then) ")
+
+
+def split_request(n: str) -> list[str] | None:
+    """Two commands joined by "and" or "then", or None. Only open/close style sentences are split,
+    and only when each half is a rule-matched, safe command on its own (checked without running them),
+    so "search for salt and pepper" and "open the salt and pepper folder" are never cut in two.
+    """
+    words = n.split()
+    if len(words) < 4 or words[0] not in _OPEN_VERBS:
+        return None
+    for m in _SPLIT.finditer(n):
+        first, second = n[:m.start()], n[m.end():]
+        if second.split()[0] not in _OPEN_VERBS:
+            second = f"{words[0]} {second}"  # "open netflix and google chrome": the verb carries over
+        if all(_confident_alone(half) for half in (first, second)):
+            return [first, second]
+    return None
+
+
+def _confident_alone(sentence: str) -> bool:
+    """True if a rule runs one safe command for this sentence (dry run: nothing happens)."""
+    with registry.dry_run():
+        outcome = route(sentence, Interaction(), use_matcher=False, _rerouted=True, _single=True)
+    cmd = registry.get(outcome.command) if outcome.command else None
+    return bool(cmd and outcome.route == "rule" and cmd.risk == "safe" and (outcome.reply or "").startswith("Would run"))
+
+
+def _run_both(halves: list[str], io: Interaction, timings: dict) -> Outcome:
+    outcomes = [route(h, io, use_matcher=False, _rerouted=True, _single=True) for h in halves]
+    reply = " ".join(o.reply for o in outcomes if o.reply)
+    last = outcomes[-1]
+    return Outcome(reply, "rule", last.command, last.args, 1.0, timings)
+
+
 # ---- stage b: meaning ----
 def _stage_match(n: str, io: Interaction, timings: dict) -> tuple[Outcome | None, list]:
     from ultron.commands import intent, slots
@@ -292,14 +352,15 @@ def _stage_match(n: str, io: Interaction, timings: dict) -> tuple[Outcome | None
     return None, ranked
 
 
-def route(text: str, io: Interaction | None = None, use_matcher: bool = True, _rerouted: bool = False) -> Outcome:
+def route(text: str, io: Interaction | None = None, use_matcher: bool = True, _rerouted: bool = False,
+          _single: bool = False) -> Outcome:
     """Stages a and b. Route "llm" means: ask the LLM, offering outcome.candidates as tools.
 
     If the answer to a "Did you mean" question was a new sentence, that sentence is routed instead
     (once: it cannot start another chain of questions).
     """
     try:
-        return _route(text, io, use_matcher)
+        return _route(text, io, use_matcher, _single)
     except Reroute as again:
         if _rerouted:
             return Outcome("", "rule")
@@ -308,7 +369,7 @@ def route(text: str, io: Interaction | None = None, use_matcher: bool = True, _r
         return route(again.text, io, use_matcher, _rerouted=True)
 
 
-def _route(text: str, io: Interaction | None, use_matcher: bool) -> Outcome:
+def _route(text: str, io: Interaction | None, use_matcher: bool, single: bool = False) -> Outcome:
     io = io or Interaction()
     timings: dict = {}
     from ultron.commands import context
@@ -319,6 +380,9 @@ def _route(text: str, io: Interaction | None, use_matcher: bool) -> Outcome:
     n = clean(text)
     _announce_seconds[0] = 0.0
     start = time.perf_counter()
+    halves = None if single else split_request(n)
+    if halves:
+        return _run_both(halves, io, timings)
     outcome = _stage_rules(text, n, io, registry.commands("rule"))
     timings["rule_ms"] = (time.perf_counter() - start - _announce_seconds[0]) * 1000
     if _announce_seconds[0]:

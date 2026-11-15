@@ -11,6 +11,7 @@ def normalize(text: str) -> str:
 
     "Ultron, restart my computer, please." -> "restart my computer"
     """
+    text = re.sub(r"(?<=\d),(?=\d{3}(?!\d))", "", text)  # "50,000" is one number, not "50 000"
     text = re.sub(r"[^a-z0-9 ]+", " ", text.lower())
     words = text.split()
     changed = True

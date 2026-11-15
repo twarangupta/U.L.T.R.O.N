@@ -105,7 +105,8 @@ class AudioHandler:
                       preroll=None) -> np.ndarray:
         """
         Records the microphone stream until silence is detected or max duration is reached.
-        Returns a normalized float32 numpy array, ready for Whisper.
+        Returns a normalized float32 numpy array, ready for Whisper, or an empty array when
+        nobody spoke (silence is never sent to Whisper).
         preroll: chunks already captured (the user talked over ULTRON); the
         recording continues from them, so their first words are kept.
         """
@@ -157,8 +158,8 @@ class AudioHandler:
             logger.info(f"speech level: median rms {self.last_speech_level:.0f}, "
                         f"peak rms {max(voiced_rms):.0f} over {len(voiced_rms)} chunks")
         
-        if not recorded_frames:
-            return np.zeros(0, dtype=np.float32)
+        if not recorded_frames or not started_speaking:
+            return np.zeros(0, dtype=np.float32)  # nobody spoke: nothing for Whisper to hear
             
         # Concatenate and convert to float32 normalized in [-1.0, 1.0]
         audio_data = np.concatenate(recorded_frames)

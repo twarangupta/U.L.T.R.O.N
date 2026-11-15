@@ -88,7 +88,7 @@ def act(action: str, app: str | None, keep: str | None, windows_api=None) -> str
 
     if action == "restore" or (action == "maximise" and app == "everything"):
         api.restore_all()  # "maximise everything" means: bring all my windows back
-        return Done("Windows restored.")
+        return Done("Everything's back on screen.")
     if action == "minimise" and app in (None, "everything"):
         if keep:
             kept = [w for w in api.windows() if matches(w, keep)]
