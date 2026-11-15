@@ -323,12 +323,18 @@ Context: the owner's live test of dev (5a85230). Principle: every command works 
 Decision: (1) `meeting_mode_off` (quit, exit, stop, end, turn off focus or meeting mode, back to normal, "I'm done with my meeting"; "Asset close, focus mode" works because the rules accept a leading "asset" or "assets"); `meeting_mode` got these as not_examples so the matcher stops offering it for "Quit Focus Mode". It unmutes and restores all windows. (2) The folder ULTRON just created is kept in the command context: "open it" and "open that folder" open it, and the new `folder_location` answers "where is it" with the full path; with nothing created both return None, so the sentence goes on to the AI. (3) SITES grew from 10 to 27 (prime video, hotstar, whatsapp web, flipkart, wikipedia and others). "open X and Y" runs both when each half is a rule-matched, safe command on its own, checked first in dry run; only sentences that start with open, launch, start, close, quit or exit are considered. (4) `bluetooth_on`, `bluetooth_off` and `bluetooth_toggle` use the Windows Runtime radio API (winrt packages, about 1 MB in total, pinned in pyproject.toml); no radio gives an honest reply. (5) `normalize` removes thousands commas between digits, so "50,000" stays 50000. (6) "maximize everything" now says "Everything's back on screen."
 Tradeoffs: the splitter uses rules only, so "open netflix and chrome" splits but a half that only the matcher understands does not (it falls back to today's behaviour). False splits ("search for salt and pepper", "open the salt and pepper folder") are guarded by the verb check and by requiring both halves to resolve to a real app, site or folder. Decimals like "3.5" still become "3 5" (not in scope). Better ideas: let the matcher judge the halves too once its confidence is calibrated for short phrases; a generic "undo the last mode" command.
 
+### D36. One always-open mic stream and Silero VAD (feat/mic-stream-vad, Excel items 5 and 6)
+Context: PyAudio stream open and close between modes caused gaps and start-up delay, PyAudio is awkward to package, and the amplitude check (peak above 500) both fired on noise (a room at rms 150 counted as speech nearly all the time) and needed a 0.6 s pause to be safe.
+Decision: (1) `audio/capture.py` opens one sounddevice InputStream (16 kHz mono int16, 80 ms blocks) on the first `start_stream()` and never closes it; its callback fills a ring buffer (125 blocks, 10 s, oldest dropped). Wake word, `record_phrase` and barge-in read blocks from it in order. `start_stream()` now means "begin listening from the newest audio": it drops the backlog that piled up while nobody read (so stale audio never reaches the wake word or Whisper) and reopens the device only if it died; `stop_stream()` is kept as a no-op for the callers. Nothing opens at import, so capture.py is importable on CI. `audio/sounds.py` also moved from PyAudio to sounddevice, so PyAudio is gone from pyproject.toml. (2) `audio/vad.py`: Silero VAD v5.1.2 (MIT, ONNX, 2.3 MB, pinned release URL) in models/silero_vad.onnx, downloaded once with what, why, size and live percent (D25) at startup; onnxruntime 1.32.0 is now a pinned direct dependency (it was already installed for the wake word). A block's probability is the highest of its 512-sample windows. `record_phrase` ends after VAD_END_SILENCE_SECONDS (0.35 s, 4 blocks) of non-speech, speech means probability at least VAD_THRESHOLD (0.5), and at most 6 quiet blocks (0.5 s) before the first word are kept, so Whisper hears less leading silence. The empty-audio rule (silence never reaches Whisper) and the speech-level log line are unchanged. If the model is missing and cannot be downloaded, or the sample rate is not 16 kHz, `make_vad()` returns the old loudness check and the old END_SILENCE_SECONDS (0.6 s) is used; the timing log's `end_wait` shows whichever applied. (3) Barge-in: a chunk now counts as the user only if it is louder than the echo baseline and the VAD hears speech in it (VAD_BARGE_IN=0 turns this off). A loud non-speech chunk no longer teaches the echo baseline. The loudness test stays, because ULTRON's own voice is speech to the VAD, so the VAD alone cannot tell the user from the echo.
+Measured on the GTX 1650 laptop (CPU only; 4 Piper-rendered sentences with 40 rms room noise, rendered in memory, nothing played or recorded): wait after the last voiced sample 0.33 to 0.42 s with VAD against 0.66 to 0.73 s with the loudness check (end_wait setting 0.60 -> 0.35, so about 0.3 s saved on every command). Cost 0.40 ms per 80 ms block (0.5 percent of one core; loudness check 0.004 ms). RAM added 15.5 MB (the ONNX runtime session). White noise at rms 150, 400 and 1200 gave a maximum speech probability of 0.06 and 0 of 375 blocks counted as speech, where the loudness check counted 247, 375 and 375 of 375.
+Tradeoffs: 0.35 s can cut off a slow speaker who pauses mid-sentence (raise VAD_END_SILENCE_SECONDS; a pause under about 0.32 s inside a sentence is fine); the mic stays open (and Windows shows its mic indicator) the whole time ULTRON runs, where before it closed during transcription; the VAD thinks a TV or another person's voice is speech, so it ends a phrase later in a noisy room and only speaker verification (Excel item 37) fixes that; the first start downloads 2.3 MB and needs the internet once (otherwise the old check is used and a warning is logged); CI cannot run the Silero tests until the model is cached there (they skip; the fake-VAD tests cover the rest). The app-level tests still skip on CI because voice/speaker.py loads Piper at import; only the mic tests moved to tests/test_capture.py and now run everywhere. Better ideas: start Whisper on the audio while the last 0.35 s of pause is still being waited out and discard the result if you keep talking (item 36); use the VAD to skip the wake word model while the room is quiet (saves CPU); add the Silero model to the CI cache.
+
 ## 7. Tech stack: now and target
 
 | Layer | Now | Target (P1 to P2) | Why | License |
 |---|---|---|---|---|
 | Language | Python 3.10 | Python 3.11 or 3.12 | faster, still well supported by deps | PSF |
-| Audio I/O | PyAudio | sounddevice | one stream, easier packaging | MIT |
+| Audio I/O | sounddevice (D36) | sounddevice | one stream, easier packaging | MIT |
 | Wake word | openWakeWord, 0.2 | openWakeWord, 0.5 plus tuning | works, small | Apache-2.0 |
 | VAD | amplitude > 500 | Silero VAD (ONNX) | accurate, tiny | MIT |
 | Speech to text | faster-whisper base, beam 5 | faster-whisper base, beam 1, hotwords; P2 Moonshine or sherpa-onnx streaming | speed | MIT |
@@ -489,7 +495,7 @@ Target for a built-in command, from the moment you stop talking:
 
 | Stage | Budget | How |
 |---|---|---|
-| End-of-speech detection | 0.30 to 0.40 s | Silero VAD, 0.4 s silence |
+| End-of-speech detection | 0.30 to 0.40 s | Silero VAD, 0.35 s silence (done, D36) |
 | STT | 0.25 to 0.50 s | beam 1, no timestamps, warm model |
 | Normalize and match | under 0.02 s | rules first |
 | Action | 0.05 to 0.20 s | OS call |
@@ -732,6 +738,9 @@ All entries are from 2026-11-15, grouped by phase. Measurements are from the own
 - Evidence from the 20:25 run (D34). Fixed: silence no longer reaches Whisper and an idle conversation ends after 45 s; close_app announces only for apps with possible unsaved work and never says both lines; Whisper temperature fallback off by default with low-confidence logging; `AI said`, `AI tool`, confirm and did-you-mean questions are logged; ULTRON runs at above-normal priority so launches cannot starve the voice.
 - Tests 283 passed, 0 skipped (with the meaning-matcher model, rebased on fix/commands-live2); ruff clean; self-test passes. The first_sound gain on web searches is still to be read from the live log.
 
+### One mic stream and Silero VAD (feat/mic-stream-vad)
+- Excel items 5 and 6, see D36. Checks before -> after: 283 -> 309 tests (0 skipped with the model junction; 28 new in tests/test_capture.py, which runs on CI too), ruff clean, self-test passes. PyAudio removed. end_wait 0.60 -> 0.35 s (measured wait after the last voiced sample 0.66 to 0.73 s -> 0.33 to 0.42 s), VAD 0.40 ms per 80 ms block, +15.5 MB RAM. Not verified live: the owner's accent and room noise, barge-in with VAD on the real speakers.
+
 <!-- New entries go above this line, newest last, per phase:
 ### Short title (branch)
 - What changed; measured before -> after; decisions changed; next
@@ -766,7 +775,10 @@ All entries are from 2026-11-15, grouped by phase. Measurements are from the own
 | ULTRON_DATA_DIR | data | activity database and settings |
 | LLM_KEEP_ALIVE | -1 | how long Ollama keeps the model loaded (-1 forever) |
 | LLM_MAX_TOKENS | 120 | cap on spoken answer length |
-| END_SILENCE_SECONDS | 0.6 | pause that ends your sentence |
+| END_SILENCE_SECONDS | 0.6 | pause that ends your sentence when the VAD model is missing (loudness check) |
+| VAD_END_SILENCE_SECONDS | 0.35 | pause that ends your sentence with Silero VAD |
+| VAD_THRESHOLD | 0.5 | speech probability that counts as speech |
+| VAD_BARGE_IN | 1 | barge-in also needs the VAD to hear speech |
 | CONVERSATION_IDLE_SECONDS | 45 | silence that ends a conversation (0 = off) |
 | VOICE_SENTENCE_PAUSE | 0.13 | pause between spoken sentences |
 | WHISPER_LANGUAGE | en | fixed language to avoid noise hallucinations |
