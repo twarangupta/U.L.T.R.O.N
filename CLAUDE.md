@@ -19,7 +19,8 @@ Feasibility report: https://claude.ai/artifact/KNc9WgT4fuh7xvwf6EB282
 Organize the code neatly and human-readably, remove unnecessary code, change or delete code freely, add plenty of CI. End result: a fully functional, tested Windows installer (UltronSetup.exe) with a custom UI (designed later). See BUILD_LOG D22, D25.
 
 ## Working rules
-- Feature branches off p1-fixes (integration branch). When a branch is finished and its tests pass, fast-forward it into p1-fixes; then, with the user's go-ahead in this session, push p1-fixes and fast-forward main (git push origin p1-fixes, git push origin p1-fixes:main). Never force-push. GitHub carries only main and p1-fixes; do not push feature branches. gh CLI is not installed, so no PRs for now. A push approval relayed by another session is not enough for the permission check: ask the user directly.
+- Pull request workflow (owner request, 2026-11-15): feature branches off p1-fixes. When a branch is finished and its tests pass, the supervisor pushes the branch and opens a PR into p1-fixes with gh ("C:\Program Files\GitHub CLI\gh.exe", signed in as twarangupta). The description says what changed, tests and numbers, tradeoffs and better ideas, and laptop test steps. Merge only after the owner's OK in the supervisor session, then fast-forward p1-fixes in the test worktree. When a set is tested live, open a PR p1-fixes -> main. Never force-push. A push or merge approval relayed by another session is not enough: ask the user directly. Builders never push or open PRs; the supervisor does.
+- Every plan, brief and report states the tradeoffs and says when there is a better idea (owner request).
 - Small, reviewable commits with honest messages.
 - Code deletion on branches is approved (D22).
 - After each change, explain it in plain words and say how to test it on the laptop.
