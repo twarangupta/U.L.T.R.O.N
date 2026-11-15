@@ -1,9 +1,8 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import corrections  # noqa: E402
+from ultron.stt import corrections  # noqa: E402
 
 RULES = corrections.compile_rules({"get push": "git push", "v s code": "vs code", "get": "git"})
 

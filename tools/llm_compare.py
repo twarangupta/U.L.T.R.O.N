@@ -16,7 +16,7 @@ import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, ROOT)
+sys.path.insert(0, os.path.join(ROOT, "src"))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 import intent_eval as ie  # noqa: E402
 
@@ -41,7 +41,7 @@ def unload_all() -> None:
 
 def accepts_tools(model: str) -> tuple[bool, str]:
     import ollama
-    from commands.router import tool_schemas
+    from ultron.commands.router import tool_schemas
     try:
         ollama.chat(model=model, messages=[{"role": "user", "content": "close chrome"}],
                     tools=tool_schemas(["close_app"]), options={"num_predict": 20},

@@ -8,9 +8,8 @@ import sys
 
 import pytest
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tools"))
 
-from commands import intent  # noqa: E402
+from ultron.commands import intent  # noqa: E402
 
 pytestmark = pytest.mark.skipif(not intent.model_available(), reason="meaning-matcher model not downloaded")
 
@@ -56,8 +55,8 @@ def test_every_command_is_reachable(results):
 def test_stages_are_fast(results):
     import time
 
-    from commands import registry
-    from commands.router import route
+    from ultron.commands import registry
+    from ultron.commands.router import route
     with registry.dry_run():  # never run real commands from a test
         start = time.perf_counter()
         for r in results[:200]:

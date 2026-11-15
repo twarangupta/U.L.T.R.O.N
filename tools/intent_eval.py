@@ -28,7 +28,7 @@ import time
 from dataclasses import asdict, dataclass, field
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, ROOT)
+sys.path.insert(0, os.path.join(ROOT, "src"))
 CASES_FILE = os.path.join(ROOT, "tests", "intents.yaml")
 RESULTS = os.path.join(ROOT, "results")
 WEIGHTS = {"heard": 3, "negative": 2, "paraphrase": 1, "vague": 2}
@@ -87,7 +87,7 @@ def load_vague(path: str = CASES_FILE) -> list[Case]:
 
 # ---- the new router ----
 def _recording_io():
-    from commands.router import Interaction
+    from ultron.commands.router import Interaction
 
     class Recorder(Interaction):
         asked = False
@@ -105,9 +105,9 @@ def _recording_io():
 
 
 def eval_new(cases: list[Case]) -> list[Result]:
-    import commands  # noqa: F401
-    from commands import intent, registry
-    from commands.router import route
+    from ultron import commands  # noqa: F401
+    from ultron.commands import intent, registry
+    from ultron.commands.router import route
     intent.get_matcher()
     results = []
     with registry.dry_run():
@@ -179,7 +179,8 @@ webbrowser.open = lambda *a, **k: True
 def no_net(*a, **k): raise OSError("offline in eval")
 urllib.request.urlopen = no_net
 threading.Thread.start = lambda self: None
-import commands, commands.windows as w
+import ultron.commands.windows as w
+from ultron import commands
 class W:
     def __init__(self): self.wins = [w.Window(1, "YouTube - Google Chrome", "chrome", 10), w.Window(2, "x - Visual Studio Code", "code", 20)]
     def windows(self): return list(self.wins)
@@ -187,7 +188,7 @@ class W:
     def is_own(self, x): return False
     def __getattr__(self, n): return lambda *a, **k: None
 w._Win32 = W
-import commands.system as s
+import ultron.commands.system as s
 s.AudioUtilities = None
 out = []
 for text in json.load(sys.stdin):
@@ -225,7 +226,7 @@ def _old_command(reply: str | None, expected: str | None = None) -> str | None:
             if names is None:
                 return expected if expected and reply.lower().startswith(f"failed to {expected.split('_')[0]}") else "other"
             return expected if expected in names else sorted(names)[0]
-    import persona  # memory and activity commands answer with persona lines
+    from ultron import persona  # memory and activity commands answer with persona lines
     groups = {"memory": ("remember_fact", "list_memories", "forget_last_fact", "forget_fact", "forget_conversation"),
               "activity": ("day_summary", "continue_work", "morning_brief", "pause_tracking", "resume_tracking",
                            "forget_today", "tracking_status")}
@@ -266,7 +267,7 @@ def eval_old(cases: list[Case], ref: str = "p1-fixes") -> list[Result]:
 # ---- the LLM tool stage ----
 def _malformed(name: str, args: dict | None) -> bool:
     """True when the registry would reject the call, or an argument is a schema or other non-scalar."""
-    from commands import registry
+    from ultron.commands import registry
     if any(isinstance(v, (dict, list)) for v in (args or {}).values()):
         return True
     try:
@@ -280,9 +281,9 @@ def eval_llm(results: list[Result], model: str, full_tools: bool = False) -> Non
     """For sentences left to the LLM, ask it with the shortlist (or every command) as tools."""
     import ollama
 
-    from commands import registry
-    from commands.router import tool_schemas
-    from config import OLLAMA_SYSTEM_PROMPT
+    from ultron.commands import registry
+    from ultron.commands.router import tool_schemas
+    from ultron.config import OLLAMA_SYSTEM_PROMPT
     all_names = [c.name for c in registry.commands("tool")]
     for r in results:
         if r.route != "llm":
@@ -349,8 +350,8 @@ def gate_report(results: list[Result]) -> dict:
     that call run or asks. negatives: sentences that must not run anything; "open" = some shortlisted
     command would still pass the gate (the LLM could act), before the gate: any shortlisted command.
     """
-    from commands import registry
-    from commands.router import gate
+    from ultron.commands import registry
+    from ultron.commands.router import gate
     pos = [r for r in results if r.verdict == "llm" and r.case.expected in r.candidates]
     kept = {"run": 0, "ask": 0, "no": 0}
     for r in pos:

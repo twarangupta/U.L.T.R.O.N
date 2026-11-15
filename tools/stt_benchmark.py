@@ -31,12 +31,12 @@ import time
 from collections import Counter
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, ROOT)
+sys.path.insert(0, os.path.join(ROOT, "src"))
 os.chdir(ROOT)
 
 import numpy as np  # noqa: E402
 
-from commands.text import normalize  # noqa: E402
+from ultron.commands.text import normalize  # noqa: E402
 
 REC_DIR = os.getenv("STT_BENCH_DIR") or os.path.join(ROOT, "recordings", "stt")
 SAMPLE_RATE = 16000
@@ -193,7 +193,7 @@ def _vram_used_gb() -> float | None:
 def benchmark_one(model_name, device, compute, clips, beam, threads):
     from faster_whisper import WhisperModel
 
-    from config import WHISPER_HOTWORDS, WHISPER_LANGUAGE, WHISPER_VAD_FILTER
+    from ultron.config import WHISPER_HOTWORDS, WHISPER_LANGUAGE, WHISPER_VAD_FILTER
 
     start = time.perf_counter()
     model = WhisperModel(model_name, device=device, compute_type=compute, cpu_threads=threads)
@@ -225,8 +225,8 @@ def score(rows, fix=None):
 
 
 def cmd_run(args) -> int:
-    import corrections
-    from hardware import cuda_libraries_present, detect_hardware, describe
+    from ultron.stt import corrections
+    from ultron.hardware import cuda_libraries_present, detect_hardware, describe
 
     clips = _load_recordings()
     if not clips:
@@ -286,7 +286,7 @@ def recommend(results):
 
 
 def build_report(results, n, hw) -> str:
-    from hardware import describe
+    from ultron.hardware import describe
 
     ranked = sorted(results, key=lambda r: (r["wer_fixed"], r["median_s"]))
     pick = recommend(results)

@@ -1,10 +1,9 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import brain  # noqa: E402
-from brain import looks_like_tool_text, parse_tool_text, split_sentences  # noqa: E402
+from ultron import brain  # noqa: E402
+from ultron.brain import looks_like_tool_text, parse_tool_text, split_sentences  # noqa: E402
 
 
 def test_split_keeps_unfinished_rest():

@@ -36,3 +36,9 @@ memory.json.tmp
 # Personal activity log and profile (local only)
 data/
 profile.md
+
+# Personal expense log written by the "log expense" command
+finances.csv
+# Other local notes written by developer commands
+debug_report.md
+code_review.md

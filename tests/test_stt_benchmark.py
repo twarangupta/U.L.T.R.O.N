@@ -1,11 +1,8 @@
 import os
 import sys
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, ROOT)
-sys.path.insert(0, os.path.join(ROOT, "tools"))
 
-import corrections  # noqa: E402
+from ultron.stt import corrections  # noqa: E402
 import stt_benchmark as bench  # noqa: E402
 
 

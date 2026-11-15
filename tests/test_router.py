@@ -1,10 +1,10 @@
 """The router's safety rules, the same for every stage (D30). Handlers run in dry-run mode."""
 import pytest
 
-import commands  # noqa: F401  (registers every command)
-from commands import intent, registry, router
-from commands.registry import Param, command
-from commands.router import Interaction, route, run_tool_call
+from ultron import commands  # noqa: F401  (registers every command)
+from ultron.commands import intent, registry, router
+from ultron.commands.registry import Param, command
+from ultron.commands.router import Interaction, route, run_tool_call
 
 needs_model = pytest.mark.skipif(not intent.model_available(), reason="meaning-matcher model not downloaded")
 
@@ -171,7 +171,7 @@ def test_guards_keep_timers_facts_and_dictation():
 
 @needs_model
 def test_close_second_best_asks_first():
-    from commands import intent
+    from ultron.commands import intent
     ranked = intent.get_matcher().rank(router.clean("make the sound a bit lower"))
     io = FakeIO(yes=False)
     out = route("make the sound a bit lower", io)

@@ -2,9 +2,8 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from hardware import Hardware, choose_profile  # noqa: E402
+from ultron.hardware import Hardware, choose_profile  # noqa: E402
 
 CUDA_OK = lambda: (True, "ok")  # noqa: E731
 CUDA_MISSING = lambda: (False, "cublas64_12.dll not found (install requirements-gpu.txt)")  # noqa: E731
@@ -101,6 +100,6 @@ def test_unknown_forced_profile_is_ignored():
 
 def test_no_profile_picks_a_model_without_tool_calls():
     # gemma3 is rejected by Ollama for tool calls, so it cannot pick commands (D30).
-    from hardware import PROFILES
+    from ultron.hardware import PROFILES
     for name, cfg in PROFILES.items():
         assert not any(m.startswith("gemma") for m in cfg["llm"]), name

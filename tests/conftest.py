@@ -17,6 +17,6 @@ def _dry_run_commands(request):
     if request.node.get_closest_marker("real_handlers"):
         yield
         return
-    from commands import registry
+    from ultron.commands import registry
     with registry.dry_run():
         yield
