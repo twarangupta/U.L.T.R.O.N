@@ -149,9 +149,10 @@ def _rule_hits(text: str, n: str, cmds: list[Command]):
         for rule in cmd.rules:
             m = rule.fullmatch(target)
             if m:
+                free_text = {p.name for p in cmd.params if p.type == "str"}
                 outside, last = [], 0
                 for name in m.groupdict():
-                    if m.group(name):
+                    if m.group(name) and name in free_text:  # "chrome later" as an app still counts
                         outside.append(target[last:m.start(name)])
                         last = m.end(name)
                 outside.append(target[last:])
