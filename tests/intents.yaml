@@ -25,6 +25,33 @@ heard:
   - {text: "type hello world", command: type_text}
   - {text: "vacuum mute", command: mute}
   - {text: "What did I do today?", command: day_summary}
+  # live run 2026-11-15 13:10 to 13:16
+  - {text: "open google go", command: open_app}
+  - {text: "close it", command: close_app}
+  - {text: "minimize everything.", command: minimize_windows}
+  - {text: "Maximize everything", command: maximize_window}
+  - {text: "open vscode", command: open_app}
+  - {text: "open cloud", command: open_app}
+  - {text: "open clod", command: open_app}
+  - {text: "I said, open, clod the application by Anthropic", command: open_app}
+  - {text: "open postman", command: open_app}
+  - {text: "What is the time now?", command: tell_time}
+  - {text: "maximize my microsoft edge", command: maximize_window}
+  - {text: "minimize it", command: minimize_windows}
+  - {text: "Maximize it again", command: maximize_window}
+  - {text: "yes, maximize Microsoft Edge application", command: maximize_window}
+  - {text: "minimize microsoft edge", command: minimize_windows}
+  - {text: "maximize it", command: maximize_window}
+  - {text: "maximize, microsoft edge", command: maximize_window}
+  - {text: "create new folder on desktop, name it mouse", command: create_folder}
+  - {text: "I said create a new folder on desktop", command: create_folder}
+  - {text: "open google chrome and search for the best whey protein under 3000 rupees", command: web_search}
+  - {text: "I said search for best protein powder", command: web_search}
+  - {text: "mute.", command: mute}
+  - {text: "it didn't maximize it again", command: null}
+  - {text: "nope, I can't see microsoft edge maximized", command: null}
+  - {text: "stop, name it mouse", command: null}
+  - {text: "maximize microsoft pitch", command: null}
   - {text: "it's still not closed", command: null}
   - {text: "So what's my project name?", command: null}
   - {text: "Are you better than Jarvis?", command: null}

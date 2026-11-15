@@ -31,13 +31,15 @@ APP_ALIASES: dict[str, tuple[str, ...]] = {
 }
 THIS = {"it", "this", "that", "this window", "the window", "window", "current window", "this app", "this one"}
 EVERYTHING = {"everything", "all", "all windows", "all apps", "every window", "all the windows", "all my windows"}
-_STRIP = re.compile(r"^(?:the|my|this|that) (?=\w)|(?: app| application| window| windows| browser| program)$")
+_STRIP = re.compile(r"^(?:the|my|this|that) (?=\w)|(?: app| application| window| windows| browser| program| again)$")
 FUZZY_MIN = 85
 
 
 def clean(name: str) -> str:
     name = re.sub(r"[^a-z0-9+ ]+", " ", name.lower())
     name = " ".join(name.split())
+    if name.endswith(" again"):
+        name = name[:-6]
     if name in THIS or name in EVERYTHING:
         return name
     for _ in range(2):
@@ -71,9 +73,8 @@ def is_known(name: str) -> bool:
 
 
 def resolvable(name: str) -> bool:
-    """A known app, "this" or "everything", or an installed app's Start Menu name."""
-    key = canonical(name)
-    return key in APP_ALIASES or key in ("this", "everything") or find_installed(key) is not None
+    """A known app, "this" or "everything", or an installed app (possibly after trimming extra words)."""
+    return resolve_name(name) is not None
 
 
 def find_in_text(text: str) -> str | None:
@@ -101,9 +102,24 @@ def _start_menu_dirs() -> list[str]:
     return dirs
 
 
+APPS_FOLDER = "shell:AppsFolder\\"
+
+
+def _store_apps() -> dict[str, str]:
+    """Apps without a Start Menu shortcut (Store and MSIX apps such as Claude): name -> shell:AppsFolder id."""
+    try:
+        import pythoncom
+        import win32com.client
+        pythoncom.CoInitialize()
+        folder = win32com.client.Dispatch("Shell.Application").NameSpace("shell:AppsFolder")
+        return {item.Name.lower(): APPS_FOLDER + item.Path for item in folder.Items()}
+    except Exception:
+        return {}
+
+
 @lru_cache(maxsize=1)
 def start_menu_index() -> dict[str, str]:
-    """Shortcut name (lowercase) -> .lnk path. Built once, about 20 ms."""
+    """App name (lowercase) -> .lnk path or shell:AppsFolder id. Built once."""
     index: dict[str, str] = {}
     for base in _start_menu_dirs():
         for folder, _, files in os.walk(base):
@@ -112,20 +128,61 @@ def start_menu_index() -> dict[str, str]:
                     name = f[:-4].lower()
                     if "uninstall" not in name:
                         index.setdefault(name, os.path.join(folder, f))
+    for name, target in _store_apps().items():
+        if "uninstall" not in name:
+            index.setdefault(name, target)
     return index
 
 
-def find_installed(name: str) -> tuple[str, str] | None:
-    """(shortcut name, path) for an installed app, by fuzzy name, or None."""
+def skeleton(word: str) -> str:
+    """Consonants only, repeats merged: "clod", "cloud" and "claude" all give "cld".
+
+    Whisper often gets the vowels of an app name wrong but keeps its consonants.
+    """
+    out = ""
+    for ch in re.sub(r"[^a-z]", "", word.lower()):
+        if ch in "aeiouyhw":
+            continue
+        if not out or out[-1] != ch:
+            out += ch
+    return out
+
+
+def find_installed(name: str, sound_alike: bool = True) -> tuple[str, str] | None:
+    """(app name, path) for an installed app, by exact, fuzzy or sound-alike name, or None."""
     index = start_menu_index()
     name = clean(name)
     if name in index:
         return name, index[name]
-    if len(name) < 3:
-        return None
-    from rapidfuzz import fuzz, process
     if len(name) < 4:
         return None
+    from rapidfuzz import fuzz, process
     # Whole-name similarity only: WRatio matched partial words ("over" in a shortcut name).
     hit = process.extractOne(name, list(index), scorer=fuzz.ratio, score_cutoff=85)
-    return (hit[0], index[hit[0]]) if hit else None
+    if hit:
+        return hit[0], index[hit[0]]
+    key = skeleton(name)
+    if sound_alike and len(key) >= 3 and " " not in name:
+        same = [n for n in index if " " not in n and skeleton(n) == key]
+        if len(same) == 1:  # only when the sound-alike is unambiguous
+            return same[0], index[same[0]]
+    return None
+
+
+def resolve_name(name: str, sound_alike: bool = False) -> str | None:
+    """The app a spoken phrase names, trimming extra words: "clod the application by anthropic" -> "clod".
+
+    sound_alike (opening apps only): accept a consonant match such as "clod" for Claude.
+    "this" or "everything" count only as the whole phrase ("open the window, it is hot" is no app).
+    """
+    words = clean(name).split()
+    for n in range(len(words), 0, -1):
+        candidate = " ".join(words[:n])
+        key = canonical(candidate)
+        if key in ("this", "everything"):
+            if n == len(words):
+                return candidate
+            continue
+        if key in APP_ALIASES or find_installed(key, sound_alike) is not None:
+            return candidate
+    return None

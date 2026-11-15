@@ -110,6 +110,13 @@ tools/stt_benchmark.py records your voice and suggests entries.
     folder", "go to my pictures", "open the desktop folder", "where are my downloads, open
     them"
   * Name: open_folder
+- Create a folder <name> in <location>
+  * What it does: Create a new folder, on the Desktop unless another folder is named.
+  * You fill in: name (optional), location (optional)
+  * Say for example: "create a new folder on the desktop", "make a folder called invoices",
+    "new folder on my desktop", "create a folder in documents named taxes", "make a new
+    folder and call it photos"
+  * Name: create_folder
 
 --------------------------------------------------------------------------------
 2. MEDIA AND VOLUME

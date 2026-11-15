@@ -67,7 +67,7 @@ def test_minimise_everything_and_except():
 
 def test_this_window_uses_foreground():
     assert run("minimise this", foreground=CHROME)[1] == [("minimise", "chrome")]
-    assert run("maximise this window", foreground=CODE)[1] == [("maximise", "code")]
+    assert run("maximise this window", foreground=CODE)[1] == [("maximise", "code"), ("focus", "code")]
 
 
 def test_switch_only_claims_open_apps():

@@ -3,6 +3,7 @@
 Windows only (D22). Each command is declared once for all three stages (D30).
 """
 import os
+import re
 import subprocess
 import sys
 import urllib.parse
@@ -66,7 +67,10 @@ def _set_mute(on: bool):
          params=[Param("query", "str", "what to search for",
                        cues=("search for", "google for", "search the web for", "look up", "search", "google"))],
          rules=[r"(?:search|google)(?: the web| online)?(?: for)? (?P<query>.+)",
-                r"look up (?P<query>.+?)(?: online| on google)?"], priority=30,
+                r"look up (?P<query>.+?)(?: online| on google)?",
+                # "open google chrome and search for X": the search is the point, so it wins over open_app
+                r"(?:open|launch|start|go to)(?: up)? (?:google chrome|chrome|the browser|my browser|google|edge)"
+                r"(?:,? and| then|,)? (?:search|google|look up)(?: for)? (?P<query>.+)"], priority=40,
          examples=["search for python decorators", "google the weather in delhi", "look up cheap flights to goa",
                    "search the web for pasta recipes", "find me something online about black holes",
                    "google how to boil an egg"],
@@ -121,7 +125,10 @@ def _launch(app: str) -> str | None:
         return "Task Manager"
     found = apps.find_installed(app)
     if found:
-        os.startfile(found[1])
+        if found[1].startswith(apps.APPS_FOLDER):
+            subprocess.Popen(["explorer.exe", found[1]])  # Store / MSIX apps such as Claude
+        else:
+            os.startfile(found[1])
         return apps.pretty(found[0])
     return None
 
@@ -161,6 +168,32 @@ def open_folder(folder: str) -> str:
         return f"I couldn't locate your {name} folder."
     subprocess.Popen(["explorer", os.path.normpath(path)])
     return Done(f"Opening your {name} folder.")
+
+
+_WHERE = r"(?: (?:on|in) (?:the |my )?(?P<location>desktop|documents|downloads|pictures|music|videos)(?: folder)?)?"
+_NAMED = r"(?:,? (?:and )?(?:name it|call it|called|named|with the name) (?P<name>.+?))?"
+
+
+@command("create_folder", "Create a new folder, on the Desktop unless another folder is named.", group=_APPS,
+         title="create a folder {name} in {location}",
+         params=[Param("name", "str", "the new folder's name", required=False,
+                       cues=("name it", "call it", "called", "named")),
+                 Param("location", "choice", "where to create it", required=False, choices=FOLDERS)],
+         priority=58,
+         rules=[rf"(?:create|make|add)(?: me)?(?: a)?(?: new)? folder (?:called|named) (?P<name>.+?){_WHERE}",
+                rf"(?:create|make|add)(?: me)?(?: a)?(?: new)? folder{_WHERE}{_NAMED}"],
+         examples=["create a new folder on the desktop", "make a folder called invoices", "new folder on my desktop",
+                   "create a folder in documents named taxes", "make a new folder and call it photos"],
+         not_examples=["open the desktop folder", "delete this folder", "where is my folder"])
+def create_folder(name: str | None = None, location: str | None = None) -> str:
+    folder = location or "desktop"
+    folder = folder if folder.endswith("s") or folder in ("desktop", "music") else folder + "s"
+    name = re.sub(r'[<>:"/\\|?*]', "", (name or "New folder")).strip() or "New folder"
+    path = os.path.join(os.path.expanduser("~"), folder.capitalize(), name)
+    if os.path.exists(path):
+        return f"A folder called {name} already exists in {folder.capitalize()}."
+    os.makedirs(path)
+    return f"Created the folder {name} in {folder.capitalize()}."
 
 
 # ---- power and status ----

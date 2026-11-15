@@ -134,7 +134,7 @@ def answer_with_ai(transcription: str, candidates: list[str], io: VoiceInteracti
         name, arguments = reply.tool_call
         outcome = run_tool_call(name, arguments, candidates, io)
         if outcome is not None:
-            logger.info(f"Tool call {name}({arguments}) ran")
+            logger.info(f"Command {name} (tool, {outcome.args}) said: {outcome.reply!r}")
             timing["route"], timing["cmd"] = "tool", name
             note_command(transcription, outcome.reply or "(done)")
             if not outcome.reply:
@@ -213,8 +213,9 @@ def speak_and_interruptible(text: str | None, detector: WakeWordDetector, stream
                 break
     finally:
         if barge is not None and barge.seen > 6:
-            logger.info(f"barge-in: echo level {barge.threshold() / barge.factor:.0f}, "
-                        f"trigger above {barge.threshold():.0f}")
+            echo = barge.echo_level()
+            logger.info(f"barge-in: measured echo {echo:.0f} (x{barge.factor:g} = {echo * barge.factor:.0f}), "
+                        f"floor {barge.min_rms:.0f}, trigger above {barge.threshold():.0f}")
         audio_handler.stop_stream()
         
     return interrupted
@@ -279,6 +280,8 @@ def main():
     import threading
     threading.Thread(target=brain.warm, daemon=True, name="llm-warm").start()  # no cold first answer
     threading.Thread(target=intent.get_matcher, daemon=True, name="matcher-load").start()  # 30 MB, about 1 s
+    from commands import apps
+    threading.Thread(target=apps.start_menu_index, daemon=True, name="app-index").start()  # about 1.2 s
 
     # Main infinite loop
     while True:
@@ -363,6 +366,7 @@ def main():
                 timing["cmd"] = outcome.command
 
             if outcome.reply is not None:
+                logger.info(f"Command {outcome.command} ({outcome.route}, {outcome.args}) said: {outcome.reply!r}")
                 note_command(followup or transcription, outcome.reply)
                 if outcome.reply == "":
                     interrupted = False

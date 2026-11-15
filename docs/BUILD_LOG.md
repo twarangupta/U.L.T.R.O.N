@@ -914,6 +914,17 @@ Open questions:
 - Known gaps: "search a file in my PC" opens a web search (no file search command yet); laptop specs have no command (next steps item B).
 - Incident: an unmarked test (test_stages_are_fast) routed 200 sentences outside dry-run, so real commands ran on the laptop (window closes and minimises, focus mode mute, a screenshot on the Desktop, a pasted "hello world", a fact in the dev folder's memory.json). Fixed the test, and tests/conftest.py now forces dry-run for every test unless it is marked real_handlers.
 - Next (part 2b): LLM tool stage per model, shortlist versus full tool list, the GPU-4GB default.
+- Live-run fixes (owner's log 13:10 to 13:16, its Heard lines now in intents.yaml):
+  - Store apps such as Claude are found through shell:AppsFolder (index built once, about 1.2 s, in a startup thread).
+  - For opening only, a sound-alike match ("clod", "cloud" -> Claude) applies when exactly one installed app shares the consonants.
+  - Extra words after an app name are trimmed ("clod the application by Anthropic").
+  - Maximise now also brings the window to the front. "Maximise it" means the window ULTRON just minimised; "maximise everything" restores all windows.
+  - New create_folder command (name, location, Desktop by default, says so if the folder exists).
+  - "open chrome and search for X" searches; "3000routes" -> "3000 rupees" in corrections.json.
+  - Every command's spoken result is now logged ("Command x (route, args) said: ...").
+  - The barge-in line shows the measured echo and the 700 floor separately (the old line divided the floor by the factor and always showed 233).
+  - Owner's 42 real commands: old 20 right, new 40 right (39 ran, 1 asked). Weighted 38.4 % -> 82.5 %. 116 tests.
+  - Tradeoffs: the sound-alike match could open the wrong app when two apps share consonants, so it only acts when exactly one does. The Apps-folder scan adds 1.2 s of startup work in a background thread. "Open cloud storage" would open Claude if no "cloud storage" app exists.
 
 <!-- New entries go above this line, newest last. Format:
 ### YYYY-MM-DD: Short title

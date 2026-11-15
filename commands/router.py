@@ -99,7 +99,7 @@ YES_WORDS = {"yes", "yeah", "yep", "yup", "correct", "right", "do it", "sure", "
 _REQUEST = re.compile(
     r"^(?:(?:can|could|would|will) you(?: please)?|please|kindly|just|so|now|hey|ok|okay|"
     r"i want you to|i need you to|i d like you to|i would like you to|go ahead and|i said|"
-    r"help me|be a dear and|quickly|ultron)\s+")
+    r"help me|be a dear and|quickly|ultron|yes|yeah)\s+")
 _TRAILING = re.compile(r"\s+(?:for me|please|now|right now|quickly|real quick|thanks|thank you)$")
 
 
@@ -218,8 +218,15 @@ def _stage_rules(text: str, n: str, io: Interaction, cmds: list[Command]) -> Out
 
 
 def _apps_resolve(cmd: Command, args: dict) -> bool:
+    """Every app parameter names a real app; extra words are trimmed in place ("clod the application")."""
     from commands import apps
-    return all(apps.resolvable(args[p.name]) for p in cmd.params if p.type == "app" and p.name in args)
+    for p in cmd.params:
+        if p.type == "app" and p.name in args:
+            name = apps.resolve_name(args[p.name], sound_alike=cmd.name == "open_app")
+            if name is None:
+                return False
+            args[p.name] = apps.canonical(name)
+    return True
 
 
 def run_rules(text: str, group: str | None = None, names: tuple[str, ...] | None = None,

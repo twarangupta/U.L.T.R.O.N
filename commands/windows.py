@@ -80,11 +80,12 @@ def act(action: str, app: str | None, keep: str | None, windows_api=None) -> str
     if sys.platform != "win32" and windows_api is None:
         return "Window control only works on Windows."
     api = windows_api or _Win32()
+    said_it = bool(app) and apps.clean(app) in ("it", "that")  # "maximise it", not "maximise this window"
     app = apps.canonical(app) if app else None
     keep = apps.canonical(keep) if keep else None
 
-    if action == "restore":
-        api.restore_all()
+    if action == "restore" or (action == "maximise" and app == "everything"):
+        api.restore_all()  # "maximise everything" means: bring all my windows back
         return Done("Windows restored.")
     if action == "minimise" and app in (None, "everything"):
         if keep:
@@ -98,7 +99,11 @@ def act(action: str, app: str | None, keep: str | None, windows_api=None) -> str
         api.minimise_all()
         return Done("Everything minimised.")
 
-    if app == "this":
+    if said_it and action in ("maximise", "switch") and _last[0] is not None and _last_action[0] == "minimise" \
+            and any(w.hwnd == _last[0].hwnd for w in api.windows()):
+        target = _last[0]  # "minimise Edge" ... "maximise it": it is Edge, not whatever is in front now
+        targets, name = [target], target.title.split(" - ")[-1] or "the window"
+    elif app == "this":
         target = api.foreground()
         if target is None:
             return "No window to act on."
@@ -122,16 +127,24 @@ def act(action: str, app: str | None, keep: str | None, windows_api=None) -> str
     if action == "close":
         for w in targets:
             api.close(w)
+        _last[0] = None
         return Done(f"Closed {name}.")
+    _last[0], _last_action[0] = targets[0], action
     if action == "minimise":
         for w in targets:
             api.minimise(w)
         return Done(f"{name} minimised.")
     if action == "maximise":
         api.maximise(targets[0])
+        api.focus(targets[0])  # SW_MAXIMIZE alone can leave it behind other windows
         return Done(f"{name} maximised.")
     api.focus(targets[0])
     return Done(f"Switched to {name}.")
+
+
+# The window ULTRON last minimised, maximised or switched to, so "maximise it" finds it.
+_last: list[Window | None] = [None]
+_last_action: list[str | None] = [None]
 
 
 # ---- registry declarations ----
