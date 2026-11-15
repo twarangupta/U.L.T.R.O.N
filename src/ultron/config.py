@@ -110,11 +110,13 @@ WHISPER_HOTWORDS = os.getenv(
 # Voice (Piper). VOICE_SPEED is the final pace: 1.0 normal, 1.2 faster, 0.9 slower and
 # more deliberate. The effect chain's pitch shift is compensated, so this stays true.
 VOICE_SPEED = float(os.getenv("VOICE_SPEED", "0.9"))
-# Which voice to use: empty = models/ultron-voice.onnx (current default), a name from
-# models/voices/ (for example en_US-joe-medium), or a path to an .onnx file.
-VOICE_MODEL = os.getenv("VOICE_MODEL", "").strip()
-# Effects on top of the voice: VOICE_PRESET = none, subtle, ultron or heavy, with optional
-# VOICE_PITCH (semitones down), VOICE_METAL, VOICE_REVERB, VOICE_DOUBLE (0 to 1).
+# Which voice to use: a name from models/voices/, or a path to an .onnx file. The default is
+# en_US-joe-medium (CC0, the voice the installer ships; get it with
+# `python tools/download_voice.py joe`). Empty selects the old models/ultron-voice.onnx.
+VOICE_MODEL = os.getenv("VOICE_MODEL", "en_US-joe-medium").strip()
+# Effects on top of the voice: VOICE_PRESET = none, subtle, ultron (default), heavy, silk, cold,
+# calm or deep, with optional
+# VOICE_PITCH (semitones down), VOICE_METAL, VOICE_REVERB, VOICE_DOUBLE, VOICE_BASS (0 to 1).
 # They are read by ultron.voice.effects.EffectSettings.from_env().
 
 # Audio Settings

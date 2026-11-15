@@ -27,27 +27,12 @@ import sounddevice as sd
 from piper import PiperVoice
 from piper.config import SynthesisConfig
 
-from ultron import paths
-from ultron.config import VOICE_MODEL, VOICE_SPEED
+from ultron.config import VOICE_SPEED
+from ultron.voice.voice_files import model_paths, pick_model
 from ultron.voice.effects import EffectChain, EffectSettings, render_chunks
 from ultron.logger import logger
 from ultron.voice.tts_text import prepare_for_speech
 
-
-
-def model_paths(name: str = VOICE_MODEL) -> list[str]:
-    """Voice files to try, best first. name: empty, a models/voices/ name, or a path."""
-    legacy = [
-        os.getenv("VOICE_MODEL_PATH", os.path.join(paths.MODELS_DIR, "ultron-voice.onnx")),
-        os.path.join(paths.MODELS_DIR, "jarvis-high.onnx"),  # name used by older installs
-    ]
-    if not name:
-        return legacy
-    if os.path.isabs(name) or name.endswith(".onnx"):
-        chosen = name
-    else:
-        chosen = os.path.join(paths.MODELS_DIR, "voices", name + ".onnx")
-    return [chosen, *legacy]
 
 
 MODEL_PATHS = model_paths()
@@ -73,9 +58,9 @@ class Speaker:
         self._pending = 0                     # texts queued but not finished playing
         self.first_sound_at: float | None = None  # perf_counter of the first audio since the last speak()
 
-        path = next((p for p in MODEL_PATHS if os.path.exists(p)), None)
+        path = pick_model(MODEL_PATHS)
         if path is None:
-            logger.error("Voice model not found. Run 'python download_voice.py' first.")
+            logger.error("No voice model found. Run: python tools/download_voice.py joe")
             return
         try:
             logger.info("Loading ULTRON voice model...")

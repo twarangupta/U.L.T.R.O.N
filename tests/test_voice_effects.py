@@ -18,7 +18,7 @@ def dominant_hz(pcm):
 
 
 def test_presets_and_overrides():
-    assert not EffectSettings.from_env({}).active
+    assert EffectSettings.from_env({}) == EffectSettings.from_env({"VOICE_PRESET": "ultron"})  # default
     assert not EffectSettings.from_env({"VOICE_PRESET": "none"}).active
     assert EffectSettings.from_env({"VOICE_PRESET": "ultron"}).pitch == PRESETS["ultron"]["pitch"]
     s = EffectSettings.from_env({"VOICE_PRESET": "ultron", "VOICE_PITCH": "2", "VOICE_REVERB": "0"})

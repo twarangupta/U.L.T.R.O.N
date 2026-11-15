@@ -15,7 +15,7 @@ and the reverb tail all carry over from one chunk to the next, and flush()
 returns the reverb tail at the end of a reply. All stages are vectorized (no
 per-sample Python loops).
 
-Settings come from .env: VOICE_PRESET (none, subtle, ultron, heavy) and
+Settings come from .env: VOICE_PRESET (none, subtle, ultron, heavy, silk, cold, calm, deep; default ultron) and
 per-knob overrides VOICE_PITCH (semitones down), VOICE_METAL, VOICE_REVERB,
 VOICE_DOUBLE (each 0 to 1).
 """
@@ -38,6 +38,7 @@ PRESETS = {
 }
 BASS_HZ = 220.0
 BASS_TAPS = 129
+DEFAULT_PRESET = "ultron"
 RING_HZ = 90.0
 COMB_SECONDS = 0.0023
 DOUBLE_SECONDS = 0.014
@@ -62,7 +63,7 @@ class EffectSettings:
 
     @classmethod
     def from_env(cls, env=os.environ) -> "EffectSettings":
-        name = env.get("VOICE_PRESET", "none").strip().lower()
+        name = env.get("VOICE_PRESET", DEFAULT_PRESET).strip().lower()
         base = dict(PRESETS.get(name, PRESETS["none"]))
         for key in base:
             raw = env.get(f"VOICE_{key.upper()}", "").strip()
