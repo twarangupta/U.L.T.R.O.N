@@ -72,6 +72,12 @@ UNSURE_REPLIES = [
     "That made no sense. Say it again.",
 ]
 
+# A command marked "blocked" in the registry: ULTRON never runs it.
+REFUSED_REPLIES = [
+    "No. That one stays off limits, even for you.",
+    "I won't do that. Some buttons exist to be left alone.",
+]
+
 DONE_REPLIES = [
     "Done.",
     "Handled.",

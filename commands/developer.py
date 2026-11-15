@@ -1,340 +1,275 @@
-import os
-import subprocess
-import re
+"""Developer helpers: clipboard tools, ports, docker, code search, LLM-written reports (D30 registry)."""
 import json
+import os
+import re
+import subprocess
 import time
-import urllib.request
 import urllib.parse
+import urllib.request
 from datetime import datetime
 
-# Helper to query the local LLM (imported inline to avoid circular dependencies)
+from commands.registry import Done, Param, command
+
+_GROUP = "Developer"
+
+
 def ask_local_ai(prompt: str) -> str:
+    """One standalone LLM call (imported late: brain connects to Ollama on import)."""
     try:
-        from brain import ask_ai
-        return ask_ai(prompt)
+        from brain import ask_once
+        return ask_once(prompt)
     except Exception as e:
         return f"Error querying local AI: {e}"
 
-def execute_developer_command(clean_text: str) -> str | None:
-    # 1. New: Log Analyzer / Debugger
-    if "debug this crash" in clean_text or "debug crash" in clean_text or "analyze this stack trace" in clean_text or "analyze stack trace" in clean_text or "debug error" in clean_text or "analyze error" in clean_text:
-        try:
-            import pyperclip
-            trace = pyperclip.paste().strip()
-            if not trace:
-                return "Your clipboard is empty. Please copy the error stack trace first."
-            
-            prompt = (
-                "You are an expert debugger. Analyze this error/stack trace and provide a concise summary of "
-                "what went wrong and the exact code changes needed to fix it. Keep it under 200 words:\n\n"
-                f"{trace}"
-            )
-            report = ask_local_ai(prompt)
-            # Save the full report to a file
-            with open("debug_report.md", "w", encoding="utf-8") as f:
-                f.write(f"# Debug Analysis - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n{report}\n")
-            pyperclip.copy(report)
-            return "I've analyzed the stack trace. The report has been saved to debug_report.md and copied to your clipboard."
-        except Exception as e:
-            return f"Failed to analyze error. Error: {e}"
 
-    # 2. New: Dependency Health Checker
-    if "audit my dependencies" in clean_text or "check dependencies" in clean_text or "audit dependencies" in clean_text:
-        try:
-            reports = []
-            if os.path.exists("requirements.txt"):
-                res = subprocess.run(["pip", "list", "--outdated", "--format=json"], capture_output=True, text=True)
-                if res.returncode == 0 and res.stdout.strip():
-                    try:
-                        pkgs = json.loads(res.stdout)
-                        if pkgs:
-                            reports.append(f"{len(pkgs)} outdated Python packages found.")
-                    except:
-                        reports.append("Python dependencies have outdated packages.")
-            if os.path.exists("package.json"):
-                res = subprocess.run(["npm", "outdated"], shell=True, capture_output=True, text=True)
-                if res.stdout.strip():
-                    reports.append("Outdated Node.js packages detected.")
-            
-            if not reports:
-                return "All your project dependencies appear to be up to date."
-            return " and ".join(reports)
-        except Exception as e:
-            return f"Failed to check dependencies. Error: {e}"
+def _paste(text: str):
+    import pyautogui
+    import pyperclip
+    pyautogui.FAILSAFE = False
+    pyperclip.copy(text)
+    time.sleep(0.2)
+    pyautogui.hotkey("ctrl", "v")
 
-    # 3. New: API Sandbox
-    if "send a get request to" in clean_text or "send a post request to" in clean_text or "send request to" in clean_text:
-        try:
-            import pyperclip
-            # Extract URL
-            method = "GET"
-            if "post request" in clean_text:
-                method = "POST"
-            
-            url_part = clean_text.split("to", 1)[1].strip()
-            # Clean up speech artifacts
-            url_part = url_part.replace("slash", "/").replace("colon", ":").replace(" ", "").rstrip(".?,!")
-            if not url_part.startswith("http"):
-                url_part = "http://" + url_part
 
-            req = urllib.request.Request(url_part, method=method)
-            req.add_header('User-Agent', 'Mozilla/5.0')
-            
-            if method == "POST":
-                # Check if clipboard has data to post, otherwise send empty dict
-                post_data = pyperclip.paste().strip()
+def _strip_fences(code: str) -> str:
+    return re.sub(r"```[a-zA-Z]*", "", code).strip()
+
+
+@command("debug_clipboard_error", "Explain the error or stack trace on the clipboard and suggest a fix.",
+         group=_GROUP, title="debug the error on the clipboard", priority=55,
+         rules=[r"(?:debug|analy[sz]e|explain) (?:this |the |my )?(?:crash|stack trace|error|traceback)"],
+         examples=["debug this crash", "analyze this stack trace", "explain the error i copied",
+                   "what's wrong with this traceback", "debug error", "help me fix the error on my clipboard"])
+def debug_clipboard_error() -> str:
+    import pyperclip
+    trace = pyperclip.paste().strip()
+    if not trace:
+        return "Your clipboard is empty. Copy the error first."
+    report = ask_local_ai("You are an expert debugger. Explain this error in under 200 words and give the exact "
+                          f"code change that fixes it:\n\n{trace}")
+    with open("debug_report.md", "w", encoding="utf-8") as f:
+        f.write(f"# Debug Analysis - {datetime.now():%Y-%m-%d %H:%M:%S}\n\n{report}\n")
+    pyperclip.copy(report)
+    return "Analysed. The report is in debug_report.md and on your clipboard."
+
+
+@command("audit_dependencies", "Check this project's Python and Node packages for outdated versions.",
+         group=_GROUP, title="audit dependencies", priority=55,
+         rules=[r"(?:audit|check)(?: my| the)? (?:dependencies|packages)"],
+         examples=["audit my dependencies", "check dependencies", "are my packages out of date",
+                   "any outdated packages", "check the project's packages"])
+def audit_dependencies() -> str:
+    reports = []
+    if os.path.exists("requirements.txt"):
+        res = subprocess.run(["pip", "list", "--outdated", "--format=json"], capture_output=True, text=True)
+        try:
+            if res.returncode == 0 and json.loads(res.stdout or "[]"):
+                reports.append(f"{len(json.loads(res.stdout))} outdated Python packages found.")
+        except ValueError:
+            reports.append("Some Python packages are outdated.")
+    if os.path.exists("package.json"):
+        res = subprocess.run(["npm", "outdated"], shell=True, capture_output=True, text=True)
+        if res.stdout.strip():
+            reports.append("Outdated Node.js packages detected.")
+    return " and ".join(reports) or "All your project dependencies appear to be up to date."
+
+
+@command("api_request", "Send an HTTP GET or POST request and copy the response to the clipboard.",
+         group=_GROUP, title="send a {method} request to {url}",
+         params=[Param("method", "choice", "HTTP method", choices=("get", "post")),
+                 Param("url", "str", "the URL", cues=("request to", "to"))],
+         priority=55,
+         rules=[r"send (?:a |an )?(?P<method>get|post) request to (?P<url>.+)"],
+         examples=["send a get request to localhost 8000", "send a post request to api example com",
+                   "make a get request to localhost colon 3000"])
+def api_request(method: str, url: str) -> str:
+    import pyperclip
+    url = url.replace("slash", "/").replace("colon", ":").replace(" dot ", ".").replace(" ", "")
+    if not url.startswith("http"):
+        url = "http://" + url
+    req = urllib.request.Request(url, method=method.upper(), headers={"User-Agent": "ULTRON"})
+    if method == "post":
+        data = pyperclip.paste().strip()
+        try:
+            json.loads(data)
+        except ValueError:
+            data = "{}"
+        req.data = data.encode("utf-8")
+        req.add_header("Content-Type", "application/json")
+    with urllib.request.urlopen(req, timeout=5) as response:
+        body = response.read().decode("utf-8", errors="replace")
+        pyperclip.copy(f"Status: {response.status}\nHeaders:\n{json.dumps(dict(response.headers), indent=2)}"
+                       f"\n\nBody:\n{body}")
+        return f"Status {response.status}. The response is on your clipboard."
+
+
+@command("explain_file", "Explain a code file in the current folder.", group=_GROUP, title="explain {file}",
+         params=[Param("file", "str", "file name, for example ultron.py", cues=("file", "code"))], priority=55,
+         rules=[r"explain (?:the )?(?:code )?(?:file )?(?P<file>[\w.-]+\.\w+)", r"explain (?:code )?file (?P<file>[\w. -]+)"],
+         examples=["explain the file ultron.py", "explain code file brain.py", "what does speaker.py do",
+                   "explain file audio.py"])
+def explain_file(file: str) -> str:
+    file = file.replace(" dot ", ".").replace(" ", "")
+    if not os.path.exists(file):
+        return f"File {file} does not exist in the current directory."
+    with open(file, encoding="utf-8", errors="ignore") as f:
+        code = f.read()[:4000]
+    return f"{file}: " + ask_local_ai(f"Explain the purpose and main parts of this file in a few sentences:\n\n{code}")
+
+
+@command("container_logs", "Copy the last 20 log lines of a docker container to the clipboard.", group=_GROUP,
+         title="get logs for container {container}",
+         params=[Param("container", "str", "container name", cues=("logs for", "logs of", "logs"))], priority=55,
+         rules=[r"(?:check |get |show )?(?:the )?container logs(?: for| of)? (?P<container>.+)"],
+         examples=["check container logs for api", "container logs web", "get the logs of the db container"])
+def container_logs(container: str) -> str:
+    import pyperclip
+    res = subprocess.run(["docker", "logs", "--tail", "20", container], capture_output=True, text=True)
+    output = res.stdout + res.stderr
+    if not output.strip():
+        return f"No logs found, or container {container} is not running."
+    pyperclip.copy(output)
+    return f"The last 20 log lines of {container} are on your clipboard."
+
+
+def _pid_on_port(port: int) -> str | None:
+    res = subprocess.run(f"netstat -ano | findstr :{port}", shell=True, capture_output=True, text=True)
+    lines = [line.split() for line in res.stdout.strip().split("\n") if line.strip()]
+    return lines[0][-1] if lines else None
+
+
+@command("check_port", "Say which process is listening on a port.", group=_GROUP, title="check port {port}",
+         params=[Param("port", "int", "port number")], priority=56,
+         rules=[r"(?:what s|what is|check|who is) (?:on |using )?port (?P<port>\d+)", r"check port (?P<port>\d+)"],
+         examples=["what's on port 3000", "check port 8080", "who is using port 5000",
+                   "is anything running on port 8000"])
+def check_port(port: int) -> str:
+    pid = _pid_on_port(port)
+    return f"Process {pid} is listening on port {port}." if pid else f"No process is running on port {port}."
+
+
+@command("kill_port", "Force-stop the process listening on a port.", group=_GROUP, title="kill the process on port {port}",
+         params=[Param("port", "int", "port number")], risk="confirm",
+         confirm_text="force-stop the process on that port", priority=57,
+         rules=[r"(?:kill|free|stop|end) (?:the )?(?:process )?(?:on |using )?port (?P<port>\d+)"],
+         examples=["kill port 3000", "kill the process on port 8080", "free up port 5000",
+                   "stop whatever is using port 8000"])
+def kill_port(port: int) -> str:
+    pid = _pid_on_port(port)
+    if not pid:
+        return f"No process is running on port {port}."
+    subprocess.run(f"taskkill /F /PID {pid}", shell=True, check=True)
+    return f"Stopped process {pid} on port {port}."
+
+
+@command("docker_status", "List the running docker containers.", group=_GROUP, title="docker status", priority=55,
+         rules=[r"(?:check )?docker(?: status)?|(?:which|what) containers are running"],
+         examples=["docker status", "check docker", "which containers are running", "is docker running anything"])
+def docker_status() -> str:
+    try:
+        out = subprocess.run(["docker", "ps", "--format", "{{.Names}}"], capture_output=True, text=True, check=True)
+    except Exception:
+        return "Failed to query Docker. Ensure Docker Desktop is running."
+    names = [c for c in out.stdout.split("\n") if c.strip()]
+    return f"Running containers: {', '.join(names)}." if names else "No docker containers are running."
+
+
+@command("format_json", "Pretty-print the JSON on the clipboard.", group=_GROUP, title="format the JSON on the clipboard",
+         priority=55, rules=[r"(?:format|prettify|pretty print|beautify) (?:the |my )?json"],
+         examples=["format json", "prettify the json", "pretty print json", "clean up the json i copied"])
+def format_json() -> str:
+    import pyperclip
+    try:
+        pretty = json.dumps(json.loads(pyperclip.paste().strip()), indent=4)
+    except ValueError as e:
+        return f"The clipboard is not valid JSON: {e}"
+    pyperclip.copy(pretty)
+    return "JSON formatted and copied back to the clipboard."
+
+
+_SKIP_DIRS = ("venv", ".venv", ".git", "__pycache__", "node_modules")
+
+
+@command("search_codebase", "Search the code files in the current folder for a word.", group=_GROUP,
+         title="search the codebase for {term}",
+         params=[Param("term", "str", "the text to find", cues=("for",))], priority=56,
+         rules=[r"search (?:the )?(?:codebase|code|project) for (?P<term>.+)", r"find (?P<term>.+) in (?:the |my )?code(?:base)?"],
+         examples=["search codebase for speak", "search the code for wake word", "find logger in the code",
+                   "where in the project is transcribe used"])
+def search_codebase(term: str) -> str:
+    matches = []
+    for root, dirs, files in os.walk("."):
+        dirs[:] = [d for d in dirs if d not in _SKIP_DIRS]
+        for file in files:
+            if file.endswith((".py", ".txt", ".json", ".md", ".sh", ".ps1")):
                 try:
-                    json.loads(post_data)
-                    data_bytes = post_data.encode('utf-8')
-                    req.add_header('Content-Type', 'application/json')
-                except:
-                    data_bytes = b"{}"
-                    req.add_header('Content-Type', 'application/json')
-                req.data = data_bytes
+                    with open(os.path.join(root, file), encoding="utf-8", errors="ignore") as f:
+                        for i, line in enumerate(f, 1):
+                            if term in line.lower():
+                                matches.append(f"{file} line {i}")
+                                break
+                except OSError:
+                    pass
+            if len(matches) >= 3:
+                return f"Found matches in: {', '.join(matches)}."
+    return f"Found matches in: {', '.join(matches)}." if matches else f"No matches found for {term}."
 
-            with urllib.request.urlopen(req, timeout=5) as response:
-                body = response.read().decode('utf-8')
-                headers = dict(response.headers)
-            
-            result_str = f"Status: {response.status}\nHeaders:\n{json.dumps(headers, indent=2)}\n\nBody:\n{body}"
-            pyperclip.copy(result_str)
-            return f"API response received with status code {response.status} and copied to clipboard."
-        except Exception as e:
-            return f"API request failed. Error: {e}"
 
-    # 4. New: Semantic Code Explainer
-    if "explain code file" in clean_text or "explain file" in clean_text or "explain code" in clean_text:
-        try:
-            match = re.search(r"(?:file|code)\s+([\w\.-]+)", clean_text)
-            if not match:
-                return "Please specify the name of the file you want me to explain."
-            filename = match.group(1).rstrip(".?,!")
-            if not os.path.exists(filename):
-                return f"File {filename} does not exist in the current directory."
-            
-            with open(filename, "r", encoding="utf-8", errors="ignore") as f:
-                code_content = f.read()
-            
-            if len(code_content) > 4000:
-                code_content = code_content[:4000] + "\n... [truncated]"
-                
-            prompt = (
-                "Explain the primary architecture, design patterns, and logic of this code file concisely "
-                "in a few sentences. Highlight the main components and how they interact:\n\n"
-                f"File: {filename}\n{code_content}"
-            )
-            explanation = ask_local_ai(prompt)
-            return f"According to my analysis of {filename}: {explanation}"
-        except Exception as e:
-            return f"Failed to analyze the code file. Error: {e}"
+@command("boilerplate", "Write starter code for a technology and paste it at the cursor.", group=_GROUP,
+         title="paste {tech} boilerplate",
+         params=[Param("tech", "str", "what the starter code is for, for example fastapi or a flask app",
+                       cues=("boilerplate for", "template for", "starter code for", "for"))], priority=55,
+         rules=[r"(?:create |write )?(?:a )?(?:boilerplate|template|starter code) for (?P<tech>.+)",
+                r"create (?:a )?(?P<tech>fastapi)(?: app| boilerplate)?", r"(?P<tech>fastapi) boilerplate"],
+         examples=["create fastapi boilerplate", "boilerplate for a flask app", "create a boilerplate for react",
+                   "write starter code for an express server"])
+def boilerplate(tech: str) -> str:
+    if tech == "fastapi":
+        code = ('from fastapi import FastAPI\n\napp = FastAPI()\n\n\n@app.get("/")\n'
+                'def read_root():\n    return {"message": "Hello World"}\n')
+    else:
+        code = _strip_fences(ask_local_ai(f"Write minimal boilerplate code for: {tech}. Output only raw code."))
+    _paste(code)
+    return f"Pasted the {tech} boilerplate at your cursor."
 
-    # 5. New: Container Logs Monitor
-    if "check container logs" in clean_text or "container logs" in clean_text:
-        try:
-            import pyperclip
-            parts = clean_text.split("logs")
-            container_name = ""
-            if len(parts) > 1:
-                container_name = parts[1].replace("for", "").strip().rstrip(".?,!")
-            
-            if not container_name:
-                return "Which docker container name should I fetch the logs for?"
-            
-            res = subprocess.run(["docker", "logs", "--tail", "20", container_name], capture_output=True, text=True)
-            output = res.stdout + res.stderr
-            if not output.strip():
-                return f"No logs found or container {container_name} is offline."
-            
-            pyperclip.copy(output)
-            return f"I've fetched the last 20 log entries for container {container_name} and copied them to your clipboard."
-        except Exception as e:
-            return f"Failed to get container logs. Error: {e}"
 
-    # Port & Process Manager
-    if "kill port" in clean_text or "what is on port" in clean_text or "check port" in clean_text or "what's on port" in clean_text:
-        try:
-            match = re.search(r"port\s+(\d+)", clean_text)
-            if match:
-                port = match.group(1)
-                res = subprocess.run(f"netstat -ano | findstr :{port}", shell=True, capture_output=True, text=True)
-                lines = [l.strip() for l in res.stdout.strip().split("\n") if l.strip()]
-                if not lines:
-                    return f"No process is running on port {port}."
-                    
-                pid = lines[0].split()[-1]
-                if "kill" in clean_text:
-                    subprocess.run(f"taskkill /F /PID {pid}", shell=True, check=True)
-                    return f"Successfully terminated process with P.I.D. {pid} on port {port}."
-                else:
-                    return f"Process with P.I.D. {pid} is listening on port {port}."
-        except Exception as e:
-            return f"Failed to operate on port. Error: {e}"
+@command("review_code", "Review the uncommitted git diff with the LLM and write code_review.md.", group=_GROUP,
+         title="review my code", priority=55,
+         rules=[r"review (?:my |the )?(?:code|changes|diff)|code review"],
+         examples=["review my code", "code review", "review my changes", "look over my diff for bugs"])
+def review_code() -> str:
+    diff = subprocess.run(["git", "diff"], capture_output=True, text=True, check=True).stdout.strip()
+    if not diff:
+        return "No changes detected in git."
+    review = ask_local_ai("Review this git diff for bugs, style and performance. Be brief.\n\n" + diff[:4000])
+    with open("code_review.md", "w", encoding="utf-8") as f:
+        f.write(f"# Code Review - {datetime.now():%Y-%m-%d %H:%M:%S}\n\n{review}\n")
+    return "Reviewed. The report is in code_review.md."
 
-    # Docker Container Status
-    if "check docker" in clean_text or "docker status" in clean_text:
-        try:
-            res = subprocess.run(["docker", "ps", "--format", "{{.Names}}"], capture_output=True, text=True, check=True)
-            containers = [c.strip() for c in res.stdout.strip().split("\n") if c.strip()]
-            if not containers:
-                return "No active docker containers are running."
-            return f"The running docker containers are: {', '.join(containers)}."
-        except Exception as e:
-            return "Failed to query Docker. Ensure Docker Desktop is running."
 
-    # Clipboard JSON Formatter
-    if "format json" in clean_text or "prettify json" in clean_text or "pretty print json" in clean_text:
-        try:
-            import pyperclip
-            raw = pyperclip.paste().strip()
-            parsed = json.loads(raw)
-            pretty = json.dumps(parsed, indent=4)
-            pyperclip.copy(pretty)
-            return "JSON formatted and copied back to clipboard."
-        except Exception as e:
-            return f"Failed to parse clipboard as JSON. Error: {e}"
+@command("write_unit_test", "Generate a pytest file for a Python file in the current folder.", group=_GROUP,
+         title="write tests for {file}",
+         params=[Param("file", "str", "the Python file", cues=("for", "test for", "tests for"))], priority=55,
+         rules=[r"(?:write|generate) (?:a )?(?:unit )?tests? (?:suite )?for (?P<file>[\w. -]+)"],
+         examples=["write a unit test for memory.py", "generate tests for brain.py", "write a test for audio.py"])
+def write_unit_test(file: str) -> str:
+    file = file.replace(" dot ", ".").replace(" ", "")
+    if not os.path.exists(file):
+        return f"File {file} does not exist in the current directory."
+    with open(file, encoding="utf-8", errors="ignore") as f:
+        code = f.read()[:4000]
+    tests = _strip_fences(ask_local_ai(f"Write a pytest test suite for this code. Output only Python.\n\n{code}"))
+    with open(f"test_{os.path.basename(file)}", "w", encoding="utf-8") as f:
+        f.write(tests)
+    return f"Tests saved as test_{os.path.basename(file)}."
 
-    # Codebase Search
-    if "search codebase for" in clean_text or "search code for" in clean_text:
-        try:
-            term = clean_text.split("for", 1)[1].strip()
-            matches = []
-            for root, dirs, files in os.walk("."):
-                if "venv" in root or ".venv" in root or ".git" in root or "__pycache__" in root:
-                     continue
-                for file in files:
-                    if file.endswith((".py", ".txt", ".json", ".md", ".sh", ".ps1")):
-                        path = os.path.join(root, file)
-                        try:
-                            with open(path, "r", encoding="utf-8", errors="ignore") as f:
-                                for i, line in enumerate(f, 1):
-                                     if term in line.lower():
-                                         matches.append(f"{file} line {i}")
-                                         if len(matches) >= 3:
-                                             break
-                        except:
-                            pass
-                if len(matches) >= 3:
-                     break
-            if not matches:
-                return f"No matches found for {term} in your codebase."
-            return f"Found matches in: {', '.join(matches[:3])}."
-        except Exception as e:
-            return f"Failed search. Error: {e}"
 
-    # Boilerplate Creator
-    if "create fastapi" in clean_text or "fastapi boilerplate" in clean_text:
-        try:
-            import pyperclip
-            import pyautogui
-            pyautogui.FAILSAFE = False
-            code = """from fastapi import FastAPI
-
-app = FastAPI()
-
-@app.get("/")
-def read_root():
-    return {"message": "Hello World"}
-"""
-            pyperclip.copy(code)
-            time.sleep(0.2)
-            pyautogui.hotkey('ctrl', 'v')
-            return "Pasted the FastAPI boilerplate directly at your cursor."
-        except Exception as e:
-            return f"Failed to paste FastAPI boilerplate. Error: {e}"
-
-    if "create boilerplate for" in clean_text or "create a boilerplate for" in clean_text or "boilerplate for" in clean_text:
-        try:
-            import pyperclip
-            import pyautogui
-            pyautogui.FAILSAFE = False
-            
-            # Extract the technology/context
-            tech = "code template"
-            if "create a boilerplate for" in clean_text:
-                tech = clean_text.split("create a boilerplate for", 1)[1].strip()
-            elif "create boilerplate for" in clean_text:
-                tech = clean_text.split("create boilerplate for", 1)[1].strip()
-            elif "boilerplate for" in clean_text:
-                tech = clean_text.split("boilerplate for", 1)[1].strip()
-                
-            tech = tech.rstrip(".?,!")
-            
-            prompt = (
-                f"Write a standard, clean, minimal boilerplate template code snippet for: '{tech}'. "
-                "Output ONLY raw code. Do NOT output markdown ticks (like ```), explanations, comments, or headers. "
-                "Only output the raw code itself."
-            )
-            raw_code = ask_local_ai(prompt)
-            # Remove any residual markdown backticks the LLM might have returned
-            raw_code = raw_code.replace("```python", "").replace("```html", "").replace("```javascript", "").replace("```", "").strip()
-            
-            pyperclip.copy(raw_code)
-            time.sleep(0.2)
-            pyautogui.hotkey('ctrl', 'v')
-            return f"Pasted the {tech} boilerplate directly at your cursor."
-        except Exception as e:
-            return f"Failed to generate boilerplate. Error: {e}"
-
-    # Local Code Reviewer
-    if "review my code" in clean_text or "code review" in clean_text:
-        try:
-            res = subprocess.run(["git", "diff"], capture_output=True, text=True, check=True)
-            diff = res.stdout.strip()
-            if not diff:
-                return "No changes detected in git."
-            if len(diff) > 4000:
-                diff = diff[:4000] + "\n... [Diff truncated due to size]"
-            prompt = (
-                "You are a Senior Code Reviewer. Review the following git diff. "
-                "Find potential bugs, style issues, and performance bottlenecks. "
-                "Provide constructive feedback. Keep it brief.\n\n"
-                f"Git Diff:\n{diff}"
-            )
-            review = ask_local_ai(prompt)
-            with open("code_review.md", "w", encoding="utf-8") as f:
-                f.write(f"# Code Review - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n{review}\n")
-            return "I've reviewed your git diff and written the report to code_review.md."
-        except Exception as e:
-            return f"Failed to perform code review. Error: {e}"
-
-    # Automated Unit Test Generator
-    if "write a unit test" in clean_text or "write a test for" in clean_text or "generate test" in clean_text:
-        try:
-            match = re.search(r"for\s+([\w\.-]+)", clean_text)
-            if not match:
-                return "Please specify the file name to generate tests for."
-            filename = match.group(1).rstrip(".?,!")
-            if not os.path.exists(filename):
-                return f"File {filename} does not exist in the current directory."
-            with open(filename, "r", encoding="utf-8", errors="ignore") as f:
-                code_content = f.read()
-            if len(code_content) > 4000:
-                code_content = code_content[:4000]
-            prompt = (
-                f"Write a comprehensive unit test suite using unittest or pytest for this Python code. "
-                f"Only output valid Python code, no markdown formatting blocks.\n\n"
-                f"Code:\n{code_content}"
-            )
-            test_code = ask_local_ai(prompt)
-            test_code = test_code.replace("```python", "").replace("```", "").strip()
-            test_filename = f"test_{filename}"
-            with open(test_filename, "w", encoding="utf-8") as f:
-                f.write(test_code)
-            return f"Unit test suite generated and saved as {test_filename}."
-        except Exception as e:
-            return f"Failed to generate tests. Error: {e}"
-
-    # Project Workspace Launcher
-    if "start project" in clean_text or "launch project" in clean_text:
-        try:
-            proj_name = "ULTRON"
-            if "project" in clean_text:
-                proj_name = clean_text.split("project", 1)[1].strip()
-            subprocess.Popen("code .", shell=True)
-            import webbrowser
-            webbrowser.open("https://github.com")
-            return f"Project workspace launched for {proj_name}."
-        except Exception as e:
-            return f"Failed to launch workspace. Error: {e}"
-
-    return None
+@command("start_project", "Open VS Code in the current folder and GitHub in the browser.", group=_GROUP,
+         title="start the project workspace", priority=55,
+         rules=[r"(?:start|launch|open) (?:my |the )?(?:project|workspace)(?: workspace)?"],
+         examples=["start project", "launch my workspace", "open the project workspace", "set up my coding workspace"])
+def start_project() -> str:
+    subprocess.Popen("code .", shell=True)
+    import webbrowser
+    webbrowser.open("https://github.com")
+    return Done("Project workspace launched.")
