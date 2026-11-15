@@ -24,7 +24,7 @@ def test_weak_laptop_gets_lite_on_cpu():
     p = pick(machine(ram=8, cores=4))
     assert p.name == "Lite"
     assert (p.whisper_model, p.whisper_device, p.whisper_compute_type) == ("base", "cpu", "int8")
-    assert p.llm_model == "llama3.2:3b"
+    assert p.llm_model == "qwen2.5:3b"
     assert p.whisper_cpu_threads == 4
 
 
@@ -32,7 +32,7 @@ def test_strong_cpu_only_pc_is_not_held_back():
     p = pick(machine(ram=32, cores=12))
     assert p.name == "CPU-Plus"
     assert p.whisper_model == "small"
-    assert p.llm_model == "gemma3:4b"
+    assert p.llm_model == "qwen2.5:3b"
     assert p.whisper_cpu_threads == 8
 
 
@@ -65,17 +65,17 @@ def test_llm_has_priority_when_vram_is_tight():
 
 
 def test_big_gpu_gets_big_models():
-    installed = {"gemma3:12b": 7.6, "llama3.2:3b": 1.88}
+    installed = {"qwen3:14b": 9.3, "llama3.2:3b": 1.88}
     p = pick(machine(ram=64, cores=16, gpu="RTX 4090", vram=24.0), installed=installed)
     assert p.name == "GPU-16GB+"
-    assert p.llm_model == "gemma3:12b"
+    assert p.llm_model == "qwen3:14b"
     assert (p.whisper_model, p.whisper_device, p.whisper_compute_type) == ("large-v3-turbo", "cuda", "float16")
 
 
 def test_8gb_gpu_uses_best_installed_llm():
     p = pick(machine(gpu="RTX 3070", vram=8.0))
     assert p.name == "GPU-8GB+"
-    assert p.llm_model == "gemma3:4b"  # llama3.1:8b and qwen3:8b are not installed
+    assert p.llm_model == "qwen2.5:3b"  # llama3.1:8b and qwen3:8b are not installed
     assert p.whisper_device == "cuda"
 
 
@@ -97,3 +97,10 @@ def test_unknown_forced_profile_is_ignored():
     p = pick(machine(ram=8, cores=4), env={"ULTRON_PROFILE": "Turbo"})
     assert p.name == "Lite"
     assert any("Unknown ULTRON_PROFILE" in r for r in p.reasons)
+
+
+def test_no_profile_picks_a_model_without_tool_calls():
+    # gemma3 is rejected by Ollama for tool calls, so it cannot pick commands (D30).
+    from hardware import PROFILES
+    for name, cfg in PROFILES.items():
+        assert not any(m.startswith("gemma") for m in cfg["llm"]), name
