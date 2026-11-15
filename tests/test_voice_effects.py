@@ -43,7 +43,7 @@ def test_pitch_goes_down_by_the_requested_semitones():
     assert chain.length_scale_factor == pytest.approx(2 ** (-3 / 12))
 
 
-@pytest.mark.parametrize("preset", ["subtle", "ultron", "heavy"])
+@pytest.mark.parametrize("preset", ["subtle", "ultron", "heavy", "silk", "cold"])
 def test_output_is_bounded_and_not_silent(preset):
     chain = EffectChain(EffectSettings.from_env({"VOICE_PRESET": preset}), RATE)
     out = np.concatenate([chain.process(tone(0.5, level=0.95)), chain.flush()])
@@ -55,7 +55,7 @@ def test_output_is_bounded_and_not_silent(preset):
 def test_chunk_boundaries_are_click_free():
     """The stateful stages (metal, double, reverb) must give the same audio when a signal is
     split into pieces as when it is processed whole."""
-    settings = EffectSettings(pitch=0.0, metal=0.5, reverb=0.4, double=0.3)
+    settings = EffectSettings(pitch=0.0, metal=0.5, reverb=0.4, double=0.3, bass=0.6)
     sig = tone(1.0, level=0.5)
     whole = EffectChain(settings, RATE)
     ref = np.concatenate([whole.process(sig), whole.flush()]).astype(np.float32)

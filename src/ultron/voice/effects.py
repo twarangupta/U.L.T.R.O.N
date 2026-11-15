@@ -25,11 +25,16 @@ from dataclasses import dataclass
 import numpy as np
 
 PRESETS = {
-    "none": dict(pitch=0.0, metal=0.0, reverb=0.0, double=0.0),
-    "subtle": dict(pitch=1.5, metal=0.15, reverb=0.10, double=0.0),
-    "ultron": dict(pitch=3.0, metal=0.35, reverb=0.25, double=0.20),
-    "heavy": dict(pitch=4.0, metal=0.60, reverb=0.40, double=0.35),
+    "none": dict(pitch=0.0, metal=0.0, reverb=0.0, double=0.0, bass=0.0),
+    "subtle": dict(pitch=1.5, metal=0.15, reverb=0.10, double=0.0, bass=0.0),
+    "ultron": dict(pitch=3.0, metal=0.35, reverb=0.25, double=0.20, bass=0.0),
+    "heavy": dict(pitch=4.0, metal=0.60, reverb=0.40, double=0.35, bass=0.0),
+    # calm, close and cold: low and heavy in the chest, a faint metallic shimmer, a ghost double
+    "silk": dict(pitch=2.5, metal=0.12, reverb=0.15, double=0.30, bass=0.5),
+    "cold": dict(pitch=3.5, metal=0.22, reverb=0.30, double=0.30, bass=0.7),
 }
+BASS_HZ = 220.0
+BASS_TAPS = 129
 RING_HZ = 90.0
 COMB_SECONDS = 0.0023
 DOUBLE_SECONDS = 0.014
@@ -46,10 +51,11 @@ class EffectSettings:
     metal: float = 0.0
     reverb: float = 0.0
     double: float = 0.0
+    bass: float = 0.0       # low-end weight
 
     @property
     def active(self) -> bool:
-        return any((self.pitch, self.metal, self.reverb, self.double))
+        return any((self.pitch, self.metal, self.reverb, self.double, self.bass))
 
     @classmethod
     def from_env(cls, env=os.environ) -> "EffectSettings":
@@ -67,6 +73,7 @@ class EffectSettings:
             metal=min(max(base["metal"], 0.0), 1.0),
             reverb=min(max(base["reverb"], 0.0), 1.0),
             double=min(max(base["double"], 0.0), 1.0),
+            bass=min(max(base["bass"], 0.0), 1.0),
         )
 
 
@@ -78,6 +85,8 @@ class EffectChain:
         self._comb = max(int(COMB_SECONDS * rate), 1)
         self._max_delay = int((DOUBLE_SECONDS + DOUBLE_WOBBLE_SECONDS) * rate) + 4
         self._hist = np.zeros(max(self._comb, self._max_delay), dtype=np.float32)
+        self._bass_kernel = self._make_bass_kernel()
+        self._bass_hist = np.zeros(BASS_TAPS - 1, dtype=np.float32)
         self._phase = 0          # sample counter for the ring carrier and the wobble
         self._comb_hist = np.zeros(self._comb, dtype=np.float32)   # last input samples, for the comb
         self._ir = self._make_ir() if settings.reverb > 0 else None
@@ -92,6 +101,7 @@ class EffectChain:
     def reset(self):
         self._hist[:] = 0
         self._comb_hist[:] = 0
+        self._bass_hist[:] = 0
         self._phase = 0
         self._tail[:] = 0
 
@@ -109,6 +119,8 @@ class EffectChain:
             x = self._double(x)
         else:
             self._remember(x)
+        if self.s.bass > 0:
+            x = self._bass(x)
         if self._ir is not None:
             x = self._reverb(x)
         return self._to_int16(x)
@@ -155,6 +167,21 @@ class EffectChain:
         self._hist = joined[-len(self._hist):]
         self._phase += n
         return (x + 0.5 * self.s.double * copy).astype(np.float32)
+
+    def _make_bass_kernel(self) -> np.ndarray:
+        """Windowed-sinc low-pass; its output is mixed back in to add weight below 220 Hz."""
+        n = np.arange(BASS_TAPS) - (BASS_TAPS - 1) / 2
+        k = np.sinc(2 * BASS_HZ / self.rate * n) * np.hamming(BASS_TAPS)
+        return (k / k.sum()).astype(np.float32)
+
+    def _bass(self, x: np.ndarray) -> np.ndarray:
+        """Add weight below 220 Hz. Linear-phase filter: the dry signal is delayed by the same
+        64 samples (2.9 ms, carried across chunks) so the two stay in phase."""
+        padded = np.concatenate([self._bass_hist, x])
+        low = np.convolve(padded, self._bass_kernel, mode="valid")
+        dry = padded[BASS_TAPS // 2: BASS_TAPS // 2 + len(x)]
+        self._bass_hist = padded[-(BASS_TAPS - 1):].copy()
+        return ((dry + 1.2 * self.s.bass * low) / (1 + 0.6 * self.s.bass)).astype(np.float32)
 
     def _make_ir(self) -> np.ndarray:
         rate = self.rate
