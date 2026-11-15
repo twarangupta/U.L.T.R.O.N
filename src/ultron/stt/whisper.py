@@ -12,7 +12,8 @@ import time
 import numpy as np
 
 from ultron.stt import corrections
-from ultron.config import WHISPER_HOTWORDS, WHISPER_LANGUAGE, WHISPER_VAD_FILTER
+from ultron.config import (WHISPER_HOTWORDS, WHISPER_LANGUAGE, WHISPER_LOW_LOGPROB, WHISPER_LOW_NO_SPEECH,
+                           WHISPER_TEMPERATURE_FALLBACK, WHISPER_VAD_FILTER)
 from ultron.hardware import PROFILES, Profile, add_cuda_dll_paths
 from ultron.logger import logger
 
@@ -104,15 +105,31 @@ class SpeechToText:
                 logger.error(f"Transcription error after CPU fallback: {e2}")
                 return ""
 
+    @staticmethod
+    def _log_confidence(heard: str, segments: list):
+        """Say so in the log when Whisper was unsure, so odd commands can be traced to the audio."""
+        if not segments:
+            return
+        logprob = min(getattr(s, "avg_logprob", 0.0) for s in segments)
+        no_speech = max(getattr(s, "no_speech_prob", 0.0) for s in segments)
+        if logprob < WHISPER_LOW_LOGPROB or no_speech > WHISPER_LOW_NO_SPEECH:
+            logger.info(f"Low-confidence transcription {heard!r}: avg_logprob {logprob:.2f}, no_speech {no_speech:.2f}")
+
     def _run(self, audio: np.ndarray) -> str:
+        options = {}
+        if not WHISPER_TEMPERATURE_FALLBACK:
+            options["temperature"] = 0.0  # one pass: no slow retries at higher temperatures
         segments, _info = self.model.transcribe(
             audio,
             beam_size=5,
             language=WHISPER_LANGUAGE,
             vad_filter=WHISPER_VAD_FILTER,
             hotwords=self._hotwords(),
+            **options,
         )
+        segments = list(segments)
         heard = "".join(seg.text for seg in segments).strip()
+        self._log_confidence(heard, segments)
         fixed = corrections.apply(heard)
         if fixed != heard:
             logger.info(f"Corrected {heard!r} -> {fixed!r}")
