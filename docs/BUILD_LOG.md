@@ -311,6 +311,21 @@ Decision: a tool call runs only if the sentence resembles that command's example
 Context: about 30 files in the root, dead code, ">=" dependencies, no CI (D22 asked for all of this).
 Decision: code in `src/ultron/` (audio, stt, voice, commands, and top-level modules), editable data in `config/`, every path from `paths.py` (private files keep their old places: memory.json, data/activity.db, ultron.log, profile.md), start with `run_ultron.bat` or `python -m ultron`, dependencies pinned in pyproject.toml (core, gpu and dev extras), commands.txt became docs/COMMANDS.md, `--self-test`, and a Windows CI workflow that needs no models, GPU or audio device. No behaviour changed: 173 tests, the 1952-case intent evaluation and the command list are identical before and after. Tradeoffs: `voice/speaker.py`, `audio/capture.py` and `app.py` still create their device objects at import (the smoke test compiles them instead of importing); a lazy start would make them importable anywhere, a later change.
 
+### D35. An original ULTRON voice: no film-actor voice, licensed Piper voices plus an effect chain
+Context: models/ultron-voice.onnx is the community model jgkawell/jarvis, which imitates the film Jarvis and very probably clones that actor's voice. The owner asked for the real Ultron actor's voice.
+Decision: (1) The Jarvis voice must not ship in the installer: a cloned actor's voice has unclear licence and no consent, and it is the wrong character anyway. (2) ULTRON never gets a cloned, sourced or trained-from-an-actor voice, the real Ultron actor's included. (3) The voice is built from licensed Piper voices plus `voice/effects.py` (numpy only). (4) Later option, not started: train a custom Piper voice from a speaker who consents in writing (about 1 to 2 hours of clean recordings, fine-tune from a CC0 base such as joe); only after the owner asks.
+Candidates (MODEL_CARD checked 2026-11-15): joe CC0 (ok); bryce public domain, recorded by its author (ok); john public domain, LibriVox (ok); lessac custom Blizzard 2013 licence (flag, read before shipping); northern_english_male CC-BY-SA 4.0 (flag: attribution and share-alike); alan Mimic3 data, "All Rights Reserved" (blocked); ryan CC BY-NC-SA (blocked, non-commercial). Blocked voices are only downloaded with `--force-licence` for listening and must not ship. The shipped voice needs a line in the licence notices.
+Effect chain (per synthesized sentence, tunable in .env: VOICE_PRESET none/subtle/ultron/heavy, VOICE_PITCH, VOICE_METAL, VOICE_REVERB, VOICE_DOUBLE; VOICE_MODEL picks the voice; VOICE_SPEED is the final pace, default 0.9):
+1. Pitch down 0 to 8 semitones by resampling, which also lowers the formants (a bigger body, not just a slowed voice). Piper is asked for a proportionally faster delivery, so the pace stays VOICE_SPEED.
+2. Metal: 90 Hz ring modulation plus a 2.3 ms comb.
+3. Double: a faint copy 14 ms behind with a slowly wobbling delay.
+4. Dark reverb: synthetic 0.45 s room, low-passed at 2.2 kHz, by FFT overlap-add convolution; the tail is flushed after the last sentence.
+5. Soft limiter.
+Phase, delay history and reverb tail carry across chunks (a test proves split and whole processing agree to under 1 percent). All stages are vectorized, no Python per-sample loops.
+Measured (joe voice, 3-sentence 8.5 s reply): 1.5 ms (subtle), 2.5 ms (ultron), 2.1 ms (heavy) per second of audio; the first sentence is delayed by 4 to 7 ms; cold start 10 ms. Piper itself needs 100 to 900 ms per sentence, so the effects are noise.
+Tradeoffs: simple resampling is not a real formant-preserving pitch shifter (artifacts above about 5 semitones, "heavy" sounds like a toy at times); the reverb tail adds 0.45 s of audio at the end of each reply (it overlaps the next sentence, so no extra gap inside a reply); the time stretch is not exactly linear in Piper's length_scale, so the final pace is within about 10 percent of VOICE_SPEED; the default preset stays none until the owner chooses. Better ideas: WORLD or a phase vocoder for a cleaner shift (adds a dependency); a vocoder effect driven by a saw wave for a truly robotic timbre; fine-tune a Piper voice from a consenting speaker for the best result.
+Consequences: a small follow-up commit sets the owner's choice (VOICE_MODEL and VOICE_PRESET defaults) and removes the Jarvis download from tools/download_voice.py.
+
 ---
 
 ## 7. Tech stack: now and target
@@ -714,6 +729,9 @@ All entries are from 2026-11-15, grouped by phase. Measurements are from the own
 ### Workflow and repository cleanup (chore/cleanup)
 - PR #4 (p1-fixes into main) and PR #5 merged; `dev` became the integration branch; the revert tag `pre-cleanup` marks main.
 - Cleanup (D32): src/ultron layout, paths.py, pyproject.toml, CI, self-test, dead code removed (see CHANGELOG), docs rewritten. Checks before and after: 173 tests (now 215 with the smoke tests), intent_eval identical on all 1952 cases, command list identical, ruff clean.
+
+### Original ULTRON voice (feat/ultron-voice)
+- D35: Jarvis voice must not ship; voice/effects.py (pitch, metal, double, dark reverb, limiter), VOICE_MODEL / VOICE_PRESET / VOICE_PITCH / VOICE_METAL / VOICE_REVERB / VOICE_DOUBLE, VOICE_SPEED default 0.9, tools/download_voice.py (candidate voices with licences and live progress), tools/voice_samples.py (silent, 96 WAV files in results/voice_samples/). Effects cost 1.5 to 2.5 ms per audio second. 10 new tests. Next: owner listens, picks a voice and preset, follow-up commit.
 
 <!-- New entries go above this line, newest last, per phase:
 ### Short title (branch)

@@ -91,9 +91,15 @@ WHISPER_HOTWORDS = os.getenv(
     "Ultron, stop, cancel, confirm, open, close, type, send, git, volume, mute, screenshot",
 )
 
-# Voice (Piper). 1.0 is normal pace, 1.2 is 20 percent faster, 0.9 slower.
-# The voice model's own default was 1.15 times slower than normal, which dragged words out.
-VOICE_SPEED = float(os.getenv("VOICE_SPEED", "1.0"))
+# Voice (Piper). VOICE_SPEED is the final pace: 1.0 normal, 1.2 faster, 0.9 slower and
+# more deliberate. The effect chain's pitch shift is compensated, so this stays true.
+VOICE_SPEED = float(os.getenv("VOICE_SPEED", "0.9"))
+# Which voice to use: empty = models/ultron-voice.onnx (current default), a name from
+# models/voices/ (for example en_US-joe-medium), or a path to an .onnx file.
+VOICE_MODEL = os.getenv("VOICE_MODEL", "").strip()
+# Effects on top of the voice: VOICE_PRESET = none, subtle, ultron or heavy, with optional
+# VOICE_PITCH (semitones down), VOICE_METAL, VOICE_REVERB, VOICE_DOUBLE (0 to 1).
+# They are read by ultron.voice.effects.EffectSettings.from_env().
 
 # Audio Settings
 SAMPLE_RATE = int(os.getenv("SAMPLE_RATE", "16000")) # Required by OpenWakeWord and Whisper
