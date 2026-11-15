@@ -45,7 +45,12 @@ LLM_KEEP_ALIVE = os.getenv("LLM_KEEP_ALIVE", "-1")   # -1 = never unload; or "30
 LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "120"))
 
 # How long a pause ends your sentence (seconds). Lower is snappier, too low cuts you off.
+# END_SILENCE_SECONDS is for the fallback (loudness check, used only when the VAD model is missing);
+# VAD_END_SILENCE_SECONDS is for Silero VAD, which tells speech from noise and so can wait less.
 END_SILENCE_SECONDS = float(os.getenv("END_SILENCE_SECONDS", "0.6"))
+VAD_END_SILENCE_SECONDS = float(os.getenv("VAD_END_SILENCE_SECONDS", "0.35"))
+VAD_THRESHOLD = float(os.getenv("VAD_THRESHOLD", "0.5"))   # speech probability from 0 to 1; higher = stricter
+VAD_BARGE_IN = os.getenv("VAD_BARGE_IN", "1").lower() in ("1", "true", "yes", "on")  # barge-in also needs speech, not just loudness
 
 # After this many seconds in a conversation with no recognised speech, ULTRON says a line and
 # goes back to waiting for the wake word. 0 turns it off.
