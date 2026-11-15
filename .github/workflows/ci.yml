@@ -35,7 +35,7 @@ jobs:
         env:
           PYTHONPATH: src
 
-      - name: Tests (dry run: nothing is executed, no devices are used)
+      - name: "Tests (dry run: nothing is executed, no devices are used)"
         run: python -m pytest -q
 
       - name: Self-test (config, command registry, hardware profile)
