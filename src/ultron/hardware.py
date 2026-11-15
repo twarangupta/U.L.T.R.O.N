@@ -13,8 +13,9 @@ Rules:
 - The LLM gets the GPU first. Whisper goes on the GPU only if the VRAM left
   after the LLM (and a reserve for Windows) still fits it.
 - Strong PCs get bigger models; weak PCs never get more than they can hold.
-- Every choice can be overridden with an environment variable (see
-  ENV_OVERRIDES below), and ULTRON_PROFILE forces a profile by name.
+- Every choice can be overridden in .env: ULTRON_PROFILE (Lite, CPU-Plus, GPU-4GB,
+  GPU-8GB+, GPU-16GB+), WHISPER_MODEL_SIZE, WHISPER_DEVICE (cpu or cuda),
+  WHISPER_COMPUTE_TYPE, WHISPER_CPU_THREADS and OLLAMA_MODEL.
 - The GPU is only used if CUDA really works; stt.py falls back to the CPU on
   any GPU error.
 
@@ -110,15 +111,6 @@ PROFILES = {
         whisper=("small", "int8"), whisper_gpu=("large-v3-turbo", "float16"),
         llm=["qwen3:14b", "llama3.1:8b", "qwen3:8b", "qwen2.5:3b", "llama3.2:3b"],
     ),
-}
-
-ENV_OVERRIDES = {
-    "ULTRON_PROFILE": "force a profile: Lite, CPU-Plus, GPU-4GB, GPU-8GB+, GPU-16GB+",
-    "WHISPER_MODEL_SIZE": "Whisper model name or folder",
-    "WHISPER_DEVICE": "cpu or cuda",
-    "WHISPER_COMPUTE_TYPE": "int8, int8_float16, float16, float32",
-    "WHISPER_CPU_THREADS": "CPU threads for Whisper",
-    "OLLAMA_MODEL": "LLM model name in Ollama",
 }
 
 

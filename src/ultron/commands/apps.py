@@ -68,15 +68,6 @@ def fuzzy(name: str, choices: list[str], minimum: int = FUZZY_MIN) -> str | None
     return hit[0] if hit else None
 
 
-def is_known(name: str) -> bool:
-    return canonical(name) in APP_ALIASES
-
-
-def resolvable(name: str) -> bool:
-    """A known app, "this" or "everything", or an installed app (possibly after trimming extra words)."""
-    return resolve_name(name) is not None
-
-
 def find_in_text(text: str) -> str | None:
     """The app named somewhere in a sentence (longest alias first), for the matcher."""
     words = f" {clean(text)} "

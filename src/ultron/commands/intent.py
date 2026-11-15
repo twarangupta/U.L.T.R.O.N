@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import os
 import threading
-import time
 from dataclasses import dataclass
 
 import numpy as np
@@ -77,9 +76,7 @@ class Matcher:
             from model2vec import StaticModel
             model = StaticModel.from_pretrained(download_model())
         self.model = model
-        started = time.perf_counter()
         self._build()
-        self.build_seconds = time.perf_counter() - started
 
     def _embed(self, texts: list[str]) -> np.ndarray:
         vectors = np.asarray(self.model.encode(texts), dtype=np.float32)

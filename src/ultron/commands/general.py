@@ -55,12 +55,6 @@ def type_text(text: str) -> str:
     return ""
 
 
-def execute_typing_command(raw_text: str) -> str | None:
-    """Old entry point: run type_text if the sentence is dictation."""
-    from ultron.commands.router import run_rules
-    return run_rules(raw_text, names=("type_text",))
-
-
 # ---- screen and writing ----
 @command("read_screen", "Read the text on the screen (OCR) and copy it to the clipboard.", group=_UTIL,
          title="read my screen", priority=50,

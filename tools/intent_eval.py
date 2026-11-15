@@ -1,12 +1,10 @@
 """Measure how well ULTRON understands phrasings, per stage, on tests/intents.yaml (D30).
 
     venv\\Scripts\\python.exe tools\\intent_eval.py                 rules + matcher (silent, light)
-    venv\\Scripts\\python.exe tools\\intent_eval.py --old           also the old router from p1-fixes
     venv\\Scripts\\python.exe tools\\intent_eval.py --llm llama3.2:3b [--full-tools]
                                                                    also the LLM tool stage (uses the GPU)
 
-Nothing is executed: new handlers run in dry-run mode; the old router runs in a
-throw-away copy of p1-fixes with every side effect stubbed. The report goes to
+Nothing is executed: handlers run in dry-run mode. The report goes to
 results/intent_eval.md and results/intent_eval.json (not in git).
 
 Scoring. Each sentence has an expected command, or none (a negative):
@@ -21,9 +19,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import subprocess
 import sys
-import tempfile
 import time
 from dataclasses import asdict, dataclass, field
 
@@ -116,151 +112,6 @@ def eval_new(cases: list[Case]) -> list[Result]:
             out = route(case.text, io)
             results.append(Result(case, out.command, io.asked, out.route, out.candidates,
                                   scores=out.scores, sentence=out.sentence))
-    return results
-
-
-# ---- the old router (p1-fixes), stubbed ----
-_OLD_REPLY_TO_COMMAND = [  # first matching start of the old reply -> new command name
-    ("Searching Google", "web_search"), ("Opening Gmail", "open_website"), ("Opening Youtube", "open_website"),
-    ("Opening Github", "open_website"), ("Opening Reddit", "open_website"), ("Opening Stackoverflow", "open_website"),
-    ("Opening Google.", "open_website"), ("Opening your", "open_folder"), ("Opening", "open_app"),
-    ("Locking", "lock_pc"), ("CPU load", "system_status"), ("Screenshot", "take_screenshot"),
-    ("Media playback", "media_play_pause"), ("Playing next", "media_next"), ("Playing previous", "media_previous"),
-    ("Playback stopped", "media_stop"), ("Audio unmuted", "unmute"), ("Audio muted", "mute"),
-    ("Volume set", "volume_set"), ("Volume increased", "volume_up"), ("Volume decreased", "volume_down"),
-    ("Closing active window", "close_app"), ("Minimizing active", "minimize_windows"),
-    ("Meeting mode", "meeting_mode"), ("The battery", "battery_status"), ("No battery", "battery_status"),
-    ("C: drive", "disk_space"), ("I've successfully organized", "organize_downloads"),
-    ("Your git branch", "git_status"), ("You have", "git_status"), ("Staged all", "git_commit"),
-    ("Successfully pushed", "git_push"), ("Successfully pulled", "git_pull"), ("Successfully popped", "git_stash_pop"),
-    ("Successfully stashed", "git_stash"), ("No active merge", "git_conflicts"), ("I detected merge", "git_conflicts"),
-    ("Here are the last 5", "git_log"), ("Successfully created", "git_create_branch"),
-    ("Successfully switched", "git_switch_branch"), ("You are currently", "git_branches"),
-    ("I've analyzed", "debug_clipboard_error"), ("Your clipboard is empty", "debug_clipboard_error"),
-    ("All your project", "audit_dependencies"), ("API ", "api_request"), ("According to my analysis", "explain_file"),
-    ("I've fetched", "container_logs"), ("Which docker", "container_logs"), ("Process with", "check_port"),
-    ("No process", "check_port"), ("Successfully terminated", "kill_port"), ("The running docker", "docker_status"),
-    ("No active docker", "docker_status"), ("Failed to query Docker", "docker_status"), ("JSON formatted", "format_json"),
-    ("Failed to parse clipboard", "format_json"), ("Found matches", "search_codebase"), ("No matches", "search_codebase"),
-    ("Pasted the", "boilerplate"), ("I've reviewed", "review_code"), ("No changes detected", "review_code"),
-    ("Unit test", "write_unit_test"), ("Project workspace", "start_project"), ("I have scanned", "read_screen"),
-    ("The pytesseract", "read_screen"), ("I've drafted", "draft_message"), ("Logged", "log_expense"),
-    ("I couldn't identify the expense", "log_expense"), ("You have spent", "spending_summary"),
-    ("No expenses", "spending_summary"), ("Calendar file", "show_calendar"), ("Here are your next events", "show_calendar"),
-    ("Speed test", "speed_test"), ("Internet connect", "speed_test"), ("Connection is active", "speed_test"),
-    ("The translation", "translate"), ("Please tell me what text", "translate"), ("I've saved that", "write_note"),
-    ("What note", "write_note"), ("Your notepad", "read_notes"), ("You don't have any notes", "read_notes"),
-    ("Starting a timer", "set_timer"), ("is spelled", "spell_word"), ("It is Heads", "flip_coin"),
-    ("It is Tails", "flip_coin"), ("It is a ", "roll_die"), ("The answer is", "calculate"), ("Your local IP", "ip_address"),
-    ("Here are the top world", "news_headlines"), ("I am currently unable to fetch the news", "news_headlines"),
-    ("According to Wikipedia", "wikipedia"), ("I couldn't fetch details from Wikipedia", "wikipedia"),
-    ("I will remind you", "set_reminder"), ("In ", "weather"), ("I am currently unable to fetch the weather", "weather"),
-    ("It's ", "tell_time"), ("Today is", "tell_date"), ("Closed", "close_app"), ("isn't open", "close_app"),
-    ("Everything minimised", "minimize_windows"), ("minimised", "minimize_windows"), ("Windows restored", "restore_windows"),
-    ("maximised", "maximize_window"), ("Switched to", "switch_to_app"), ("Reopening", "continue_work"),
-]
-
-_OLD_WORKER = r'''
-import json, os, sys, types, subprocess, threading, urllib.request, webbrowser
-root = sys.argv[1]
-sys.path.insert(0, root); os.chdir(root)
-os.environ["MEMORY_FILE"] = os.path.join(root, "memory.json")
-for name in ["pyautogui", "pyperclip", "pycaw", "pycaw.pycaw", "comtypes", "pytesseract", "speedtest"]:
-    m = types.ModuleType(name); sys.modules[name] = m
-sys.modules["pyautogui"].__getattr__ = lambda n: (lambda *a, **k: None)
-sys.modules["pyperclip"].paste = lambda: ""; sys.modules["pyperclip"].copy = lambda t: None
-fake_brain = types.ModuleType("brain"); fake_brain.ask_ai = lambda p: "stub"; fake_brain.ask_once = lambda p: "stub"
-sys.modules["brain"] = fake_brain
-class P:
-    returncode = 0; stdout = "main\n"; stderr = ""
-subprocess.run = lambda *a, **k: P(); subprocess.Popen = lambda *a, **k: P()
-os.system = lambda *a: 0; os.startfile = lambda *a: None; os.rename = lambda *a: None
-webbrowser.open = lambda *a, **k: True
-def no_net(*a, **k): raise OSError("offline in eval")
-urllib.request.urlopen = no_net
-threading.Thread.start = lambda self: None
-import ultron.commands.windows as w
-from ultron import commands
-class W:
-    def __init__(self): self.wins = [w.Window(1, "YouTube - Google Chrome", "chrome", 10), w.Window(2, "x - Visual Studio Code", "code", 20)]
-    def windows(self): return list(self.wins)
-    def foreground(self): return self.wins[0]
-    def is_own(self, x): return False
-    def __getattr__(self, n): return lambda *a, **k: None
-w._Win32 = W
-import ultron.commands.system as s
-s.AudioUtilities = None
-out = []
-for text in json.load(sys.stdin):
-    try:
-        reply = commands.execute_command(text, lambda p: False)
-    except Exception as e:
-        reply = "ERROR " + str(e)
-    out.append(reply)
-print(json.dumps(out))
-'''
-
-
-# Old replies that name a command only by topic: errors from the stubs, persona lines. Each maps
-# to a set; the case counts as right if its expected command is in the set (generous to the old router).
-_OLD_TOPICS = [
-    ("Failed to take screenshot", {"take_screenshot"}), ("I couldn't locate your", {"open_folder"}),
-    ("Failed to adjust volume", {"volume_up", "volume_down", "volume_set", "mute", "unmute"}),
-    ("Failed to open", {"open_app", "open_website"}), ("Failed to", None), (" is spelled", {"spell_word"}),
-    ("programmers", {"tell_joke"}), ("binary", {"tell_joke"}), ("SQL query", {"tell_joke"}),
-]
-
-
-def _old_command(reply: str | None, expected: str | None = None) -> str | None:
-    if reply is None:
-        return None
-    if reply == "":
-        return "type_text"
-    if "Not confirmed" in reply or "Cancelled" in reply or "did nothing" in reply.lower():
-        return "risky"
-    for start, name in _OLD_REPLY_TO_COMMAND:
-        if reply.startswith(start) or (start in ("isn't open", "minimised", "maximised") and start in reply):
-            return name
-    for part, names in _OLD_TOPICS:
-        if part in reply:
-            if names is None:
-                return expected if expected and reply.lower().startswith(f"failed to {expected.split('_')[0]}") else "other"
-            return expected if expected in names else sorted(names)[0]
-    from ultron import persona  # memory and activity commands answer with persona lines
-    groups = {"memory": ("remember_fact", "list_memories", "forget_last_fact", "forget_fact", "forget_conversation"),
-              "activity": ("day_summary", "continue_work", "morning_brief", "pause_tracking", "resume_tracking",
-                           "forget_today", "tracking_status")}
-    for lst, group in ((persona.MEMORY_SAVED, "memory"), (persona.MEMORY_EMPTY, "memory"), (persona.MEMORY_FORGOT, "memory"),
-                       (persona.MEMORY_NOT_FOUND, "memory"), (persona.CONVERSATION_FORGOTTEN, "memory"),
-                       (persona.ACTIVITY_NOTHING, "activity"), (persona.TRACKING_PAUSED, "activity"),
-                       (persona.TRACKING_RESUMED, "activity")):
-        if reply in lst or reply.startswith("I remember:") or reply.startswith("Yesterday"):
-            names = groups[group]
-            return expected if expected in names else names[0]
-    return "other:" + reply[:40]
-
-
-def eval_old(cases: list[Case], ref: str = "p1-fixes") -> list[Result]:
-    tmp = tempfile.mkdtemp(prefix="ultron_old_")
-    archive = subprocess.run(["git", "-C", ROOT, "archive", ref], capture_output=True, check=True).stdout
-    subprocess.run(["tar", "-x", "-C", tmp], input=archive, check=True)
-    worker = os.path.join(tmp, "_old_worker.py")
-    with open(worker, "w", encoding="utf-8") as f:
-        f.write(_OLD_WORKER)
-    res = subprocess.run([sys.executable, worker, tmp], input=json.dumps([c.text for c in cases]),
-                         capture_output=True, text=True, encoding="utf-8")
-    if res.returncode != 0:
-        raise RuntimeError(res.stderr[-2000:])
-    replies = json.loads(res.stdout.strip().splitlines()[-1])
-    risky = {"shutdown_pc", "restart_pc", "empty_recycle_bin"}
-    results = []
-    for case, reply in zip(cases, replies):
-        chosen = _old_command(reply, case.expected)
-        if chosen == "risky":
-            chosen = case.expected if case.expected in risky else "restart_pc"
-        if chosen == "type_text" and case.expected != "type_text" and case.expected is not None:
-            chosen = "other:silent"
-        results.append(Result(case, chosen, False, "old"))
     return results
 
 
@@ -368,7 +219,6 @@ def gate_report(results: list[Result]) -> dict:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--old", action="store_true", help="also evaluate the old router (p1-fixes)")
     ap.add_argument("--llm", help="Ollama model for the tool stage, e.g. llama3.2:3b")
     ap.add_argument("--full-tools", action="store_true", help="offer every command as a tool, not the shortlist")
     args = ap.parse_args()
@@ -379,8 +229,6 @@ def main() -> int:
     report["new"] = summarize(new)
     report["new"]["seconds"] = round(time.perf_counter() - start, 2)
     report["gate"] = gate_report(new)
-    if args.old:
-        report["old"] = summarize(eval_old(cases))
     if args.llm:
         eval_llm(new, args.llm, args.full_tools)
         report[f"llm {args.llm}{' full' if args.full_tools else ''}"] = summarize(new, llm=True)

@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import re
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Callable
 
 RISKS = ("safe", "confirm", "blocked")
@@ -191,10 +191,6 @@ def commands(stage: str | None = None) -> list[Command]:
 _dry_run = [False]
 
 
-def is_dry_run() -> bool:
-    return _dry_run[0]
-
-
 @contextmanager
 def dry_run(on: bool = True):
     old, _dry_run[0] = _dry_run[0], on
@@ -211,9 +207,3 @@ def call(cmd: Command, args: dict) -> str | None:
     return cmd.handler(**args)
 
 
-@dataclass
-class Example:
-    """A sentence and the command it means, for the matcher index."""
-    text: str
-    command: str | None  # None: not a command
-    extra: dict = field(default_factory=dict)

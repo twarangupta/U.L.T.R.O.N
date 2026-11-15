@@ -47,10 +47,6 @@ class Brain:
             )
             return False
 
-    def reset_conversation(self):
-        """Forget the conversation (long-term facts stay)."""
-        memory.conversation.clear()
-
     def build_messages(self, question: str) -> list[dict]:
         """System prompt, the real time, saved facts, the recent exchanges, the question.
 
@@ -207,10 +203,6 @@ class StreamingReply:
         self._thread = threading.Thread(target=self._run, args=(brain_,), daemon=True, name="llm-stream")
         self._thread.start()
 
-    @property
-    def is_command(self) -> bool:
-        return self.tool_call is not None
-
     def _run(self, brain_):
         spoken = 0  # how much of self.text has been handed to on_sentence
         try:
@@ -298,10 +290,3 @@ def current_time_note() -> str:
 # Singleton instance
 brain = Brain()
 
-def ask_ai(question: str) -> str:
-    """Convenience helper to ask the brain."""
-    return brain.ask(question)
-
-def reset_brain():
-    """Forget the conversation (long-term facts stay)."""
-    brain.reset_conversation()

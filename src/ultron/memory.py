@@ -84,11 +84,6 @@ class Conversation:
         self.last_command = user
         self.add_exchange(user, f"(ran a command) {result}" if result else "(ran a command, done)")
 
-    def replace_last_reply(self, text: str):
-        with self._lock:
-            if self._messages and self._messages[-1]["role"] == "assistant":
-                self._messages[-1]["content"] = text
-
     def recent(self) -> list[dict]:
         """The last max_exchanges exchanges, oldest first."""
         with self._lock:
