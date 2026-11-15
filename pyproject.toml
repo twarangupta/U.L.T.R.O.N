@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ultron"
+version = "0.2.0"
+description = "A free, local, hands-free voice assistant that controls your Windows PC."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.11"
+# Exact versions: these are the ones ULTRON is tested with (taken from the working venv).
+dependencies = [
+    "numpy==2.4.6",
+    "scipy==1.17.1",
+    "psutil==7.2.2",
+    "python-dotenv==1.2.4",
+    "ollama==0.6.3",
+    "faster-whisper==1.2.1",
+    "openwakeword==0.6.0",
+    "piper-tts==1.8.0",
+    "pyaudio==0.2.14",
+    "sounddevice==0.5.6",
+    "model2vec==0.10.0",
+    "rapidfuzz==3.14.6",
+    "pyautogui==0.9.54",
+    "pyperclip==1.11.0",
+    "pytesseract==0.3.13",
+    "pycaw==20260927; sys_platform == 'win32'",
+    "comtypes==1.5.0; sys_platform == 'win32'",
+]
+
+[project.optional-dependencies]
+# Lets Whisper run on an NVIDIA GPU (CUDA 12 cuBLAS runtime, about 550 MB download, 772 MB on disk).
+# Measured on a GTX 1650: ctranslate2 loads only cublas64_12.dll and cublasLt64_12.dll; cuDNN is not needed.
+# Without it ULTRON still works and runs Whisper on the CPU.
+gpu = ["nvidia-cublas-cu12==12.9.2.10; sys_platform == 'win32' or sys_platform == 'linux'"]
+# For working on ULTRON: tests, lint, dead-code check, and the tools in tools/.
+dev = ["pytest==9.2.0", "ruff==0.17.5", "vulture==2.16", "pyyaml==6.0.3", "soundfile==0.14.0"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "tools"]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+extend-exclude = ["venv", "models", "recordings", "results"]
+
+[tool.ruff.lint]
+# Correctness rules only (unused imports and names, undefined names, syntax errors).
+# Import sorting is left off on purpose: the order of imports in
+# ultron/commands/__init__.py decides command registration order.
+select = ["E4", "E7", "E9", "F"]
+ignore = ["E701", "E702", "E402"]

@@ -1,10 +1,10 @@
 """Fixes from the owner's live run on 2026-11-15 (13:10 to 13:16). Nothing real runs."""
 import pytest
 
-import commands  # noqa: F401
-from commands import apps, windows
-from commands.router import route
-from commands.windows import Window
+from ultron import commands  # noqa: F401
+from ultron.commands import apps, windows
+from ultron.commands.router import route
+from ultron.commands.windows import Window
 
 FAKE_INDEX = {"postman": r"C:\fake\Postman.lnk", "claude": apps.APPS_FOLDER + "Claude_x!Claude",
               "microsoft edge": r"C:\fake\Microsoft Edge.lnk", "obsidian": r"C:\fake\Obsidian.lnk"}
@@ -33,7 +33,7 @@ def test_search_wins_over_open():
 
 
 def test_rupees_correction():
-    import corrections
+    from ultron.stt import corrections
     rules = corrections.compile_rules(corrections.load())
     assert "3000 rupees" in corrections.apply("best whey protein under 3000routes", rules)
 
@@ -50,7 +50,7 @@ def test_create_folder_routes(said, args):
 
 @pytest.mark.real_handlers
 def test_create_folder_makes_it_once(tmp_path, monkeypatch):
-    from commands.system import create_folder
+    from ultron.commands.system import create_folder
     monkeypatch.setenv("USERPROFILE", str(tmp_path))
     monkeypatch.setenv("HOME", str(tmp_path))
     (tmp_path / "Desktop").mkdir()
@@ -100,7 +100,7 @@ def test_maximise_everything_restores_all():
 
 def test_bargein_logs_echo_and_floor_separately():
     import numpy as np
-    from bargein import BargeInDetector
+    from ultron.audio.bargein import BargeInDetector
     b = BargeInDetector(factor=3.0, min_rms=700)
     for _ in range(10):
         b.feed(np.full(1280, 200, dtype=np.int16))

@@ -1,9 +1,9 @@
 """Fixes from the owner's live run on 2026-11-15 (15:00 to 15:06). Dry-run unless marked; nothing real runs."""
 import pytest
 
-import commands  # noqa: F401
-from commands import apps, context, registry, router, slots, system
-from commands.router import Interaction, Outcome, Reroute, execute, route, run_tool_call
+from ultron import commands  # noqa: F401
+from ultron.commands import apps, context, registry, router, slots, system
+from ultron.commands.router import Interaction, Outcome, Reroute, execute, route, run_tool_call
 
 
 class IO(Interaction):
@@ -27,6 +27,7 @@ def fresh_context():
 
 # ---- 9. optional slots are filled only from their own clause ----
 @pytest.mark.parametrize("said", ["minimize all the windows", "minimise everything", "hide all my windows"])
+@pytest.mark.needs_model
 def test_minimise_everything_keeps_nothing(said):
     out = route(said)
     assert out.command == "minimize_windows" and "keep" not in out.args, out

@@ -1,7 +1,7 @@
 """Barge-in: the user talking over ULTRON stops it; ULTRON's own echo does not."""
 import numpy as np
 
-from bargein import BargeInDetector
+from ultron.audio.bargein import BargeInDetector
 
 RNG = np.random.default_rng(0)
 

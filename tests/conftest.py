@@ -10,6 +10,18 @@ import pytest
 
 def pytest_configure(config):
     config.addinivalue_line("markers", "real_handlers: run command handlers for real (use fakes!)")
+    config.addinivalue_line("markers", "needs_model: needs the meaning-matcher model in models/potion-base-8M")
+
+
+def pytest_collection_modifyitems(config, items):
+    """Skip tests that need the 30 MB meaning-matcher model when it is not downloaded (for example on CI)."""
+    from ultron.commands import intent
+    if intent.model_available():
+        return
+    skip = pytest.mark.skip(reason="meaning-matcher model not downloaded")
+    for item in items:
+        if item.get_closest_marker("needs_model"):
+            item.add_marker(skip)
 
 
 @pytest.fixture(autouse=True)
@@ -17,6 +29,6 @@ def _dry_run_commands(request):
     if request.node.get_closest_marker("real_handlers"):
         yield
         return
-    from commands import registry
+    from ultron.commands import registry
     with registry.dry_run():
         yield

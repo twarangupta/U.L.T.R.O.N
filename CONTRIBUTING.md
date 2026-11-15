@@ -1,59 +1,43 @@
 # Contributing to ULTRON
 
-Thank you for your interest in contributing to ULTRON! This project is built for developers who want a local, private, and highly extensible voice assistant on their desktops.
+Thanks for helping. ULTRON is a local, private, voice-controlled assistant; changes should keep it that way.
 
----
+## Reporting bugs and ideas
 
-## Code of Conduct
+- Search the issues first, then use the Bug Report or Feature Request template.
+- For bugs, include the relevant lines of `ultron.log` (it holds what was heard and the timing of each step). Remove anything private.
 
-By participating in this project, you agree to abide by standard open-source community guidelines:
-- Be respectful and professional.
-- Focus on constructive criticism.
-- Protect personal/sensitive details in logs and issues.
+## Branches
 
----
+- `main` is stable and changes only at the end of a phase, through a pull request from `dev`.
+- `dev` is the integration branch.
+- Start a feature branch from `dev` and open the pull request into `dev`. Keep commits small with honest messages.
 
-## How Can I Contribute?
+## Setup
 
-### 1. Reporting Bugs
-- Search existing issues to verify the bug has not been reported.
-- Open a new issue using the **Bug Report** template.
-- Provide a clear description, reproduction steps, and system logs (`ultron.log`).
+```bash
+python -m venv venv
+venv\Scripts\python.exe -m pip install -e ".[dev,gpu]"
+venv\Scripts\python.exe tools\download_voice.py
+```
 
-### 2. Suggesting Features
-- Open an issue using the **Feature Request** template.
-- Explain the user benefit, proposed voice command keywords, and implementation idea.
+## Before you open a pull request
 
-### 3. Submitting Pull Requests
-- Fork the repository and create a new branch from `main` or `development`.
-- Align your code with PEP 8 coding standards.
-- Ensure all imports are portable across Windows, Linux, and macOS.
-- Centralize all configurable settings in `config.py` using `.env` environment variables.
-- Update `commands.txt` and `README.md` if your PR introduces new voice command triggers.
+```bash
+venv\Scripts\python.exe -m ruff check .
+venv\Scripts\python.exe -m pytest -q
+venv\Scripts\python.exe -m ultron --self-test
+```
 
----
+The same checks run in GitHub Actions (`.github/workflows/ci.yml`) on Windows. Rules:
 
-## Local Development Setup
+- Tests never run real commands. `tests/conftest.py` puts the registry in dry-run mode; a test that needs a real handler must say so with `@pytest.mark.real_handlers` and use fakes. Do not write tests that play sound, open the microphone, load Whisper or call Ollama.
+- A new voice command is one `@command` declaration in `src/ultron/commands/` (name, description, parameters, risk level, 5 to 10 example sentences). Then regenerate the list: `venv\Scripts\python.exe tools\gen_commands_txt.py` (a test fails if `docs/COMMANDS.md` is stale).
+- Check phrase understanding with `venv\Scripts\python.exe tools\intent_eval.py` (add real phrasings to `tests/intents.yaml`).
+- Settings belong in `src/ultron/config.py` (read from `.env`); file locations in `src/ultron/paths.py`.
+- Every module starts with a short docstring saying what it is for.
+- Risky actions need the spoken confirm; medium-impact ones are announced first so the user can interrupt.
 
-1. Fork and clone the repository.
-2. Initialize a virtual environment:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: .\venv\Scripts\Activate.ps1
-   ```
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-4. Create your `.env` file from `.env.example`:
-   ```bash
-   cp .env.example .env
-   ```
-5. Run the neural voice download script:
-   ```bash
-   python download_voice.py
-   ```
-6. Launch ULTRON:
-   ```bash
-   python ultron.py
-   ```
+## Layout
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Design decisions are recorded in [docs/BUILD_LOG.md](docs/BUILD_LOG.md).

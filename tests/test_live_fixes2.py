@@ -4,11 +4,11 @@ import time
 import numpy as np
 import pytest
 
-import commands  # noqa: F401
-from commands import context, registry, system
-from commands.registry import ArgumentError
-from commands.router import Interaction, repair, route, run_tool_call
-from commands.text import is_noise
+from ultron import commands  # noqa: F401
+from ultron.commands import context, registry, system
+from ultron.commands.registry import ArgumentError
+from ultron.commands.router import Interaction, repair, route, run_tool_call
+from ultron.commands.text import is_noise
 
 
 class IO(Interaction):
@@ -91,6 +91,7 @@ def test_vague_remark_runs_nothing():
     assert res is None or res.command is None
 
 
+@pytest.mark.needs_model
 def test_gate_keeps_a_fitting_tool_call():
     res, out = tool("i can't hear anything, bump it up", "volume_up")
     assert res is not None and res.command == "volume_up", (res, out.scores)
@@ -98,7 +99,7 @@ def test_gate_keeps_a_fitting_tool_call():
 
 
 def test_gate_tiers():
-    from commands.router import GATE_ASK, GATE_RUN, gate
+    from ultron.commands.router import GATE_ASK, GATE_RUN, gate
     cmd = registry.get("volume_up")
     assert gate("make it louder", cmd, GATE_RUN, {}) == "run"
     assert gate("make it louder", cmd, (GATE_ASK + GATE_RUN) / 2, {}) == "ask"
@@ -215,9 +216,8 @@ def test_words_are_not_noise(text):
 
 # ---- 8. barge-in ----
 def test_barge_in_floor_and_speech_level():
-    import config
-    from audio import speech_level
-    from bargein import BargeInDetector
+    from ultron import config
+    from ultron.audio.bargein import BargeInDetector, speech_level
     assert config.BARGE_IN_MIN_RMS == 200
     assert speech_level([100, 300, 200]) == 200 and speech_level([]) == 0.0
     det = BargeInDetector(factor=3.0, min_rms=200, needed=4)
