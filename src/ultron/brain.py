@@ -272,11 +272,11 @@ class StreamingReply:
         self._cancel.set()
 
 
-def ask_once(prompt: str) -> str:
+def ask_once(prompt: str, max_tokens: int = 200) -> str:
     """One standalone question (no persona, no conversation), e.g. for summaries."""
     try:
         response = ollama.chat(model=brain.model, messages=[{"role": "user", "content": prompt}],
-                               keep_alive=_keep_alive(), options={"num_predict": 200})
+                               keep_alive=_keep_alive(), options={"num_predict": max_tokens})
         return response.get("message", {}).get("content", "").strip()
     except Exception as e:
         logger.debug(f"ask_once failed: {e}")
