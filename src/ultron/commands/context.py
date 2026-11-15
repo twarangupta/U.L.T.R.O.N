@@ -20,6 +20,23 @@ class LastRun:
 last_run: LastRun | None = None
 pending: str | None = None          # a question ULTRON asked whose answer is the next sentence ("rename_name")
 created_folder: str | None = None   # full path of the folder ULTRON created last
+pending_at: float = 0.0             # when `pending` was set (monotonic), so a stale question expires
+
+
+def set_pending(name: str):
+    global pending, pending_at
+    import time
+    pending, pending_at = name, time.monotonic()
+
+
+def take_pending(name: str, max_age: float = 30.0) -> bool:
+    """True once if `name` was asked within max_age seconds; the question is cleared either way."""
+    global pending
+    import time
+    hit = pending == name and time.monotonic() - pending_at <= max_age
+    if pending == name:
+        pending = None
+    return hit
 
 
 # What the user said for the commands that ran lately, oldest first: "remember this as work mode" (D37).

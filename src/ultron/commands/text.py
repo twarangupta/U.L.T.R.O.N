@@ -46,6 +46,18 @@ STOP_PHRASES = {
 }
 _STOP_ENDINGS = {"stop", "cancel"}
 
+# "Goodbye" and friends: the whole utterance only, so "say goodbye to my mom" is not one.
+GOODBYE_PHRASES = {
+    "goodbye", "good bye", "bye", "bye bye", "bye ultron", "goodbye ultron", "thats it", "that s it",
+    "thats it for now", "that s it for now", "thats all for now", "that s all for now",
+    "thats it for", "that s it for", "thats all for", "that s all for",  # "now" is dropped as a filler
+    "see you later", "see you",
+}
+
+
+def is_goodbye(text: str) -> bool:
+    return normalize(text) in GOODBYE_PHRASES
+
 
 def is_stop_phrase(text: str) -> bool:
     """True for a stop request, including short mishearings like "Assets stop."

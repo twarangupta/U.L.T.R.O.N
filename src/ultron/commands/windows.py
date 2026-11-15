@@ -67,6 +67,28 @@ def matches(window: Window, app: str) -> bool:
     return len(app) >= 3 and app in window.title.lower()
 
 
+def open_windows(app: str, windows_api=None) -> list[Window]:
+    """Windows already open for this app, by process name only (a tab titled "Claude" is not the Claude app)."""
+    api = windows_api or _win32()
+    processes = APP_ALIASES.get(app.lower().strip()) or (app.lower().strip().replace(" ", ""),)
+    return [w for w in api.windows() if w.process in processes]
+
+
+def bring_up(app: str, windows_api=None) -> bool:
+    """Put the app's window in front if it is already open. False when it is not (or on any error)."""
+    if sys.platform != "win32" and windows_api is None:
+        return False
+    try:
+        api = windows_api or _win32()
+        found = open_windows(app, api)
+        if not found:
+            return False
+        api.focus(found[0])
+        return True
+    except Exception:
+        return False
+
+
 def handle(text: str, windows_api=None) -> str | None:
     """Parse and run a window command; None if the text is not one. windows_api is for tests."""
     parsed = parse(text)
