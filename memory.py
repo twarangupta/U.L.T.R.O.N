@@ -32,6 +32,11 @@ MAX_FACTS_IN_PROMPT = 30
 _FILLER = {"the", "a", "an", "my", "about", "that", "of", "to", "is", "was", "i", "me"}
 
 
+def _clear_context():
+    from commands import context
+    context.clear()
+
+
 class Conversation:
     """Rolling chat history with an idle timeout. Thread-safe."""
 
@@ -52,6 +57,7 @@ class Conversation:
             if self._messages and self._clock() - self._last > self.forget_seconds:
                 self._messages.clear()
                 self.last_command = None
+                _clear_context()
                 logger.info("Conversation forgotten after a long silence.")
                 return True
             return False
@@ -60,6 +66,7 @@ class Conversation:
         with self._lock:
             self._messages.clear()
             self.last_command = None
+            _clear_context()
             self._just_cleared = True
 
     def add_exchange(self, user: str, assistant: str):

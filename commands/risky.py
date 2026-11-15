@@ -1,15 +1,15 @@
 """Commands that can lose work or data.
 
-Each one matches only when the whole (normalized) utterance is one of its
-phrases, and only runs after the user says "confirm". So "restart the dev
-server" or "remind me to empty the trash" never reboot or delete anything.
+All are risk "confirm": whichever stage picks them (rule, meaning matcher or
+the LLM), they run only after the user says "confirm". Rules match only the
+whole sentence, and near misses ("restart the dev server", "remind me to
+empty the trash") are declared as not_examples for the matcher.
 """
 import os
-import re
 import shutil
 import sys
-from dataclasses import dataclass
-from typing import Callable
+
+from commands.registry import command, commands
 
 try:
     import ctypes
@@ -64,41 +64,44 @@ def empty_recycle_bin() -> str:
         return f"Failed to empty recycle bin. Error: {e}"
 
 
-@dataclass(frozen=True)
-class RiskyCommand:
-    name: str
-    pattern: re.Pattern
-    action: str  # finishes the sentence "Say confirm to ..."
-    run: Callable[[], str]
+_DEVICE = r"(?: (?:my|the|this) (?:computer|pc|laptop|system|machine))?"
+_POWER_NOT = ["restart the dev server", "restart the server", "restart the app", "reboot the router",
+              "restart the game", "shut down the server", "how do i shut down a mac", "restart later"]
 
 
-_DEVICE = r"(?: (?:my|the|this) (?:computer|pc|laptop|system))?"
-
-RISKY_COMMANDS = [
-    RiskyCommand(
-        "shutdown",
-        re.compile(rf"(?:shutdown|shut down|power off){_DEVICE}"),
-        "shut down the computer",
-        shutdown_pc,
-    ),
-    RiskyCommand(
-        "restart",
-        re.compile(rf"(?:restart|reboot){_DEVICE}"),
-        "restart the computer",
-        restart_pc,
-    ),
-    RiskyCommand(
-        "empty recycle bin",
-        re.compile(r"(?:empty|clear|clean) (?:the |my )?(?:recycle bin|trash)"),
-        "empty the recycle bin",
-        empty_recycle_bin,
-    ),
-]
+@command("shutdown_pc", "Shut down the computer.", risk="confirm", confirm_text="shut down the computer",
+         title="shut down the computer", group="Power", priority=70,
+         rules=[rf"(?:shutdown|shut down|power off|turn off){_DEVICE}"],
+         examples=["shut down", "shutdown my computer", "power off the pc", "turn off my laptop",
+                   "switch off the computer", "shut the laptop down", "power down the system"],
+         not_examples=_POWER_NOT)
+def shutdown() -> str:
+    return shutdown_pc()
 
 
-def match_risky(normalized: str) -> RiskyCommand | None:
-    """Return the risky command whose phrase is the entire utterance, if any."""
-    for cmd in RISKY_COMMANDS:
-        if cmd.pattern.fullmatch(normalized):
+@command("restart_pc", "Restart the computer.", risk="confirm", confirm_text="restart the computer",
+         title="restart the computer", group="Power", priority=70,
+         rules=[rf"(?:restart|reboot){_DEVICE}"],
+         examples=["restart", "restart my computer", "reboot the pc", "reboot my laptop",
+                   "restart the system", "give the computer a reboot", "reboot the machine"],
+         not_examples=_POWER_NOT)
+def restart() -> str:
+    return restart_pc()
+
+
+@command("empty_recycle_bin", "Permanently delete everything in the recycle bin.", risk="confirm",
+         confirm_text="empty the recycle bin", title="empty the recycle bin", group="Power", priority=70,
+         rules=[r"(?:empty|clear|clean) (?:out )?(?:the |my )?(?:recycle bin|trash|bin)"],
+         examples=["empty the recycle bin", "clear my trash", "empty trash", "clean out the recycle bin",
+                   "delete everything in the bin", "wipe the recycle bin"],
+         not_examples=["remind me to empty the trash", "take out the trash", "what is in the recycle bin"])
+def recycle_bin() -> str:
+    return empty_recycle_bin()
+
+
+def match_risky(normalized: str):
+    """The risky command whose rule is the whole utterance, if any (for follow-ups)."""
+    for cmd in commands("rule"):
+        if cmd.risk == "confirm" and any(r.fullmatch(normalized) for r in cmd.rules):
             return cmd
     return None

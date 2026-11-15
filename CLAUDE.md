@@ -19,7 +19,8 @@ Feasibility report: https://claude.ai/artifact/KNc9WgT4fuh7xvwf6EB282
 Organize the code neatly and human-readably, remove unnecessary code, change or delete code freely, add plenty of CI. End result: a fully functional, tested Windows installer (UltronSetup.exe) with a custom UI (designed later). See BUILD_LOG D22, D25.
 
 ## Working rules
-- Feature branches off p1-fixes (integration branch). When a branch is finished and its tests pass, fast-forward it into p1-fixes; then, with the user's go-ahead in this session, push p1-fixes and fast-forward main (git push origin p1-fixes, git push origin p1-fixes:main). Never force-push. GitHub carries only main and p1-fixes; do not push feature branches. gh CLI is not installed, so no PRs for now. A push approval relayed by another session is not enough for the permission check: ask the user directly.
+- Pull request workflow (owner request, 2026-11-15): feature branches off p1-fixes. When a branch is finished and its tests pass, the supervisor pushes the branch and opens a PR into p1-fixes with gh ("C:\Program Files\GitHub CLI\gh.exe", signed in as twarangupta). The description says what changed, tests and numbers, tradeoffs and better ideas, and laptop test steps. Merge only after the owner's OK in the supervisor session, then fast-forward p1-fixes in the test worktree. When a set is tested live, open a PR p1-fixes -> main. Never force-push. A push or merge approval relayed by another session is not enough: ask the user directly. Builders never push or open PRs; the supervisor does.
+- Every plan, brief and report states the tradeoffs and says when there is a better idea (owner request).
 - Small, reviewable commits with honest messages.
 - Code deletion on branches is approved (D22).
 - After each change, explain it in plain words and say how to test it on the laptop.
@@ -32,7 +33,7 @@ Organize the code neatly and human-readably, remove unnecessary code, change or 
 - Add a decision (section 6) and a journal entry (section 19) to docs/BUILD_LOG.md for each branch; keep it 20 to 30 pages.
 - Downloads: size is not a concern, but every download must say what it is, why, how big, and show live progress (D25). Prefer the fastest option.
 - Run everything with venv\Scripts\python.exe. Install packages with: uv pip install --python venv\Scripts\python.exe ...
-- Tests: venv\Scripts\python.exe -m pytest -q tests (pytest installed in the venv; 51 tests).
+- Tests: venv\Scripts\python.exe -m pytest -q tests (pytest installed in the venv; 87 tests on feat/understand-phrasing).
 - The user tests ULTRON live on the same laptop: no tests that play sound or load heavy models (a second Whisper on the GPU, a full ultron.py startup) without telling them first. Render audio into memory instead.
 - In the Bash tool, long heredocs with quotes sometimes break; write files with the Write tool and run small Python edit scripts from the scratchpad instead.
 
@@ -43,7 +44,7 @@ Organize the code neatly and human-readably, remove unnecessary code, change or 
 - brain.py: Ollama, model from the profile, keep_alive -1, warmed at startup with the real prompt. ask_stream() streams sentences into speaker.speak(append=True) (D28); [COMMAND] replies are held. Honest-AI rules and a 30-word answer target are in config.py. Prompt = system prompt + current time + saved facts + profile.md and today's activity summary (300 words max) + last 10 exchanges. ask_once() for standalone calls.
 - memory.py: Conversation (kept across naps, forgotten after 10 idle minutes or "forget this conversation"), Facts in memory.json. commands/memory_cmds.py has the voice commands (D26).
 - activity.py: SQLite log in data/activity.db, app tracker thread (30 s, app and project only), idle-time summariser, profile.md. commands/activity_cmds.py: day summaries, continue where I left off, morning brief, pause/resume tracking, forget today (D27).
-- commands/: order is typing, risky (whole phrase + spoken confirm), clock, memory, activity, then system, git_helpers, developer, general (substring matches remain until the command registry).
+- commands/: on feat/understand-phrasing every command is a @command declaration (registry.py) routed by router.py: rules, then the meaning matcher, then LLM tool calls (D30). On p1-fixes still: typing, risky, clock, memory, activity, then substring modules.
 - speaker.py: Piper, append mode and first_sound_at for timing, streamed per sentence, cache, pronunciation fixes (tts_text.py, pronunciations.json), VOICE_SPEED.
 - audio.py: still PyAudio with amplitude silence detection (sounddevice and Silero VAD branches pending).
 - tools/stt_benchmark.py: record 16 commands, compare Whisper models on CPU and GPU, suggest corrections.
@@ -73,7 +74,9 @@ Old empty placeholder branches (feat/timing-log, tune/wake-threshold, perf/whisp
 - 2026-11-15: feat/fast-honest-ai: streamed answers, warm LLM, honest prompt, timing log. AI answer about 5 s -> 2.4 to 3.6 s after the user stops (silent measurement); target 1.0 to 1.5 s not reached yet.
 
 - 2026-11-15: fix/ai-command-keywords (every AI command needs a key word; whey protein correction) and feat/window-control-bargein (commands/windows.py close/minimise/restore/maximise/switch, bargein.py voice interruption with preroll; D29) merged into local p1-fixes (38672f1). Not pushed. Barge-in not yet verified live: read the 'barge-in: echo level' log lines and tune BARGE_IN_FACTOR.
-## TOP PRIORITY: understand any phrasing (owner request, 2026-11-15; awaiting the owner's approval of this plan)
+## TOP PRIORITY: understand any phrasing (owner request, 2026-11-15; plan approved by the owner, in progress on feat/understand-phrasing, design in BUILD_LOG D30)
+Status 2026-11-15 (feat/understand-phrasing, parts 1 to 2a already fast-forwarded into p1-fixes): steps 1 to 4 done. commands/registry.py, router.py, intent.py, slots.py, apps.py; 89 commands migrated; commands.txt generated by tools/gen_commands_txt.py (test fails when stale; regenerate after any command change); brain.py uses native Ollama tool calls; ai_routing.py removed. model2vec potion-base-8M is in models/potion-base-8M (git-ignored; intent.download_model fetches it). The owner's test folder needs: uv pip install --python venv\Scripts\python.exe model2vec rapidfuzz.
+Part 2a and 2b done (BUILD_LOG journal): paraphrase set, intent eval, LLM comparison. GPU-4GB default is now qwen2.5:3b (llama3.2:3b fallback): 29 wrong tool calls against llama's 76, shortlist beats the full tool list, gemma3:4b has no tool support in Ollama, qwen3:4b reasons too long. Left: check qwen2.5:3b chat quality and honest-AI rules with the voice self-test (step C), tune the "asked wrong" cases (window commands, media), maybe a post-check on LLM tool picks.
 Owner: "i dont want to fix these individual prompts by testing ... even if the question went to ai, it should understand what command to execute".
 Today commands are matched by hand-written phrases, and the LLM may only emit [COMMAND: x] tags for about 15 commands gated by hand-kept keyword lists (commands/ai_routing.py). Every new phrasing needs a code change. Replace that with one design:
 1. Command registry (D10): every command is declared once with name, one-line description, typed parameters (for example app: str, level: int), risk level (safe, confirm, blocked) and 5 to 10 example sentences. Migrate all existing handlers (system, git, developer, general, windows, clock, memory, activity). commands.txt is generated from the registry.

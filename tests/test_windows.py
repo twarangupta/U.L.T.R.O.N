@@ -1,4 +1,6 @@
 """Window commands, tested against a fake window list (nothing on screen changes)."""
+import pytest
+
 from commands import windows
 from commands.windows import Window, handle, parse
 
@@ -65,7 +67,7 @@ def test_minimise_everything_and_except():
 
 def test_this_window_uses_foreground():
     assert run("minimise this", foreground=CHROME)[1] == [("minimise", "chrome")]
-    assert run("maximise this window", foreground=CODE)[1] == [("maximise", "code")]
+    assert run("maximise this window", foreground=CODE)[1] == [("maximise", "code"), ("focus", "code")]
 
 
 def test_switch_only_claims_open_apps():
@@ -74,6 +76,7 @@ def test_switch_only_claims_open_apps():
     assert run("kill the process on port 3000") == (None, [])
 
 
+@pytest.mark.real_handlers  # the Win32 layer is faked below
 def test_router_sends_close_to_windows_before_alt_f4(monkeypatch):
     from commands import execute_command
     seen = []

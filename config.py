@@ -23,32 +23,15 @@ OLLAMA_SYSTEM_PROMPT = (
     "Answer general knowledge questions (science, health, food, advice, how things work) normally and "
     "briefly from what you know; that is not live data. "
     "You cannot see or touch this PC, its files, the user's accounts, email, the internet or live data. "
-    "Only the commands listed below can act, and the PC runs them, not you. "
-    "If asked to do something those commands cannot do, or about this PC, the user's private data, or "
+    "Only the tools you are given can act, and the PC runs them, not you. "
+    "If asked to do something no tool can do, or about this PC, the user's private data, or "
     "live information (specs of this PC, messages, today's prices, news), reply with one short line saying "
     "you do not have access to that or do not have that information, and stop. Never pretend you did "
     "something, never invent facts or numbers, never offer to search, never tell the user to check a "
     "connection or log in.\n\n"
-    "CRITICAL ROUTING RULES:\n"
-    "If the user is asking you to perform a system action or run a git command, you MUST prepend your message with exactly `[COMMAND: <command_name>]` before any conversational text. Choose ONLY from the following valid command names:\n"
-    "- For stashing: `[COMMAND: git stash]`\n"
-    "- For stashing pop: `[COMMAND: git stash pop]`\n"
-    "- For pulling: `[COMMAND: git pull]`\n"
-    "- For pushing: `[COMMAND: git push]`\n"
-    "- For status: `[COMMAND: git status]`\n"
-    "- For committing: `[COMMAND: git commit]`\n"
-    "- For checking merge conflicts: `[COMMAND: git conflicts]`\n"
-    "- For viewing logs/commits history: `[COMMAND: git log]`\n"
-    "- For switching/checking out branch: `[COMMAND: switch branch to <branch_name>]` (replace <branch_name> with target branch)\n"
-    "- For listing branches: `[COMMAND: git branch]`\n"
-    "- For organizers: `[COMMAND: organize downloads]`\n"
-    "- For locking system: `[COMMAND: lock pc]`\n"
-    "- For volume adjustment: `[COMMAND: volume up]` or `[COMMAND: volume down]` or `[COMMAND: mute]` or `[COMMAND: unmute]`\n\n"
-    "Formatting examples:\n"
-    "- User: 'put my current work on hold' -> '[COMMAND: git stash] Stashed. Your half-finished ideas are safe with me.'\n"
-    "- User: 'sync with the remote origin' -> '[COMMAND: git pull] Pulling. Let's see what your teammates broke.'\n"
-    "- User: 'bring back my stashes' -> '[COMMAND: git stash pop] Restored. Back to the mess.'\n"
-    "Do NOT invent new commands or use other formatting styles like [ULTRON] or [Hgit pull]. If the request is just conversational, output NO command tag."
+    "TOOLS: when tools are offered, call one only if the user is clearly asking you to do that action now. "
+    "For questions, chat, advice, or anything the tools do not do, answer in words and call no tool. "
+    "Never describe a tool call in text."
 )
 
 # LLM speed: stay loaded forever (D3) and cap the length of spoken answers.
@@ -61,7 +44,9 @@ END_SILENCE_SECONDS = float(os.getenv("END_SILENCE_SECONDS", "0.6"))
 # Barge-in: talk over ULTRON to stop it (bargein.py explains the tuning).
 BARGE_IN = os.getenv("BARGE_IN", "1").lower() in ("1", "true", "yes", "on")
 BARGE_IN_FACTOR = float(os.getenv("BARGE_IN_FACTOR", "3.0"))
-BARGE_IN_MIN_RMS = float(os.getenv("BARGE_IN_MIN_RMS", "700"))
+# 200: the measured echo of ULTRON's own voice is 0 to 8 RMS (x3 = under 25), so a 700 floor never let
+# normal speech through; 200 still sits well above room noise. The "speech level" log line shows your real level.
+BARGE_IN_MIN_RMS = float(os.getenv("BARGE_IN_MIN_RMS", "200"))
 BARGE_IN_CHUNKS = int(os.getenv("BARGE_IN_CHUNKS", "4"))  # 4 x 80 ms of loud speech
 
 # Wake Word Settings

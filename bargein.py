@@ -39,9 +39,12 @@ class BargeInDetector:
         self.loud = 0
         self.seen = 0
 
+    def echo_level(self) -> float:
+        """The measured loudness of ULTRON's own voice in the mic (median of recent chunks)."""
+        return float(np.median(self.baseline)) if self.baseline else 0.0
+
     def threshold(self) -> float:
-        base = float(np.median(self.baseline)) if self.baseline else 0.0
-        return max(self.min_rms, self.factor * base)
+        return max(self.min_rms, self.factor * self.echo_level())
 
     def feed(self, chunk: np.ndarray) -> bool:
         """Add one mic chunk; True when the user is talking over ULTRON."""

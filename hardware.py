@@ -48,7 +48,7 @@ INT8_VRAM_FACTOR = 0.6  # int8_float16 needs roughly 60 percent of float16
 
 # Approximate file size (GB) of LLMs we may pick, for when Ollama cannot tell us.
 LLM_SIZE_GB = {
-    "llama3.2:1b": 1.3, "llama3.2:3b": 2.0, "gemma3:4b": 3.3,
+    "llama3.2:1b": 1.3, "llama3.2:3b": 2.0, "qwen2.5:3b": 1.9, "gemma3:4b": 3.3,
     "llama3.1:8b": 4.9, "qwen3:8b": 5.2, "gemma3:12b": 8.1, "qwen3:14b": 9.3,
 }
 
@@ -90,23 +90,25 @@ class Profile:
 PROFILES = {
     "Lite": dict(
         whisper=("base", "int8"), whisper_gpu=None,
-        llm=["llama3.2:3b", "llama3.2:1b"],
+        llm=["qwen2.5:3b", "llama3.2:3b", "llama3.2:1b"],
     ),
+    # gemma3 is left out everywhere: Ollama rejects tool calls for it (D30),
+    # so it cannot pick commands.
     "CPU-Plus": dict(
         whisper=("small", "int8"), whisper_gpu=None,
-        llm=["gemma3:4b", "llama3.2:3b"],
+        llm=["qwen2.5:3b", "llama3.2:3b"],
     ),
     "GPU-4GB": dict(
         whisper=("base", "int8"), whisper_gpu=("small", "int8_float16"),
-        llm=["llama3.2:3b", "llama3.2:1b"],
+        llm=["qwen2.5:3b", "llama3.2:3b", "llama3.2:1b"],  # D30: fewest wrong tool calls (BUILD_LOG)
     ),
     "GPU-8GB+": dict(
         whisper=("small", "int8"), whisper_gpu=("large-v3-turbo", "int8_float16"),
-        llm=["llama3.1:8b", "qwen3:8b", "gemma3:4b", "llama3.2:3b"],
+        llm=["llama3.1:8b", "qwen3:8b", "qwen2.5:3b", "llama3.2:3b"],
     ),
     "GPU-16GB+": dict(
         whisper=("small", "int8"), whisper_gpu=("large-v3-turbo", "float16"),
-        llm=["gemma3:12b", "qwen3:14b", "llama3.1:8b", "gemma3:4b", "llama3.2:3b"],
+        llm=["qwen3:14b", "llama3.1:8b", "qwen3:8b", "qwen2.5:3b", "llama3.2:3b"],
     ),
 }
 

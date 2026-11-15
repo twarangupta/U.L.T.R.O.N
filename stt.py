@@ -69,6 +69,22 @@ class SpeechToText:
         self.compute_type = "int8"
         self.model_name = _cpu_fallback_model(self.profile)
 
+    _hotword_text: str | None = None
+
+    def _hotwords(self) -> str | None:
+        """The configured hotwords plus the app names and window verbs ULTRON knows (built once)."""
+        if not WHISPER_HOTWORDS:
+            return None
+        if self._hotword_text is None:
+            try:
+                from commands import apps
+                extra = ", ".join(apps.hotword_names())
+            except Exception:
+                extra = ""
+            self._hotword_text = f"{WHISPER_HOTWORDS}, {extra}" if extra else WHISPER_HOTWORDS
+            logger.info(f"Whisper hotwords: {self._hotword_text}")
+        return self._hotword_text
+
     def transcribe(self, audio: np.ndarray) -> str:
         """Text for one utterance, or "" on silence or error."""
         if len(audio) == 0:
@@ -94,7 +110,7 @@ class SpeechToText:
             beam_size=5,
             language=WHISPER_LANGUAGE,
             vad_filter=WHISPER_VAD_FILTER,
-            hotwords=WHISPER_HOTWORDS or None,
+            hotwords=self._hotwords(),
         )
         heard = "".join(seg.text for seg in segments).strip()
         fixed = corrections.apply(heard)

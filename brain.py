@@ -90,9 +90,12 @@ class Brain:
         except Exception as e:
             logger.warning(f"Could not warm the LLM: {e}")
 
-    def ask_stream(self, question: str, on_sentence) -> "StreamingReply":
-        """Start answering in the background; on_sentence(text) gets each finished sentence."""
-        return StreamingReply(self, question, on_sentence)
+    def ask_stream(self, question: str, on_sentence, tools: list[dict] | None = None) -> "StreamingReply":
+        """Start answering in the background; on_sentence(text) gets each finished sentence.
+
+        tools: Ollama tool schemas (from the command registry) the model may call instead.
+        """
+        return StreamingReply(self, question, on_sentence, tools=tools)
 
 
 def _keep_alive():
@@ -133,52 +136,109 @@ def split_sentences(buffer: str, first: bool = False) -> tuple[list[str], str]:
     return sentences, buffer[start:]
 
 
-def looks_like_command(text: str) -> bool:
-    """The reply starts with a [COMMAND: x] tag, so it must not be spoken as it streams."""
+def looks_like_tool_text(text: str) -> bool:
+    """The model wrote a tool call as plain text (JSON) instead of using the tools API; never speak it."""
     head = text.lstrip()[:20]
-    return head.startswith(("[", "`")) or re.search(r"COMMAND\s*:", head, re.IGNORECASE) is not None
+    return head.startswith(("{", "[", "<tool", "```")) or re.search(r"\"name\"\s*:", head) is not None
+
+
+def parse_tool_text(text: str) -> tuple[str, dict] | None:
+    """{"name": "volume_up", "parameters": {...}} written as text -> (name, arguments)."""
+    import json
+    m = re.search(r"\{.*\}", text, re.DOTALL)
+    if not m:
+        return None
+    try:
+        data = json.loads(m.group())
+    except ValueError:
+        return None
+    if isinstance(data, dict) and isinstance(data.get("name"), str):
+        args = data.get("parameters", data.get("arguments", {}))
+        return data["name"], args if isinstance(args, dict) else {}
+    return None
+
+
+def _tool_calls(part) -> list:
+    message = getattr(part, "message", None)
+    if message is None and isinstance(part, dict):
+        message = part.get("message")
+    calls = getattr(message, "tool_calls", None) if message is not None else None
+    if calls is None and isinstance(message, dict):
+        calls = message.get("tool_calls")
+    return calls or []
+
+
+def _call_parts(call) -> tuple[str, dict]:
+    fn = getattr(call, "function", None) or (call.get("function") if isinstance(call, dict) else None)
+    name = getattr(fn, "name", None) or (fn.get("name") if isinstance(fn, dict) else "")
+    args = getattr(fn, "arguments", None)
+    if args is None and isinstance(fn, dict):
+        args = fn.get("arguments")
+    if isinstance(args, str):
+        import json
+        try:
+            args = json.loads(args)
+        except ValueError:
+            args = {}
+    return name or "", dict(args or {})
 
 
 class StreamingReply:
     """One streamed LLM answer.
 
-    Sentences go to on_sentence as soon as they are complete. If the reply
-    turns out to be a [COMMAND: x] tag, nothing is spoken and the caller
-    handles the full text once done. Timings are kept for the log.
+    Sentences go to on_sentence as soon as they are complete. With tools, the
+    model may answer with a tool call instead (D30): then nothing is spoken and
+    tool_call holds (name, arguments) for the router to check and run.
+    Timings are kept for the log.
     """
 
-    def __init__(self, brain_: "Brain", question: str, on_sentence):
+    def __init__(self, brain_: "Brain", question: str, on_sentence, tools: list[dict] | None = None,
+                 remember: bool = True):
         self.question, self.on_sentence = question, on_sentence
+        self.tools = tools or None
+        self.remember = remember
         self.text = ""
-        self.is_command = False
+        self.tool_call: tuple[str, dict] | None = None
         self.first_token_s: float | None = None
         self.error: str | None = None
+        self._held = False  # text that looks like a tool call written out: not spoken
         self._started = time.perf_counter()
-        self._decided = threading.Event()   # first sentence spoken, command detected, or finished
+        self._decided = threading.Event()   # first sentence spoken, tool call seen, or finished
         self._cancel = threading.Event()
         self._thread = threading.Thread(target=self._run, args=(brain_,), daemon=True, name="llm-stream")
         self._thread.start()
 
+    @property
+    def is_command(self) -> bool:
+        return self.tool_call is not None
+
     def _run(self, brain_):
         spoken = 0  # how much of self.text has been handed to on_sentence
         try:
+            kwargs = {"tools": self.tools} if self.tools else {}
             stream = ollama.chat(model=brain_.model, messages=brain_.build_messages(self.question), stream=True,
-                                 keep_alive=_keep_alive(), options={"num_predict": LLM_MAX_TOKENS})
+                                 keep_alive=_keep_alive(), options={"num_predict": LLM_MAX_TOKENS}, **kwargs)
             for part in stream:
                 if self._cancel.is_set():
                     break
+                calls = _tool_calls(part)
+                if calls and self.tool_call is None:
+                    if self.first_token_s is None:
+                        self.first_token_s = time.perf_counter() - self._started
+                    self.tool_call = _call_parts(calls[0])
+                    self._decided.set()
+                    continue
                 token = part.get("message", {}).get("content", "")
                 if not token:
                     continue
                 if self.first_token_s is None:
                     self.first_token_s = time.perf_counter() - self._started
                 self.text += token
-                if self.is_command:
+                if self.tool_call is not None or self._held:
                     continue
                 if not self._decided.is_set():
-                    if looks_like_command(self.text):
-                        self.is_command = True
-                        self._decided.set()
+                    if self.tools and looks_like_tool_text(self.text):
+                        self._held = True
                         continue
                     if len(self.text.strip()) < 20:  # too early to tell
                         continue
@@ -191,14 +251,18 @@ class StreamingReply:
             self.error = str(e)
             logger.error(f"Brain communication error: {e}")
         finally:
-            if not self.is_command and not self._cancel.is_set():
+            if self._held and self.tool_call is None:
+                self.tool_call = parse_tool_text(self.text)
+                if self.tool_call is None:  # odd text, not a call: say it after all
+                    self._held = False
+                    spoken = 0
+            if self.tool_call is None and not self._held and not self._cancel.is_set():
                 rest = self.text[spoken:].strip()
                 if rest:
                     self.on_sentence(rest)
-            if self.text and not self.error:
+            if self.remember and self.text and self.tool_call is None and not self.error:
                 memory.conversation.add_exchange(self.question, self.text)
             self._decided.set()
-
     def wait_until_decided(self, timeout: float | None = None):
         self._decided.wait(timeout)
 

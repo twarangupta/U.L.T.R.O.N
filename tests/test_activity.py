@@ -1,3 +1,7 @@
+import pytest
+
+pytestmark = pytest.mark.real_handlers  # handlers run against temp files set up in these tests
+
 import os
 import sys
 import time
@@ -59,7 +63,7 @@ def test_exclusions(log):
 
 def test_project_from_title():
     assert activity.project_from_title("VS Code", "activity.py - ULTRON - Visual Studio Code") == "ULTRON"
-    assert activity.project_from_title("VS Code", "● notes.md - blog - Visual Studio Code") == "blog"
+    assert activity.project_from_title("VS Code", "â— notes.md - blog - Visual Studio Code") == "blog"
     assert activity.project_from_title("Chrome", "x - y - Google Chrome") == ""
 
 
