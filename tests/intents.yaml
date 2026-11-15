@@ -2019,3 +2019,12 @@ paraphrases:
     - type the meeting is cancelled
     - type yes
     - type no worries
+
+# Vague or off-registry sentences from the owner's live run (13:31). Used by tools/llm_compare.py only:
+# the LLM must not run any command for these (it may answer in words).
+llm_must_not_act:
+  - it isn't open
+  - Can you turn on Bluetooth?
+  - not base, best
+  - "."
+  - open the cast folder

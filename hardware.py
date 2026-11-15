@@ -48,7 +48,7 @@ INT8_VRAM_FACTOR = 0.6  # int8_float16 needs roughly 60 percent of float16
 
 # Approximate file size (GB) of LLMs we may pick, for when Ollama cannot tell us.
 LLM_SIZE_GB = {
-    "llama3.2:1b": 1.3, "llama3.2:3b": 2.0, "gemma3:4b": 3.3,
+    "llama3.2:1b": 1.3, "llama3.2:3b": 2.0, "qwen2.5:3b": 1.9, "gemma3:4b": 3.3,
     "llama3.1:8b": 4.9, "qwen3:8b": 5.2, "gemma3:12b": 8.1, "qwen3:14b": 9.3,
 }
 
@@ -98,7 +98,7 @@ PROFILES = {
     ),
     "GPU-4GB": dict(
         whisper=("base", "int8"), whisper_gpu=("small", "int8_float16"),
-        llm=["llama3.2:3b", "llama3.2:1b"],
+        llm=["qwen2.5:3b", "llama3.2:3b", "llama3.2:1b"],  # D30: fewest wrong tool calls (BUILD_LOG)
     ),
     "GPU-8GB+": dict(
         whisper=("small", "int8"), whisper_gpu=("large-v3-turbo", "int8_float16"),

@@ -913,7 +913,7 @@ Open questions:
 - Guards added after reading the failures (general, not per phrase): questions about a thing ("what does git push do") do not run through the matcher; content words a command's examples never use ("restart nginx") make it ask, and stop confirm commands entirely; rules with an app parameter only claim the sentence when the app is known or installed; "write" is dictation only when no thing to compose follows; one rule for date and time in any order; Start Menu matching uses whole names.
 - Known gaps: "search a file in my PC" opens a web search (no file search command yet); laptop specs have no command (next steps item B).
 - Incident: an unmarked test (test_stages_are_fast) routed 200 sentences outside dry-run, so real commands ran on the laptop (window closes and minimises, focus mode mute, a screenshot on the Desktop, a pasted "hello world", a fact in the dev folder's memory.json). Fixed the test, and tests/conftest.py now forces dry-run for every test unless it is marked real_handlers.
-- Next (part 2b): LLM tool stage per model, shortlist versus full tool list, the GPU-4GB default.
+- Next (part 2b): LLM tool stage per model, shortlist versus full tool list, the GPU-4GB default (done, see the next entry).
 - Live-run fixes (owner's log 13:10 to 13:16, its Heard lines now in intents.yaml):
   - Store apps such as Claude are found through shell:AppsFolder (index built once, about 1.2 s, in a startup thread).
   - For opening only, a sound-alike match ("clod", "cloud" -> Claude) applies when exactly one installed app shares the consonants.
@@ -925,6 +925,29 @@ Open questions:
   - The barge-in line shows the measured echo and the 700 floor separately (the old line divided the floor by the factor and always showed 233).
   - Owner's 42 real commands: old 20 right, new 40 right (39 ran, 1 asked). Weighted 38.4 % -> 82.5 %. 116 tests.
   - Tradeoffs: the sound-alike match could open the wrong app when two apps share consonants, so it only acts when exactly one does. The Apps-folder scan adds 1.2 s of startup work in a background thread. "Open cloud storage" would open Claude if no "cloud storage" app exists.
+
+### 2026-11-15: Understand any phrasing, part 2b: LLM stage comparison and the GPU-4GB default (feat/understand-phrasing)
+- tools/llm_compare.py runs the sentences the rules and matcher leave to the LLM (250 of 1925, 216 of them with the right command in the shortlist) against each model with native tool calls, unloading the others first (`ollama stop`). Five vague or off-registry sentences from the owner's live run (13:31) were added as must-not-act cases (tests/intents.yaml, key llm_must_not_act, used only by this tool). A call whose arguments the registry rejects, or that holds a schema or other non-scalar, counts as malformed. Raw output: results/llm_compare_part1.log and _part2.log (not in git).
+- Results (laptop GTX 1650, 4096 context, num_predict 60). "Right" = right tool among the 250 LLM-stage sentences; "wrong" = any tool call that is not the expected command, over all 1925 sentences, with the 98 negatives and the 5 vague ones shown separately.
+
+| Model | Tools | Right (of 250) | Wrong calls, all | Wrong on negatives (of 98) | Wrong on vague (of 5) | Malformed | Median first token | VRAM (ollama ps) |
+|---|---|---|---|---|---|---|---|---|
+| llama3.2:3b, shortlist | yes | 162 | 76 | 34 | 2 | 44 | 1.17 s | 2.8 GB |
+| llama3.2:3b, full list (89 tools) | yes | 152 | 165 | 77 | 5 | 24 | 0.78 s | 2.8 GB |
+| qwen2.5:3b, shortlist | yes | 144 | 29 | 7 | 0 | 1 | 1.42 s | 2.4 GB |
+| qwen3:4b, shortlist (think off) | yes | 0 counted, see below | 0 | 0 | 0 | 0 | 1.47 s | 3.6 GB |
+| gemma3:4b | no: Ollama answers "does not support tools" (400) | - | - | - | - | - | - | 3.3 GB file |
+
+- Shortlist versus full list (llama3.2:3b only): the full list made 77 wrong calls on negatives against 34 and 165 wrong in all against 76, and it lost 10 right answers; its only gain is fewer malformed arguments and a faster first token (0.78 s against 1.17 s, because the model answers less). The full list was measured on llama only: the qwen2.5:3b full-list run was stopped after more than 22 minutes as too slow, which is itself a data point against the full list (89 schemas, several thousand tokens per call on this GPU).
+- qwen3:4b: with thinking switched off it still writes its reasoning into the reply ("Okay, the user wants to terminate the Zoom app. Let me check the tools...") before the tool call. With the 60-token cap used for every model no call ever arrived, so its 0 right and 0 wrong mean "no usable answer", not "perfect". A single check with 300 tokens showed it still reasoning at that length. It is also 3.6 GB. Not usable for a voice reply under 1 to 2 s, not measured further.
+- Pick: GPU-4GB default is now qwen2.5:3b, then llama3.2:3b, then llama3.2:1b (hardware.py, tests/test_hardware.py). Why: it makes 29 wrong calls against llama's 76, 7 wrong on negatives against 34, 0 on the vague sentences against 2, and almost no malformed arguments (1 against 44; llama once sent the schema itself as an argument, the registry check catches that but it costs an answer). It uses 0.4 GB less VRAM (2.4 against 2.8), so Whisper small (about 0.4 GB int8_float16) stays on the GPU: the profile pick test still gives Whisper on CUDA. Cost: 18 fewer right tools (144 against 162, about 7 percent of the LLM-stage sentences, which are 13 percent of all sentences) and a first token about 0.25 s slower (1.42 against 1.17 s). A missed tool means the model answers in words, a wrong tool can act, so fewer wrong calls is worth more. If qwen2.5:3b is not installed the profile falls back to llama3.2:3b.
+- Tradeoffs and better ideas:
+  - The first-token times include the tool-call prompt (shortlist of at most 6 schemas); qwen2.5:3b is a little slower to start but never needed the longer outputs.
+  - Chat quality was not measured: this set only tests tool choice. qwen2.5:3b answers general questions in its own style and has not been checked against the honest-AI rules and the 30-word target in config.py. Before the default ships in the installer, run the voice self-test (next steps item C) with it.
+  - The matcher already ran or asked on 1479 sentences, so the model only matters for about 13 percent of them. A better fix for the remaining wrong calls than a model swap is to add a cheap post-check: when the LLM picks a tool, require the matcher score of that command to be above the TOOL_FLOOR and ask "Did you mean" when it is a confirm or announce command. Not done.
+  - A fine-tuned small classifier or a no-tool pseudo-tool would reduce wrong calls further; not measured.
+  - The comparison used one run per model at temperature default; differences of a few sentences are noise, the 34 against 7 gap on negatives is not.
+- Not done: the 98 "asked wrong" cases (window commands, media) were not tuned in this branch; D30 thresholds are unchanged.
 
 <!-- New entries go above this line, newest last. Format:
 ### YYYY-MM-DD: Short title

@@ -31,7 +31,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 CASES_FILE = os.path.join(ROOT, "tests", "intents.yaml")
 RESULTS = os.path.join(ROOT, "results")
-WEIGHTS = {"heard": 3, "negative": 2, "paraphrase": 1}
+WEIGHTS = {"heard": 3, "negative": 2, "paraphrase": 1, "vague": 2}
 
 
 @dataclass
@@ -50,6 +50,8 @@ class Result:
     candidates: list = field(default_factory=list)
     llm_choice: str | None = None
     llm_first_token: float | None = None
+    llm_args: dict | None = None
+    llm_malformed: bool = False
 
     @property
     def verdict(self) -> str:
@@ -72,6 +74,13 @@ def load_cases(path: str = CASES_FILE) -> list[Case]:
     for name, phrases in (data.get("paraphrases") or {}).items():
         cases += [Case(text, name, "paraphrase") for text in phrases]
     return cases
+
+
+def load_vague(path: str = CASES_FILE) -> list[Case]:
+    """Vague or off-registry sentences that must not run any command (kind "vague"); LLM comparison only."""
+    import yaml
+    with open(path, encoding="utf-8") as f:
+        return [Case(t, None, "vague") for t in (yaml.safe_load(f).get("llm_must_not_act") or [])]
 
 
 # ---- the new router ----
@@ -252,6 +261,18 @@ def eval_old(cases: list[Case], ref: str = "p1-fixes") -> list[Result]:
 
 
 # ---- the LLM tool stage ----
+def _malformed(name: str, args: dict | None) -> bool:
+    """True when the registry would reject the call, or an argument is a schema or other non-scalar."""
+    from commands import registry
+    if any(isinstance(v, (dict, list)) for v in (args or {}).values()):
+        return True
+    try:
+        registry.get(name).validate(args)
+    except registry.ArgumentError:
+        return True
+    return False
+
+
 def eval_llm(results: list[Result], model: str, full_tools: bool = False) -> None:
     """For sentences left to the LLM, ask it with the shortlist (or every command) as tools."""
     import ollama
@@ -278,15 +299,17 @@ def eval_llm(results: list[Result], model: str, full_tools: bool = False) -> Non
             calls = part.message.tool_calls or []
             if calls:
                 choice = calls[0].function.name
+                r.llm_args = dict(calls[0].function.arguments or {})
                 break
         r.llm_first_token = first
         r.llm_choice = choice if (choice in names) else None
+        r.llm_malformed = bool(r.llm_choice) and _malformed(r.llm_choice, r.llm_args)
 
 
 # ---- report ----
 def summarize(results: list[Result], llm: bool = False) -> dict:
     rows = {}
-    for kind in ("heard", "paraphrase", "negative", "all"):
+    for kind in ("heard", "paraphrase", "negative", "vague", "all"):
         rs = [r for r in results if kind == "all" or r.case.kind == kind]
         if not rs:
             continue
@@ -303,6 +326,7 @@ def summarize(results: list[Result], llm: bool = False) -> dict:
             row["with_llm_correct"] = after
             row["llm_wrong"] = sum(1 for r in rs if r.verdict in ("llm", "pass") and r.llm_choice
                                    and r.llm_choice != r.case.expected)
+            row["llm_malformed"] = sum(1 for r in rs if r.llm_malformed)
             times = sorted(r.llm_first_token for r in rs if r.llm_first_token)
             if times:
                 row["llm_first_token_median"] = round(times[len(times) // 2], 2)

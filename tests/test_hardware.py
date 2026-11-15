@@ -8,7 +8,7 @@ from hardware import Hardware, choose_profile  # noqa: E402
 
 CUDA_OK = lambda: (True, "ok")  # noqa: E731
 CUDA_MISSING = lambda: (False, "cublas64_12.dll not found (install requirements-gpu.txt)")  # noqa: E731
-INSTALLED = {"llama3.2:3b": 1.88, "gemma3:4b": 3.11}
+INSTALLED = {"llama3.2:3b": 1.88, "gemma3:4b": 3.11, "qwen2.5:3b": 1.85}
 
 
 def machine(ram=16, cores=8, gpu=None, vram=0.0):
@@ -39,9 +39,15 @@ def test_strong_cpu_only_pc_is_not_held_back():
 def test_this_laptop_gtx1650_puts_whisper_on_gpu_after_llm():
     p = pick(machine(ram=5.9, cores=6, gpu="GTX 1650", vram=4.0))
     assert p.name == "GPU-4GB"
-    assert p.llm_model == "llama3.2:3b"
+    assert p.llm_model == "qwen2.5:3b"
     assert p.whisper_device == "cuda"
     assert p.whisper_compute_type == "int8_float16"
+
+
+def test_gpu_4gb_falls_back_to_llama_when_qwen_is_not_installed():
+    p = pick(machine(ram=5.9, cores=6, gpu="GTX 1650", vram=4.0), installed={"llama3.2:3b": 1.88})
+    assert p.llm_model == "llama3.2:3b"
+    assert p.whisper_device == "cuda"
 
 
 def test_missing_cuda_libraries_fall_back_to_cpu():
