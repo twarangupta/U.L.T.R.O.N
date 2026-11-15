@@ -69,8 +69,13 @@ def test_kill_port_is_confirm():
 # ---- medium impact: announced first, talking over it cancels ----
 def test_announce_then_run():
     io = FakeIO()
-    out = route("close chrome", io)
-    assert io.prompts == [("announce", "Closing Chrome.")] and ran(out)
+    out = route("close notepad", io)  # may hold unsaved work, so it is announced
+    assert io.prompts == [("announce", "Closing Notepad.")] and ran(out)
+
+
+def test_closing_a_browser_is_quiet():
+    io = FakeIO()
+    assert ran(route("close chrome", io)) and io.prompts == []
 
 
 def test_barge_in_on_announcement_cancels():

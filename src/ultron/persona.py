@@ -44,6 +44,12 @@ SLEEP_REPLIES = [
     "Standing by. Call when you're stuck.",
 ]
 
+IDLE_REPLIES = [
+    "Nobody's talking. Going back to sleep.",
+    "Silence. Wake me when you've thought of something.",
+    "Fine, ignore me. I'll be here.",
+]
+
 GOODBYES = [
     "Shutting down. Try to survive without me.",
     "Going offline. Don't do anything I would have to fix.",
@@ -161,4 +167,4 @@ def maybe_quip(reply: str) -> str:
 
 def fixed_lines() -> list[str]:
     """Lines that never change, pre-rendered at startup so they play instantly."""
-    return WAKE_REPLIES + STOP_REPLIES + UNSURE_REPLIES + DONE_REPLIES + SLEEP_REPLIES + CANCELLED_REPLIES + CANT_DO_REPLIES
+    return WAKE_REPLIES + STOP_REPLIES + UNSURE_REPLIES + DONE_REPLIES + SLEEP_REPLIES + IDLE_REPLIES + CANCELLED_REPLIES + CANT_DO_REPLIES

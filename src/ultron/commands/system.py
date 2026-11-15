@@ -113,18 +113,27 @@ def web_search(query: str) -> str:
 SITES = {"gmail": "https://gmail.com", "youtube": "https://youtube.com", "google": "https://google.com",
          "github": "https://github.com", "reddit": "https://reddit.com",
          "stackoverflow": "https://stackoverflow.com", "linkedin": "https://linkedin.com",
-         "chatgpt": "https://chatgpt.com", "netflix": "https://netflix.com", "amazon": "https://amazon.in"}
+         "chatgpt": "https://chatgpt.com", "netflix": "https://netflix.com", "amazon": "https://amazon.in",
+         "prime video": "https://primevideo.com", "hotstar": "https://hotstar.com",
+         "spotify web": "https://open.spotify.com", "whatsapp web": "https://web.whatsapp.com",
+         "flipkart": "https://flipkart.com", "wikipedia": "https://wikipedia.org",
+         "facebook": "https://facebook.com", "instagram": "https://instagram.com",
+         "twitter": "https://twitter.com", "google maps": "https://maps.google.com",
+         "google drive": "https://drive.google.com", "google docs": "https://docs.google.com",
+         "google calendar": "https://calendar.google.com", "outlook": "https://outlook.live.com",
+         "pinterest": "https://pinterest.com", "quora": "https://quora.com", "twitch": "https://twitch.tv"}
 
 
 @command("open_website", "Open a well-known website in the browser.", group=_APPS, title="open {site}",
          params=[Param("site", "choice", "the website", choices=tuple(SITES))],
-         rules=[r"(?:open|launch|go to|start|pull up)(?: up)? (?:the )?(?P<site>" + "|".join(SITES)
+         rules=[r"(?:open|launch|go to|start|pull up)(?: up)? (?:the )?(?P<site>" + "|".join(sorted(SITES, key=len, reverse=True))
                 + r")(?: website| site| dot com| com)?"], priority=48,
          examples=["open youtube", "go to gmail", "open github", "launch reddit", "pull up stackoverflow",
-                   "take me to youtube", "open my gmail", "show me linkedin"])
+                   "open my gmail", "show me linkedin", "open netflix", "watch something on prime video",
+                   "open whatsapp web", "go to flipkart", "pull up wikipedia"])
 def open_website(site: str) -> str:
     open_browser(SITES[site])
-    return Done(f"Opening {site.capitalize()}.")
+    return Done(f"Opening {site.title()}.")
 
 
 def _launch(app: str) -> str | None:
@@ -222,7 +231,7 @@ def find_folder(name: str, roots: list[str] | None = None, recent: list[str] | N
     low = " ".join(re.sub(r"[^a-z0-9 ]+", " ", name.lower()).split())
     low = re.sub(r"^(?:the|my) ", "", low)
     low = re.sub(r" (?:folder|directory)$", "", low).strip()
-    if _JUST_MADE.search(low) or low in ("new", "new folder"):
+    if _JUST_MADE.search(low) or low in ("new", "new folder", "it", "that", "this", "that folder", "this folder"):
         if context.created_folder and os.path.isdir(context.created_folder):
             return context.created_folder
     standard = low if low.endswith("s") or low in ("desktop", "music") else low + "s"
@@ -264,18 +273,37 @@ def _same(path: str, low: str) -> bool:
          rules=[r"(?:open|show|go to|reveal)(?: me)? (?:the |my )?(?P<folder>download|document|picture|video)s?(?: folder| directory)?",
                 r"(?:open|show|go to|reveal)(?: me)? (?:the |my )?(?P<folder>desktop|music)(?: folder| directory)",
                 r"(?:open|show|go to|reveal)(?: me)? (?P<folder>(?:the )?(?:new )?folder (?:that )?(?:you|i) (?:just )?(?:created|made))",
+                r"(?:open|show|reveal)(?: me)? (?P<folder>it|that|this|that folder|this folder)",
                 r"(?:open|show|go to|reveal)(?: me)? (?:the |my )?(?P<folder>(?:new )?.+?) (?:folder|directory)"],
          examples=["open my downloads", "show me the documents folder", "open downloads folder",
                    "go to my pictures", "open the desktop folder", "where are my downloads, open them",
-                   "open the invoices folder", "open the new folder you just created"],
+                   "open the invoices folder", "open the new folder you just created", "open it", "show me that folder"],
          not_examples=["create a folder called invoices", "delete this folder"])
-def open_folder(folder: str) -> str:
+def open_folder(folder: str) -> str | None:
     path = find_folder(folder)
+    if path is None and folder.strip().lower() in ("it", "that", "this", "that folder", "this folder"):
+        return None  # "open it" with nothing just created: not a folder request, routing goes on
     if path is None:
         return f"I couldn't find a folder called {folder.strip()}."
     subprocess.Popen(["explorer", os.path.normpath(path)])
     name = os.path.basename(os.path.normpath(path)) or path
     return Done(f"Opening your {name} folder." if name.lower() in FOLDERS else f"Opening the {name} folder.")
+
+
+@command("folder_location", "Say where the folder ULTRON just created is (its full path).", group=_APPS,
+         title="where is the new folder", priority=47,
+         rules=[r"where (?:is|s) (?:it|that|that folder|the (?:new )?folder(?: (?:that )?(?:you|i) (?:just )?(?:created|made))?)",
+                r"where (?:did you|have you) (?:put|create|created|make|made) (?:it|the (?:new )?folder|that)"],
+         examples=["where is it", "where is the new folder you just created", "where did you put the folder",
+                   "where is that folder"],
+         not_examples=["where are my downloads", "where is my file", "where was i", "i can't see the folder",
+                       "i can't find my folder", "the folder is empty"])
+def folder_location() -> str | None:
+    from ultron.commands import context
+    path = context.created_folder
+    if not path or not os.path.isdir(path):
+        return None  # nothing was created: let the question go on to the AI
+    return f"It's at {os.path.normpath(path)}."
 
 
 _WHERE = r"(?: (?:on|in) (?:the |my )?(?P<location>desktop|documents|downloads|pictures|music|videos)(?: folder)?)?"
@@ -352,6 +380,74 @@ def rename_item(name: str | None = None) -> str:
     os.rename(path, target)
     context.note_folder(target)
     return f"Renamed it to {new}."
+
+
+# ---- Bluetooth (Windows Runtime radio API, no admin rights needed) ----
+def _bluetooth_radio_set(state: str) -> str:
+    """Turn the Bluetooth radio "on", "off" or "toggle" it; returns the sentence to say."""
+    import asyncio
+    import threading
+
+    async def work() -> str:
+        from winrt.windows.devices.radios import Radio, RadioAccessStatus, RadioKind, RadioState
+        if await Radio.request_access_async() != RadioAccessStatus.ALLOWED:
+            return "Windows won't let me touch the radios. Check Settings, Privacy, Radios."
+        radios = [r for r in await Radio.get_radios_async() if r.kind == RadioKind.BLUETOOTH]
+        if not radios:
+            return "This PC has no Bluetooth radio, or it is switched off in hardware."
+        radio = radios[0]
+        want_on = (radio.state != RadioState.ON) if state == "toggle" else state == "on"
+        if (radio.state == RadioState.ON) == want_on:
+            return f"Bluetooth is already {'on' if want_on else 'off'}."
+        result = await radio.set_state_async(RadioState.ON if want_on else RadioState.OFF)
+        if result != RadioAccessStatus.ALLOWED:
+            return "Windows refused to change Bluetooth."
+        return f"Bluetooth {'on' if want_on else 'off'}."
+
+    box: dict = {}
+
+    def runner():  # its own thread: no event loop is running there
+        try:
+            box["reply"] = asyncio.run(work())
+        except Exception as e:
+            box["reply"] = f"I couldn't reach the Bluetooth radio: {e}"
+
+    t = threading.Thread(target=runner, daemon=True)
+    t.start()
+    t.join(15)
+    return box.get("reply", "Bluetooth didn't answer in time.")
+
+
+_BT = r"(?:the |my )?bluetooth(?: (?:radio|adapter))?"
+
+
+@command("bluetooth_on", "Turn Bluetooth on.", group=_PC, title="turn Bluetooth on", priority=52,
+         rules=[rf"(?:turn|switch|set|put)(?: on)? {_BT}(?: on)?", rf"(?:enable|activate|start) {_BT}",
+                rf"{_BT} on"],
+         examples=["turn on bluetooth", "enable bluetooth", "switch bluetooth on", "bluetooth on",
+                   "i need bluetooth, switch it on", "activate the bluetooth"],
+         not_examples=["turn off bluetooth", "is bluetooth connected", "connect my headphones"])
+def bluetooth_on() -> str:
+    return _bluetooth_radio_set("on")
+
+
+@command("bluetooth_off", "Turn Bluetooth off.", group=_PC, title="turn Bluetooth off", priority=53,
+         rules=[rf"(?:turn|switch|set|put) off {_BT}", rf"(?:turn|switch|set|put) {_BT} off",
+                rf"(?:disable|deactivate|stop|kill) {_BT}", rf"{_BT} off"],
+         examples=["turn off bluetooth", "disable bluetooth", "switch bluetooth off", "bluetooth off",
+                   "kill the bluetooth", "shut bluetooth down"],
+         not_examples=["turn on bluetooth", "is bluetooth on"])
+def bluetooth_off() -> str:
+    return _bluetooth_radio_set("off")
+
+
+@command("bluetooth_toggle", "Flip Bluetooth: off if it is on, on if it is off.", group=_PC,
+         title="toggle Bluetooth", priority=51,
+         rules=[rf"(?:toggle|flip) {_BT}", rf"(?:toggle|flip) {_BT} (?:on and off|off and on)"],
+         examples=["toggle bluetooth", "flip bluetooth", "toggle the bluetooth radio"],
+         not_examples=["toggle play", "toggle pause", "toggle mute", "toggle the music"])
+def bluetooth_toggle() -> str:
+    return _bluetooth_radio_set("toggle")
 
 
 # ---- power and status ----
@@ -570,11 +666,38 @@ def unmute() -> str:
 
 @command("meeting_mode", "Meeting or focus mode: mute the speakers and minimise every window.", group=_MEDIA,
          title="meeting mode", priority=55,
-         rules=[r"(?:turn on |start |enable |activate )?(?:meeting|focus)(?: mode)?"],
+         rules=[r"(?:(?:ultron|assets?) )?(?:turn on |start |enable |activate |go into |switch to )?(?:meeting|focus)(?: mode)?"],
          examples=["meeting mode", "focus mode", "start focus mode", "i have a meeting, get things quiet",
-                   "activate meeting mode"])
+                   "activate meeting mode"],
+         not_examples=["quit focus mode", "exit meeting mode", "stop focus mode", "turn off focus mode",
+                       "end the meeting", "back to normal", "i'm done with my meeting"])
 def meeting_mode() -> str:
     import pyautogui
     _set_mute(True)
     pyautogui.hotkey("win", "m")
     return "Meeting mode activated. Master audio muted and windows minimized."
+
+
+_MODE = r"(?:(?:meeting|focus)(?: mode)?|(?:work|quiet) mode)"
+_LEAVE = r"(?:quit|exit|stop|end|leave|close|disable|cancel|finish|drop|kill)"
+
+
+@command("meeting_mode_off", "Leave meeting or focus mode: unmute the speakers and bring every window back.",
+         group=_MEDIA, title="leave meeting mode", priority=56,
+         rules=[rf"(?:(?:ultron|assets?) )?{_LEAVE} (?:the |my )?{_MODE}",
+                rf"(?:(?:ultron|assets?) )?(?:turn|switch|shut) (?:off|out) (?:the |my )?{_MODE}",
+                rf"(?:(?:ultron|assets?) )?(?:turn|switch) {_MODE} off",
+                rf"(?:(?:ultron|assets?) )?{_MODE} off",
+                r"(?:(?:ultron|assets?) )?(?:go )?back to normal(?: mode)?|normal mode|(?:end|stop) (?:the |my )?meeting",
+                r"(?:i m|i am|we re|we are) (?:done|finished|out)(?: with| of)? (?:the |my )?(?:meeting|call|focus(?: mode)?)",
+                r"(?:the |my )?(?:meeting|call) (?:is|s) (?:over|done|finished)"],
+         examples=["quit focus mode", "exit meeting mode", "stop focus mode", "turn off focus mode",
+                   "end the meeting", "back to normal", "normal mode", "i'm done with my meeting",
+                   "the call is over, unmute everything", "leave meeting mode", "i'm out of the meeting"],
+         not_examples=["turn on focus mode", "meeting mode", "start the meeting", "i said quit", "quit", "exit",
+                       "stop"])
+def meeting_mode_off() -> str:
+    _set_mute(False)
+    from ultron.commands import windows
+    windows._win32().restore_all()
+    return "Meeting mode off. Sound is back and your windows are restored."

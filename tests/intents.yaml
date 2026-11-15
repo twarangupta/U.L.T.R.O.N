@@ -40,7 +40,10 @@ heard:
   - {text: "create a new folder on desktop, name it cast", command: create_folder}
   - {text: "open the cast folder", command: open_folder}
   - {text: "it isn't open", command: null}
-  - {text: "Can you turn on Bluetooth?", command: null}
+  - {text: "Can you turn on Bluetooth?", command: bluetooth_on}
+  - {text: "Quit Focus Mode", command: meeting_mode_off}
+  - {text: "Open it", command: open_folder}
+  - {text: "Where is the new folder you just created?", command: folder_location}
   # live run 2026-11-15 15:00 to 15:06 (qwen2.5:3b)
   - {text: "minimize all the windows", command: minimize_windows}
   - {text: "work mode", command: meeting_mode}
@@ -182,6 +185,12 @@ negatives:
   - how are you feeling
   - thank you, that's all for now
   - nothing, never mind that
+  - explain how a car engine works
+  - reply to my last email
+  - run the unit tests
+  - make the font a bit bigger
+  - delete the old log file
+  - what does this button do
 
 paraphrases:
   close_app:
@@ -709,6 +718,43 @@ paraphrases:
     - meeting mode now
     - set up for a meeting
     - start focus
+  meeting_mode_off:
+    - quit focus mode
+    - exit meeting mode
+    - stop focus mode
+    - turn off meeting mode
+    - end the meeting
+    - back to normal
+    - normal mode please
+    - i'm done with my meeting
+    - ultron close focus mode
+    - asset close focus mode
+    - the call is over, bring everything back
+    - leave focus mode
+    - i'm finished with the call, unmute and show my windows
+  bluetooth_on:
+    - turn on bluetooth
+    - can you turn on bluetooth
+    - enable bluetooth
+    - switch the bluetooth on
+    - i need bluetooth for my headphones, turn it on
+    - activate bluetooth
+  bluetooth_off:
+    - turn off bluetooth
+    - bluetooth off
+    - disable bluetooth
+    - switch bluetooth off
+    - kill the bluetooth
+    - i don't need bluetooth any more, turn it off
+  bluetooth_toggle:
+    - toggle bluetooth
+    - flip bluetooth
+    - toggle the bluetooth radio
+  folder_location:
+    - where is it
+    - where is the folder you just created
+    - where did you put that folder
+    - where is the new folder
   tell_time:
     - what is the time
     - what's the time now
@@ -1370,6 +1416,9 @@ paraphrases:
     - grab the text from my screen
     - extract text from the screen
     - read what's on screen
+    - read the window in front of me
+    - ocr this window
+    - copy the text out of this window
     - ocr the screen
     - copy screen text
     - get the text off my screen
@@ -2053,12 +2102,71 @@ paraphrases:
     - type the meeting is cancelled
     - type yes
     - type no worries
+  explain_selection:
+    - tell me what this text means
+    - what is this saying
+    - make sense of this for me
+    - i can't follow this, explain it
+    - what is the meaning of the highlighted text
+    - give me an explanation of the selection
+    - can you decode this for me
+  summarise_selection:
+    - give me the short version of this
+    - sum up the selected text
+    - boil this down for me
+    - can you summarise what i highlighted
+    - tl dr of this please
+    - shorten this into a summary
+  translate_selection:
+    - translate the highlighted text into marathi
+    - can you put this in spanish
+    - i need this in french
+    - translate what i selected to german
+    - how would this read in tamil
+  rewrite_selection:
+    - rewrite the selected text to sound more formal
+    - make this sound nicer
+    - fix the spelling in this
+    - tidy up this paragraph
+    - can you make this shorter
+    - rephrase what i selected
+    - make this message more friendly
+  reply_to_selection:
+    - write a reply to this message
+    - respond to this email for me
+    - help me answer this
+    - draft a response to the selected text
+    - compose a quick reply to this
+  run_routine:
+    - run my morning routine
+    - kick off the work mode routine
+    - start the evening macro
+    - activate my study routine
+    - begin the gym routine
+    - fire up my coding routine
+  remember_routine:
+    - save these commands as a routine called study
+    - remember what i just did as my morning routine
+    - record the last two commands as a macro named setup
+    - store this as my gym routine
+    - remember those as work mode
+  list_routines:
+    - which routines have i saved
+    - show me all my routines
+    - what macros do i have
+    - tell me the names of my routines
+    - read out my routines
+  delete_routine:
+    - delete my study routine
+    - remove the gym macro
+    - erase the morning routine
+    - get rid of my work mode routine
+    - scrap the evening routine
 
 # Vague or off-registry sentences from the owner's live run (13:31). Used by tools/llm_compare.py only:
 # the LLM must not run any command for these (it may answer in words).
 llm_must_not_act:
   - it isn't open
-  - Can you turn on Bluetooth?
   - not base, best
   - "."
   - open the cast folder
