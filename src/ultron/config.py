@@ -47,6 +47,10 @@ LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "120"))
 # How long a pause ends your sentence (seconds). Lower is snappier, too low cuts you off.
 END_SILENCE_SECONDS = float(os.getenv("END_SILENCE_SECONDS", "0.6"))
 
+# After this many seconds in a conversation with no recognised speech, ULTRON says a line and
+# goes back to waiting for the wake word. 0 turns it off.
+CONVERSATION_IDLE_SECONDS = float(os.getenv("CONVERSATION_IDLE_SECONDS", "45"))
+
 # Barge-in: talk over ULTRON to stop it (bargein.py explains the tuning).
 BARGE_IN = os.getenv("BARGE_IN", "1").lower() in ("1", "true", "yes", "on")
 BARGE_IN_FACTOR = float(os.getenv("BARGE_IN_FACTOR", "3.0"))
@@ -84,6 +88,13 @@ SLEEP_WORD = os.getenv("SLEEP_WORD", "go to sleep")
 # WHISPER_COMPUTE_TYPE, WHISPER_CPU_THREADS or ULTRON_PROFILE.
 WHISPER_LANGUAGE = os.getenv("WHISPER_LANGUAGE", "en")       # Lock speech detection to English to prevent hallucinations from noise
 WHISPER_VAD_FILTER = os.getenv("WHISPER_VAD_FILTER", "True").lower() in ("true", "1", "yes")
+# Whisper retries unclear audio at higher temperatures, which cost up to 2.1 s on one command.
+# Off by default (temperature 0 only: one pass). Set to 1 to bring the retries back.
+WHISPER_TEMPERATURE_FALLBACK = os.getenv("WHISPER_TEMPERATURE_FALLBACK", "0").lower() in ("1", "true", "yes", "on")
+# A transcription whose average log-probability is below this, or whose no-speech
+# probability is above WHISPER_LOW_NO_SPEECH, is logged as low confidence.
+WHISPER_LOW_LOGPROB = float(os.getenv("WHISPER_LOW_LOGPROB", "-1.0"))
+WHISPER_LOW_NO_SPEECH = float(os.getenv("WHISPER_LOW_NO_SPEECH", "0.6"))
 # Words Whisper should expect, so short commands like "stop" are heard correctly.
 # Set to an empty string to turn the hints off.
 WHISPER_HOTWORDS = os.getenv(
