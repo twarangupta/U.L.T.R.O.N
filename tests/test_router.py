@@ -149,6 +149,36 @@ def test_negatives_never_run_a_command(said):
     assert "restart_pc" not in out.candidates and "shutdown_pc" not in out.candidates
 
 
+GUARDED = ["don't close chrome", "do not restart my computer", "close chrome later",
+           "restart my computer tomorrow", "lock the pc in 5 minutes", "never mute the sound",
+           "take a screenshot after lunch"]
+
+
+@pytest.mark.parametrize("said", GUARDED)
+def test_negation_and_time_words_never_run_and_offer_no_tools(said):
+    out = route(said, FakeIO(confirm=True, yes=True))
+    # Only the timer and reminder may be offered for a deferred sentence; nothing for a negated one.
+    assert out.command is None, f"{said!r} -> {out.command}"
+    assert set(out.candidates) <= {"set_timer", "set_reminder"}, f"{said!r} -> {out.candidates}"
+
+
+def test_guards_keep_timers_facts_and_dictation():
+    assert route("set a timer for 5 minutes").command == "set_timer"
+    assert route("remind me in 10 minutes to stretch").command == "set_reminder"
+    assert route("remember that I do not drink coffee").command == "remember_fact"
+    assert route("type don't restart").command == "type_text"
+
+
+@needs_model
+def test_close_second_best_asks_first():
+    from commands import intent
+    ranked = intent.get_matcher().rank(router.clean("make the sound a bit lower"))
+    io = FakeIO(yes=False)
+    out = route("make the sound a bit lower", io)
+    if ranked[0].score - ranked[1].score < router.SECOND_MARGIN and out.command:
+        assert io.prompts and io.prompts[0][0] == "ask"
+
+
 def test_timings_are_reported():
     out = route("what is the best protein powder")
     assert "rule_ms" in out.timings

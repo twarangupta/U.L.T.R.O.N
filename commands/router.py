@@ -29,6 +29,29 @@ TOOL_FLOOR = 0.35     # offer a command to the LLM only above this
 MAX_TOOLS = 6
 SHORT_WORDS = 3       # sentences shorter than this never run on a match without asking
 
+SECOND_MARGIN = 0.03  # the best command must beat the second best by this much, or ask first
+
+# Static embeddings ignore word order and negation: "don't close chrome" looks like "close chrome".
+# So a sentence with a negation, or a time word that defers it ("close chrome later"), never runs a
+# command directly, and the LLM is offered no tools for it. Timers and reminders take time words.
+_NEGATION = re.compile(r"\b(?:don t|dont|do not|does not|never|not|shouldn t|won t|no need to)\b")
+_DEFER = re.compile(r"\b(?:later|tomorrow|tonight|this evening|next week|in the morning|after (?:lunch|dinner|this|that|work)"
+                    r"|in (?:a|an|\d+|\w+) (?:few )?(?:second|minute|hour|day)s?|at \d+(?: ?[ap] ?m)?|when i)\b")
+
+
+def guard(n: str) -> str | None:
+    """Why a cleaned sentence must not run a command directly, or None."""
+    if _NEGATION.search(n):
+        return "negation"
+    if _DEFER.search(n):
+        return "time"
+    return None
+
+
+def _takes_time(cmd: Command) -> bool:
+    return any(p.name == "unit" for p in cmd.params)
+
+
 YES_WORDS = {"yes", "yeah", "yep", "yup", "correct", "right", "do it", "sure", "yes please", "go ahead",
              "affirmative", "that s right", "yes do it", "confirm"}
 
@@ -120,16 +143,26 @@ def execute(cmd: Command, args: dict, io: Interaction, sure: bool = True) -> str
 
 # ---- stage a: rules ----
 def _rule_hits(text: str, n: str, cmds: list[Command]):
+    """(command, captured params, the words outside the params) for every rule that fits."""
     for cmd in cmds:
         target = text.strip() if cmd.raw else n
         for rule in cmd.rules:
             m = rule.fullmatch(target)
             if m:
-                yield cmd, {k: v for k, v in m.groupdict().items() if v}
+                outside, last = [], 0
+                for name in m.groupdict():
+                    if m.group(name):
+                        outside.append(target[last:m.start(name)])
+                        last = m.end(name)
+                outside.append(target[last:])
+                yield cmd, {k: v for k, v in m.groupdict().items() if v}, normalize(" ".join(outside))
 
 
 def _stage_rules(text: str, n: str, io: Interaction, cmds: list[Command]) -> Outcome | None:
-    for cmd, raw_args in _rule_hits(text, n, cmds):
+    for cmd, raw_args, outside in _rule_hits(text, n, cmds):
+        blocked = guard(outside)  # "remember that I do not drink coffee": the negation is the fact
+        if blocked and not (cmd.stages == ("rule",) or (blocked == "time" and _takes_time(cmd))):
+            continue  # dictation still types "don't restart"; timers keep their time words
         try:
             args = cmd.validate(raw_args)
         except ArgumentError:
@@ -162,13 +195,18 @@ def _stage_match(n: str, io: Interaction, timings: dict) -> tuple[Outcome | None
         return None, []
     top = ranked[0]
     cmd = registry.get(top.command)
+    blocked = guard(n)
+    if blocked and not (blocked == "time" and _takes_time(cmd)):
+        return None, ranked
     if top.score >= ASK_SCORE and top.margin >= MARGIN:
         try:
             args = cmd.validate(slots.fill(cmd, n))
         except ArgumentError:
             args = None  # a parameter is missing: the LLM can fill it
         if args is not None:
-            sure = top.score >= RUN_SCORE and len(n.split()) >= SHORT_WORDS
+            runner_up = ranked[1].score if len(ranked) > 1 else 0.0
+            sure = (top.score >= RUN_SCORE and len(n.split()) >= SHORT_WORDS
+                    and top.score - runner_up >= SECOND_MARGIN)
             reply = execute(cmd, args, io, sure=sure)
             if reply is not None:
                 return Outcome(reply, "match", cmd.name, args, top.score), ranked
@@ -192,6 +230,9 @@ def route(text: str, io: Interaction | None = None, use_matcher: bool = True) ->
         if outcome:
             outcome.timings = timings
             return outcome
+    blocked = guard(n)
+    if blocked:  # no tools: the LLM answers in words ("close chrome later" has no scheduler)
+        ranked = [r for r in ranked if blocked == "time" and _takes_time(registry.get(r.command))]
     candidates = tool_candidates(ranked)
     top = ranked[0].score if ranked else None
     return Outcome(None, "llm", score=top, timings=timings, candidates=candidates)
