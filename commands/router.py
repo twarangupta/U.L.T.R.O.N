@@ -30,7 +30,7 @@ MAX_TOOLS = 6
 SHORT_WORDS = 3       # sentences shorter than this never run on a match without asking
 
 YES_WORDS = {"yes", "yeah", "yep", "yup", "correct", "right", "do it", "sure", "yes please", "go ahead",
-             "affirmative", "that s right", "yes do it", "ok", "okay", "confirm"}
+             "affirmative", "that s right", "yes do it", "confirm"}
 
 _REQUEST = re.compile(
     r"^(?:(?:can|could|would|will) you(?: please)?|please|kindly|just|so|now|hey|ok|okay|"
