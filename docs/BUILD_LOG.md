@@ -730,7 +730,7 @@ All entries are from 2026-11-15, grouped by phase. Measurements are from the own
 
 ### Live-run fixes 3 (fix/app-live2)
 - Evidence from the 20:25 run (D34). Fixed: silence no longer reaches Whisper and an idle conversation ends after 45 s; close_app announces only for apps with possible unsaved work and never says both lines; Whisper temperature fallback off by default with low-confidence logging; `AI said`, `AI tool`, confirm and did-you-mean questions are logged; ULTRON runs at above-normal priority so launches cannot starve the voice.
-- Tests 220 passed with the model present (see the final numbers in the PR); ruff clean; self-test passes. The first_sound gain on web searches is still to be read from the live log.
+- Tests 283 passed, 0 skipped (with the meaning-matcher model, rebased on fix/commands-live2); ruff clean; self-test passes. The first_sound gain on web searches is still to be read from the live log.
 
 <!-- New entries go above this line, newest last, per phase:
 ### Short title (branch)
