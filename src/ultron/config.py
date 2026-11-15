@@ -107,9 +107,17 @@ WHISPER_HOTWORDS = os.getenv(
     "Ultron, stop, cancel, confirm, open, close, type, send, git, volume, mute, screenshot",
 )
 
-# Voice (Piper). 1.0 is normal pace, 1.2 is 20 percent faster, 0.9 slower.
-# The voice model's own default was 1.15 times slower than normal, which dragged words out.
-VOICE_SPEED = float(os.getenv("VOICE_SPEED", "1.0"))
+# Voice (Piper). VOICE_SPEED is the final pace: 1.0 normal, 1.2 faster, 0.9 slower and
+# more deliberate. The effect chain's pitch shift is compensated, so this stays true.
+VOICE_SPEED = float(os.getenv("VOICE_SPEED", "0.9"))
+# Which voice to use: a name from models/voices/, or a path to an .onnx file. The default is
+# en_US-joe-medium (CC0, the voice the installer ships; get it with
+# `python tools/download_voice.py joe`). Empty or "jarvis" selects the old models/ultron-voice.onnx.
+VOICE_MODEL = os.getenv("VOICE_MODEL", "en_US-joe-medium").strip()
+# Effects on top of the voice: VOICE_PRESET = none, subtle, ultron (default), heavy, silk, cold,
+# calm or deep, with optional
+# VOICE_PITCH (semitones down), VOICE_METAL, VOICE_REVERB, VOICE_DOUBLE, VOICE_BASS (0 to 1).
+# They are read by ultron.voice.effects.EffectSettings.from_env().
 
 # Audio Settings
 SAMPLE_RATE = int(os.getenv("SAMPLE_RATE", "16000")) # Required by OpenWakeWord and Whisper
