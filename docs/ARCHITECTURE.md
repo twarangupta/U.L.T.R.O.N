@@ -23,7 +23,7 @@ flowchart TD
     MEM -.facts and day summary in the prompt.-> LLM
 ```
 
-1. **Wake and record.** `app.py` waits for the wake word, then records until a short pause (`END_SILENCE_SECONDS`).
+1. **Wake and record.** `app.py` waits for the wake word, then records until a short pause (`VAD_END_SILENCE_SECONDS`, found by Silero VAD).
 2. **Transcribe.** Whisper (on the GPU when it fits, else the CPU) turns the audio into text; `config/corrections.json` fixes known mishearings.
 3. **Route.** Three stages, fastest first: exact rules, a meaning matcher (model2vec embeddings compared with each command's example sentences, slots such as app names filled by fuzzy matching), then the LLM with the closest commands offered as tools. A tool call must pass a gate (similarity to the command's examples) or the user is asked "Did you mean ...?".
 4. **Safety.** Risky commands always need a spoken "confirm", whichever stage chose them. Medium-impact ones are announced first so the user can interrupt.
@@ -45,7 +45,7 @@ flowchart TD
 | `activity.py` | Activity log (`data/activity.db`), app tracker, day summaries |
 | `benchmark.py` | `--benchmark`: profile plus a speech-to-text timing |
 | `selftest.py` | `--self-test`: config, registry, profile; no devices |
-| `audio/` | `capture` (mic and phrase recording), `wakeword`, `bargein`, `sounds` |
+| `audio/` | `capture` (one always-open mic stream and phrase recording), `vad` (Silero voice detection), `wakeword`, `bargein`, `sounds` |
 | `stt/` | `whisper` (transcription, CPU fallback), `corrections` |
 | `voice/` | `speaker` (Piper, streaming), `tts_text` (pronunciations) |
 | `commands/` | The command system, below |
