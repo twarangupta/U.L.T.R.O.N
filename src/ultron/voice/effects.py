@@ -31,6 +31,9 @@ PRESETS = {
     "heavy": dict(pitch=4.0, metal=0.60, reverb=0.40, double=0.35, bass=0.0),
     # calm, close and cold: low and heavy in the chest, a faint metallic shimmer, a ghost double
     "silk": dict(pitch=2.5, metal=0.12, reverb=0.15, double=0.30, bass=0.5),
+    # human and unhurried: no metal at all, deep and warm, a close, quiet room
+    "calm": dict(pitch=3.0, metal=0.0, reverb=0.10, double=0.0, bass=0.6),
+    "deep": dict(pitch=4.5, metal=0.0, reverb=0.12, double=0.10, bass=0.8),
     "cold": dict(pitch=3.5, metal=0.22, reverb=0.30, double=0.30, bass=0.7),
 }
 BASS_HZ = 220.0
