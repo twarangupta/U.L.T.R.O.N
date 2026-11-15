@@ -29,6 +29,15 @@ def normalize(text: str) -> str:
     return " ".join(words)
 
 
+_FILLER_SOUNDS = {"uh", "um", "umm", "uhh", "hmm", "mm", "mmm", "huh", "ah", "oh", "er", "erm"}
+
+
+def is_noise(text: str) -> bool:
+    """A transcript with no words in it: "." or "...", or only filler sounds. Ignore it, keep listening."""
+    words = re.sub(r"[^a-z0-9 ]+", " ", (text or "").lower()).split()
+    return not words or all(w in _FILLER_SOUNDS for w in words)
+
+
 # Saying any of these ends the conversation and puts ULTRON back to sleep.
 STOP_PHRASES = {
     "stop", "stop it", "stop talking", "cancel", "never mind", "nevermind",

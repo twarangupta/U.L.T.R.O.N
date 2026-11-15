@@ -79,10 +79,12 @@ def act(action: str, app: str | None, keep: str | None, windows_api=None) -> str
     """Run one window action. None when the app is unknown and not open (not ours)."""
     if sys.platform != "win32" and windows_api is None:
         return "Window control only works on Windows."
-    api = windows_api or _Win32()
+    api = windows_api or _win32()
     said_it = bool(app) and apps.clean(app) in ("it", "that")  # "maximise it", not "maximise this window"
     app = apps.canonical(app) if app else None
     keep = apps.canonical(keep) if keep else None
+    if keep == app:
+        keep = None  # "minimise everything" never keeps everything
 
     if action == "restore" or (action == "maximise" and app == "everything"):
         api.restore_all()  # "maximise everything" means: bring all my windows back
@@ -202,6 +204,16 @@ def switch_to_app(app: str) -> str | None:
     return act("switch", app, None)
 
 
+_api: list = []
+
+
+def _win32():
+    """One shared Win32 wrapper: building it costs about 140 ms (imports), so only the first command pays."""
+    if not _api:
+        _api.append(_Win32())
+    return _api[0]
+
+
 class _Win32:
     """Thin wrapper over the Win32 calls, so the logic above can be tested."""
 
@@ -210,7 +222,7 @@ class _Win32:
         import win32gui
         import win32process
         self.win32con, self.win32gui, self.win32process = win32con, win32gui, win32process
-        self.own_pids = _own_process_tree()
+        self._own_pids: set[int] | None = None  # walked on first use: only close needs it
 
     def _window(self, hwnd: int) -> Window | None:
         import psutil
@@ -242,6 +254,12 @@ class _Win32:
     def foreground(self) -> Window | None:
         hwnd = self.win32gui.GetForegroundWindow()
         return self._window(hwnd) if hwnd else None
+
+    @property
+    def own_pids(self) -> set[int]:
+        if self._own_pids is None:
+            self._own_pids = _own_process_tree()
+        return self._own_pids
 
     def is_own(self, w: Window) -> bool:
         return w.pid in self.own_pids or w.hwnd == _console_window()

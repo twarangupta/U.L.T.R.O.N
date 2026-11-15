@@ -50,11 +50,21 @@ def open_browser(url: str | None = None) -> bool:
     return True
 
 
-def _endpoint():
-    """The Windows speaker volume control (pycaw)."""
+def _endpoint(device=None):
+    """The Windows speaker volume control (pycaw).
+
+    New pycaw returns a wrapper whose EndpointVolume is ready to use; old pycaw returns the
+    raw device, which needs Activate. Both work here; device is for tests.
+    """
+    if device is None:
+        from pycaw.pycaw import AudioUtilities
+        device = AudioUtilities.GetSpeakers()
+    volume = getattr(device, "EndpointVolume", None)
+    if volume is not None:
+        return volume
     from comtypes import CLSCTX_ALL
-    from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
-    interface = AudioUtilities.GetSpeakers().Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+    from pycaw.pycaw import IAudioEndpointVolume
+    interface = device.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
     return ctypes.cast(interface, ctypes.POINTER(IAudioEndpointVolume))
 
 
@@ -63,6 +73,25 @@ def _set_mute(on: bool):
 
 
 # ---- search, websites, apps, folders ----
+_ENGINE_LEFTOVER = re.compile(r"^(?:(?:on|in|with|using) )?(?:google|the web|the internet|online|bing)(?: for)? ", re.I)
+_ENGINE_FOR = re.compile(r"^(?:google|the web|the internet|online|bing) for ", re.I)
+
+
+def clean_query(query: str) -> str:
+    """Drop the search engine the sentence named: "google for new cars" -> "new cars".
+
+    "search google maps for a cafe" is untouched: only "<engine> for ...", "on google ..." and
+    "the web ..." at the start are leftovers of the cue words.
+    """
+    out = query.strip()
+    for _ in range(2):
+        m = _ENGINE_LEFTOVER.match(out)
+        if m and (out[:m.end()].lower().startswith(("on ", "in ", "with ", "using ", "the ")) or _ENGINE_FOR.match(out)):
+            out = out[m.end():].strip()
+    out = re.sub(r"\s+(?:on google|on the web|online)$", "", out, flags=re.I).strip()
+    return out or query.strip()
+
+
 @command("web_search", "Search Google in the browser.", group=_APPS, title="search Google for {query}",
          params=[Param("query", "str", "what to search for",
                        cues=("search for", "google for", "search the web for", "look up", "search", "google"))],
@@ -76,6 +105,7 @@ def _set_mute(on: bool):
                    "google how to boil an egg"],
          not_examples=["search my files", "search the codebase", "can you search a file for me in my pc"])
 def web_search(query: str) -> str:
+    query = clean_query(query)
     open_browser(f"https://www.google.com/search?q={urllib.parse.quote(query)}")
     return Done(f"Searching Google for {query}.")
 
@@ -152,22 +182,100 @@ def open_app(app: str) -> str | None:
 
 
 FOLDERS = ("downloads", "documents", "desktop", "pictures", "music", "videos")
+_JUST_MADE = re.compile(r"\b(?:just|last|previous|newly)\b.*\b(?:created|made|new)\b|\bnew folder\b|\bthe folder (?:you|i) (?:just )?(?:created|made)\b")
 
 
-@command("open_folder", "Open one of the user's folders in File Explorer.", group=_APPS, title="open my {folder} folder",
-         params=[Param("folder", "choice", "the folder", choices=FOLDERS)], priority=47,
+def folder_roots() -> list[str]:
+    """Where a folder named in speech is looked for, nearest first (OneDrive copies included)."""
+    home = os.path.expanduser("~")
+    roots = []
+    for base in (home, os.path.join(home, "OneDrive")):
+        for name in ("Desktop", "Documents", "Downloads", "Pictures", "Music", "Videos"):
+            path = os.path.join(base, name)
+            if os.path.isdir(path):
+                roots.append(path)
+    roots.append(home)
+    return roots
+
+
+def _recent_folders() -> list[str]:
+    """Folders from the Windows Recent list (best effort, newest first)."""
+    found = []
+    try:
+        import glob
+        import win32com.client
+        shell = win32com.client.Dispatch("WScript.Shell")
+        recent = os.path.join(os.environ["APPDATA"], "Microsoft", "Windows", "Recent")
+        links = sorted(glob.glob(os.path.join(recent, "*.lnk")), key=os.path.getmtime, reverse=True)[:60]
+        for link in links:
+            target = shell.CreateShortCut(link).Targetpath
+            if target and os.path.isdir(target):
+                found.append(target)
+    except Exception:
+        pass
+    return found
+
+
+def find_folder(name: str, roots: list[str] | None = None, recent: list[str] | None = None) -> str | None:
+    """The folder the user named, or None. Roots and recent are for tests."""
+    from commands import context
+    low = " ".join(re.sub(r"[^a-z0-9 ]+", " ", name.lower()).split())
+    low = re.sub(r"^(?:the|my) ", "", low)
+    low = re.sub(r" (?:folder|directory)$", "", low).strip()
+    if _JUST_MADE.search(low) or low in ("new", "new folder"):
+        if context.created_folder and os.path.isdir(context.created_folder):
+            return context.created_folder
+    standard = low if low.endswith("s") or low in ("desktop", "music") else low + "s"
+    roots = folder_roots() if roots is None else roots
+    for base in roots:
+        if os.path.basename(base).lower() in (low, standard):
+            return base
+    for base in roots:  # a folder inside one of the usual places, then one level deeper
+        for entry in _scan(base):
+            if _same(entry, low):
+                return entry
+    for base in roots[:6]:
+        for sub in _scan(base):
+            for entry in _scan(sub):
+                if _same(entry, low):
+                    return entry
+    for path in (_recent_folders() if recent is None else recent):
+        if _same(path, low):
+            return path
+    return None
+
+
+def _scan(base: str) -> list[str]:
+    try:
+        return [e.path for e in os.scandir(base) if e.is_dir() and not e.name.startswith(".")]
+    except OSError:
+        return []
+
+
+def _same(path: str, low: str) -> bool:
+    leaf = " ".join(re.sub(r"[^a-z0-9 ]+", " ", os.path.basename(path).lower()).split())
+    return leaf == low
+
+
+@command("open_folder", "Open a folder in File Explorer by name, or the one just created.",
+         group=_APPS, title="open the {folder} folder",
+         params=[Param("folder", "str", "the folder's name, for example downloads or cast, or 'the new folder'")],
+         priority=47,
          rules=[r"(?:open|show|go to|reveal)(?: me)? (?:the |my )?(?P<folder>download|document|picture|video)s?(?: folder| directory)?",
-                r"(?:open|show|go to|reveal)(?: me)? (?:the |my )?(?P<folder>desktop|music)(?: folder| directory)"],
+                r"(?:open|show|go to|reveal)(?: me)? (?:the |my )?(?P<folder>desktop|music)(?: folder| directory)",
+                r"(?:open|show|go to|reveal)(?: me)? (?P<folder>(?:the )?(?:new )?folder (?:that )?(?:you|i) (?:just )?(?:created|made))",
+                r"(?:open|show|go to|reveal)(?: me)? (?:the |my )?(?P<folder>(?:new )?.+?) (?:folder|directory)"],
          examples=["open my downloads", "show me the documents folder", "open downloads folder",
-                   "go to my pictures", "open the desktop folder", "where are my downloads, open them"])
+                   "go to my pictures", "open the desktop folder", "where are my downloads, open them",
+                   "open the invoices folder", "open the new folder you just created"],
+         not_examples=["create a folder called invoices", "delete this folder"])
 def open_folder(folder: str) -> str:
-    folder = folder if folder.endswith("s") or folder in ("desktop", "music") else folder + "s"
-    name = folder.capitalize()
-    path = os.path.join(os.path.expanduser("~"), name)
-    if not os.path.exists(path):
-        return f"I couldn't locate your {name} folder."
+    path = find_folder(folder)
+    if path is None:
+        return f"I couldn't find a folder called {folder.strip()}."
     subprocess.Popen(["explorer", os.path.normpath(path)])
-    return Done(f"Opening your {name} folder.")
+    name = os.path.basename(os.path.normpath(path)) or path
+    return Done(f"Opening your {name} folder." if name.lower() in FOLDERS else f"Opening the {name} folder.")
 
 
 _WHERE = r"(?: (?:on|in) (?:the |my )?(?P<location>desktop|documents|downloads|pictures|music|videos)(?: folder)?)?"
@@ -188,12 +296,62 @@ _NAMED = r"(?:,? (?:and )?(?:name it|call it|called|named|with the name) (?P<nam
 def create_folder(name: str | None = None, location: str | None = None) -> str:
     folder = location or "desktop"
     folder = folder if folder.endswith("s") or folder in ("desktop", "music") else folder + "s"
-    name = re.sub(r'[<>:"/\\|?*]', "", (name or "New folder")).strip() or "New folder"
-    path = os.path.join(os.path.expanduser("~"), folder.capitalize(), name)
-    if os.path.exists(path):
-        return f"A folder called {name} already exists in {folder.capitalize()}."
+    base = re.sub(r'[<>:"/\|?*]', "", (name or "New folder")).strip() or "New folder"
+    parent = os.path.join(os.path.expanduser("~"), folder.capitalize())
+    if name:  # a name the user chose is never changed silently
+        path = os.path.join(parent, base)
+        if os.path.exists(path):
+            return f"A folder called {base} already exists in {folder.capitalize()}."
+    else:
+        path = unique_path(parent, base)  # like Windows: "New folder", then "New folder (2)"
     os.makedirs(path)
-    return f"Created the folder {name} in {folder.capitalize()}."
+    from commands import context
+    context.note_folder(path)  # "open the new folder you just created", "rename it"
+    return f"Created the folder {os.path.basename(path)} in {folder.capitalize()}."
+
+
+def unique_path(parent: str, name: str) -> str:
+    path = os.path.join(parent, name)
+    n = 2
+    while os.path.exists(path):
+        path = os.path.join(parent, f"{name} ({n})")
+        n += 1
+    return path
+
+
+def inside_user_folders(path: str) -> bool:
+    """True only for a path under the user's own profile (never system folders, never the profile itself)."""
+    home = os.path.normcase(os.path.realpath(os.path.expanduser("~")))
+    full = os.path.normcase(os.path.realpath(path))
+    return full.startswith(home + os.sep) and full != home
+
+
+@command("rename_item", "Rename the folder ULTRON just created. Asks for the name when none is given.",
+         group=_APPS, title="rename it to {name}", priority=57, raw=True,
+         params=[Param("name", "str", "the new name", required=False, cues=("rename it to", "rename to", "call it", "named"))],
+         rules=[r"rename (?:it|that|this|the (?:new )?folder|the folder (?:you|i) (?:just )?(?:created|made))(?: (?:to|as))? (?P<name>.+?)[.!?]?",
+                r"rename (?:it|that|this|the (?:new )?folder|the folder (?:you|i) (?:just )?(?:created|made))[.!?]?"],
+         examples=["rename it", "rename it to invoices", "rename the new folder to photos", "rename that folder"],
+         not_examples=["rename my files in downloads", "rename the git branch"])
+def rename_item(name: str | None = None) -> str:
+    from commands import context
+    path = context.created_folder
+    if not path or not os.path.exists(path):
+        return "I haven't created anything to rename. Name the folder you mean."
+    if not inside_user_folders(path):
+        return "That is outside your own folders. I won't rename it."
+    if not name:
+        context.pending = "rename_name"
+        return "What should I call it?"
+    new = re.sub(r'[<>:"/\|?*]', "", name).strip().rstrip(".")
+    if not new:
+        return "That isn't a usable name."
+    target = os.path.join(os.path.dirname(path), new)
+    if os.path.exists(target):
+        return f"Something called {new} already exists there."
+    os.rename(path, target)
+    context.note_folder(target)
+    return f"Renamed it to {new}."
 
 
 # ---- power and status ----

@@ -78,6 +78,13 @@ REFUSED_REPLIES = [
     "I won't do that. Some buttons exist to be left alone.",
 ]
 
+CANT_DO_REPLIES = [
+    "I can't do that yet. No command for it, and I won't pretend otherwise.",
+    "That's not something I can do yet. I'd rather say so than fake it.",
+]
+
+RETRY_OFFER = "Shall I try again?"
+
 DONE_REPLIES = [
     "Done.",
     "Handled.",
@@ -154,4 +161,4 @@ def maybe_quip(reply: str) -> str:
 
 def fixed_lines() -> list[str]:
     """Lines that never change, pre-rendered at startup so they play instantly."""
-    return WAKE_REPLIES + STOP_REPLIES + UNSURE_REPLIES + DONE_REPLIES + SLEEP_REPLIES + CANCELLED_REPLIES
+    return WAKE_REPLIES + STOP_REPLIES + UNSURE_REPLIES + DONE_REPLIES + SLEEP_REPLIES + CANCELLED_REPLIES + CANT_DO_REPLIES

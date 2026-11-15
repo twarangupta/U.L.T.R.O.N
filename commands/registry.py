@@ -132,6 +132,8 @@ def coerce(p: Param, value):
         if number is None:
             raise ArgumentError(f"{p.name}: not a number: {value!r}")
         return number
+    if isinstance(value, (dict, list, tuple, set)):  # a model sometimes sends the schema itself as the value
+        raise ArgumentError(f"{p.name}: expected text, got {type(value).__name__}")
     text = str(value).strip().strip(".?!,").strip()
     if p.type == "choice":
         low = " ".join(text.lower().replace("_", " ").split())

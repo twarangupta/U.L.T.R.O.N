@@ -103,12 +103,12 @@ tools/stt_benchmark.py records your voice and suggests entries.
     "open the calculator", "fire up notepad", "open docker desktop", "run obsidian", "can
     you open file explorer", "open the paint app"
   * Name: open_app
-- Open my <folder> folder
-  * What it does: Open one of the user's folders in File Explorer.
+- Open the <folder> folder
+  * What it does: Open a folder in File Explorer by name, or the one just created.
   * You fill in: folder
   * Say for example: "open my downloads", "show me the documents folder", "open downloads
     folder", "go to my pictures", "open the desktop folder", "where are my downloads, open
-    them"
+    them", "open the invoices folder", "open the new folder you just created"
   * Name: open_folder
 - Create a folder <name> in <location>
   * What it does: Create a new folder, on the Desktop unless another folder is named.
@@ -117,6 +117,12 @@ tools/stt_benchmark.py records your voice and suggests entries.
     "new folder on my desktop", "create a folder in documents named taxes", "make a new
     folder and call it photos"
   * Name: create_folder
+- Rename it to <name>
+  * What it does: Rename the folder ULTRON just created. Asks for the name when none is given.
+  * You fill in: name (optional)
+  * Say for example: "rename it", "rename it to invoices", "rename the new folder to
+    photos", "rename that folder"
+  * Name: rename_item
 
 --------------------------------------------------------------------------------
 2. MEDIA AND VOLUME
